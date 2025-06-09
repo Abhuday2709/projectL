@@ -7,6 +7,8 @@ export const DocumentSchema = z.object({
     fileName: z.string(),
     s3Key: z.string(),
     fileType: z.string(),
+    processingStatus: z.enum(['QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED']).optional(),
+    processingError: z.string().optional(),
 }); 
 export type Document = z.infer<typeof DocumentSchema>;
 export const DocumentConfig = {
