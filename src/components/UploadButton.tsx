@@ -11,11 +11,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { ACCEPTED_MIME_TYPES } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 
-const UploadButton = ({ chatId }: { chatId: string }) => {
+interface UploadButtonProps {
+    chatId: string;
+    onUploadSuccess?: () => void;
+}
+
+const UploadButton = ({ chatId, onUploadSuccess }: UploadButtonProps) => {
     const router = useRouter();
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const utils = trpc.useUtils(); // This is key!
+    const utils = trpc.useUtils();
 
     const [isOpen, setIsOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -28,9 +33,20 @@ const UploadButton = ({ chatId }: { chatId: string }) => {
     const createDocument = trpc.documents.createDocument.useMutation({
         // Add onSuccess callback to the mutation itself
         onSuccess: async () => {
-            // Use tRPC utils for better integration
             await utils.documents.listByChat.invalidate({ chatId });
-            await utils.documents.listByChat.refetch({ chatId });
+            await utils.documents.getStatus.invalidate({ chatId });
+            await utils.documents.getStatus.refetch({ chatId });
+
+            if (onUploadSuccess) {
+                onUploadSuccess();
+            }
+        },
+        onError: (error) => {
+            toast({
+                title: "Document Creation Failed",
+                description: error.message || "Could not save document details after upload.",
+                variant: "destructive"
+            });
         }
     });
 

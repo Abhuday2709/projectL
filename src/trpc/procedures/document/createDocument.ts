@@ -23,6 +23,8 @@ export const createDocumentProcedure = procedure
         const document: Document = {
             ...input,
             uploadedAt: new Date().toISOString(),
+            processingStatus: 'QUEUED',
+            processingError: " ",
         };
 
         const command = new PutCommand({

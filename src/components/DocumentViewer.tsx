@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, AlertCircle } from 'lucide-react';
 import * as mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
-
 interface DocumentViewerProps {
   url: string;
   fileName: string;
@@ -131,14 +129,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
           <iframe
             src={content}
             width="100%"
-            height="480px"
+            height="470px"
             className="border rounded"
             title="PDF Document"
           />
         );
       case 'docx':
         return (
-          <div className="max-h-[74vh] rounded p-6 mx-auto max-w-xl shadow-sm">
+          <div className="max-h-[70vh] rounded p-6 mx-auto max-w-xl shadow-sm">
             <div 
               dangerouslySetInnerHTML={{ __html: content }}
               className="prose max-w-none"
@@ -161,8 +159,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow-lg">
       {/* Header */}
-      <div className="bg-gray-50 py-1 border-b flex-shrink-0">
-        <div className="flex items-center justify-between">
+      <div className="bg-gray-50 border-b flex-shrink-0">
+        <div className="flex items-center justify-between p-4">
           <div className="flex items-center">
             <FileText className="w-5 h-5 text-gray-500 mr-2" />
             <span className="text-sm font-medium text-gray-700 truncate">{fileName}</span>

@@ -20,7 +20,7 @@ function Messages() {
   }, [entry, hasMore, isLoading, loadMoreMessages])
 
   return (
-    <div ref={containerRef} className='flex flex-col-reverse h-full overflow-y-auto p-3'>
+    <div ref={containerRef} className='flex flex-col-reverse h-full overflow-y-auto p-3 rounded-lg'>
       {messages.map((message, i) => {
         const isLastMessage = i === 0
         const isOptimistic = i === 0 && isLoading

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isNetworkScienceEmail } from '@/lib/utils';
 
 export default function SignIn() {
     const { isLoaded, signIn, setActive } = useSignIn();
@@ -30,6 +31,12 @@ export default function SignIn() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!signIn) return;
+
+        if (!isNetworkScienceEmail(emailAddress)) {
+            setError("Only @networkscience.ai email addresses are allowed to sign in.");
+            return;
+        }
+
         try {
             const result = await signIn.create({
                 identifier: emailAddress,
@@ -66,8 +73,14 @@ export default function SignIn() {
                                 id="email"
                                 value={emailAddress}
                                 onChange={(e) => setEmailAddress(e.target.value)}
+                                placeholder="yourname@networkscience.ai"
+                                pattern=".*@networkscience\.ai$"
+                                title="Please enter a valid @networkscience.ai email address"
                                 required
                             />
+                            {/* <p className="text-sm text-muted-foreground">
+                                Only @networkscience.ai email addresses are allowed
+                            </p> */}
                         </div>
 
                         <div className="space-y-2">

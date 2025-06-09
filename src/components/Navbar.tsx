@@ -9,14 +9,14 @@ const Navbar = () => {
     if (!isLoaded) return null
 
     return (
-        <nav className="sticky h-14 inset-x-0 top-0 z-30 w-full border-b border-zinc-300 bg-gray-150 backdrop-blur-lg transition-all px-5">
+        <nav className="sticky h-14 inset-x-0 top-0 z-30 w-full border-b border-zinc-300 bg-gray-100 backdrop-blur-lg transition-all px-5">
             <div className="flex h-14 items-center justify-between border-b border-zinc-300">
                 <Link
                     href="/">
                     <button
-                        className={`${buttonVariants({ variant: 'ghost', size: 'sm' })} p-2 transition-transform duration-150 ease-in-outhover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-700 active:scale-95`}
+                        className={`${buttonVariants({ variant: 'ghost', size: 'lg' })} p-2 transition-transform duration-150 ease-in-outhover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-700 active:scale-95`}
                     >
-                        <span className='text-lg'>PROJECT-L</span>
+                        <span className='text-xl'>PROJECT-L</span>
                     </button>
                 </Link>
 

@@ -5,12 +5,14 @@ import { Worker, Job } from 'bullmq';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import pdf from 'pdf-parse'; // Using 'pdf-parse' for PDF text extraction
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { type Document } from '../../models/documentModel'; // Changed to relative path
+import { type Document, DocumentConfig } from '../../models/documentModel'; // Changed to relative path, Added DocumentConfig
 import { Readable } from 'stream';
 import { generateEmbeddings } from './gemini'; // Added import
 import { QdrantClient } from '@qdrant/js-client-rest'; // Qdrant client
 import { v4 as uuidv4 } from 'uuid'; // UUID generator
-
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
+import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
+import mammoth from 'mammoth';
 // Configure S3 client (ensure AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY are set in env)
 const s3Client = new S3Client({
     region: process.env.AWS_REGION!,
@@ -29,6 +31,9 @@ const qdrantClient = new QdrantClient({
 const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
 const VECTOR_SIZE = 768; // For Gemini 'embedding-001'
 const DISTANCE_METRIC = 'Cosine';
+
+// DynamoDB Document Client
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 async function ensureCollection() {
     try {
@@ -81,77 +86,294 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 const worker = new Worker('documents', async (job: Job<Document>) => {
     // console.log(`Processing job ${job.id} for document: ${job.data.fileName} (S3 Key: ${job.data.s3Key})`);
     
-    if (job.data.fileType === 'application/pdf') {
-        try {
-            // console.log(`Attempting to download PDF from S3: ${job.data.s3Key}`);
+    const { chatId, uploadedAt, docId, fileName, s3Key, fileType } = job.data;
+
+    // Update status to PROCESSING
+    try {
+        const updateToProcessingCmd = new UpdateCommand({
+            TableName: DocumentConfig.tableName,
+            Key: { chatId, uploadedAt },
+            UpdateExpression: 'set processingStatus = :status',
+            ExpressionAttributeValues: { ':status': 'PROCESSING' },
+        });
+        await docClient.send(updateToProcessingCmd);
+    } catch (statusError) {
+        console.error(`Failed to update status to PROCESSING for docId ${docId}:`, statusError);
+        // Decide if we should re-throw or attempt to continue. For now, log and continue.
+    }
+
+    const splitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 500,
+        chunkOverlap: 50,
+    });
+    let points = [];
+
+    try {
+        if (fileType === 'application/pdf') {
+            try {
+                // console.log(`Attempting to download PDF from S3: ${s3Key}`);
+                const getObjectCommand = new GetObjectCommand({
+                    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+                    Key: s3Key,
+                }); 
+                const s3Object = await s3Client.send(getObjectCommand);
+
+                if (!s3Object.Body) {
+                    throw new Error('S3 object body is empty.');
+                }
+
+                const pdfBuffer = await streamToBuffer(s3Object.Body as Readable);
+                console.log(`PDF downloaded successfully. Size: ${pdfBuffer.length} bytes. Parsing text...`);
+
+                const pageContents: string[] = []; // Initialize for each job
+
+                // Custom pagerender function to extract text and store it by page
+                async function customPageRenderer(pageData: any): Promise<string> {
+                    // pageData is PDFPageProxy from pdf.js
+                    const renderOptions = {
+                        normalizeWhitespace: false, 
+                        disableCombineTextItems: false,
+                    };
+                    // HINT: pageData.getTextContent() promise will be resolved with TextContentItem[]
+                    // TextContentItem object structure: {str: string, dir: string, width: number, height: number, transform: number[], fontName: string}
+                    const textContent = await pageData.getTextContent(renderOptions);
+                    
+                    let lastY: number | undefined;
+                    let pageText = '';
+                    // Concatenate items, handling line breaks based on Y-coordinate
+                    for (const item of textContent.items) {
+                        if (lastY === item.transform[5] || !lastY) {
+                            pageText += item.str;
+                        } else {
+                            pageText += '\n' + item.str;
+                        }
+                        lastY = item.transform[5];
+                    }
+
+                    if (pageData.pageNumber > 0 && pageData.pageNumber <= 1000) { // Safety guard for pageNumber
+                        pageContents[pageData.pageNumber - 1] = pageText;
+                    } else if (pageData.pageNumber > 1000) {
+                        console.warn(`PDF page number ${pageData.pageNumber} exceeds reasonable limit, skipping storage in pageContents.`);
+                    }
+                    return pageText; // pdf-parse expects the text of the current page
+                }
+
+                const pdfParseOptions = {
+                    pagerender: customPageRenderer,
+                };
+                const pdfData = await pdf(pdfBuffer, pdfParseOptions); // This populates `pageContents`
+
+                // Existing logs for pdfData are still useful
+                console.log("metadata", pdfData.metadata);
+                const info = pdfData.info;
+                console.log("info", info);
+                const numpages = pdfData.numpages;
+                console.log("numpages", numpages);
+                const numrender = pdfData.numrender;
+                console.log("numrender", numrender);
+                const version = pdfData.version;
+                console.log("version", version);
+
+                if (pageContents.length === 0) {
+                    console.log('No text content extracted from any pages of the PDF.');
+                    // Update status to FAILED as no content was processed
+                    const updateToFailedCmd = new UpdateCommand({
+                        TableName: DocumentConfig.tableName,
+                        Key: { chatId, uploadedAt },
+                        UpdateExpression: 'set processingStatus = :status, processingError = :error',
+                        ExpressionAttributeValues: {
+                            ':status': 'FAILED',
+                            ':error': 'No text content extracted from PDF.',
+                        },
+                    });
+                    await docClient.send(updateToFailedCmd);
+                    return Promise.resolve(); 
+                }
+
+                for (let pageIndex = 0; pageIndex < pageContents.length; pageIndex++) {
+                    const currentPageText = pageContents[pageIndex];
+                    const pageNumber = pageIndex + 1; // 1-indexed page number
+
+                    if (!currentPageText || currentPageText.trim() === '') {
+                        console.log(`No text content on page ${pageNumber}. Skipping.`); // Optional: can be noisy
+                        continue;
+                    }
+
+                    const chunks = await splitter.splitText(currentPageText);
+                    console.log(`Page ${pageNumber} split into ${chunks.length} chunks.`);
+                    
+                    for (let chunkIndexOnPage = 0; chunkIndexOnPage < chunks.length; chunkIndexOnPage++) {
+                        const chunkText = chunks[chunkIndexOnPage];
+                        if (chunkText.trim() === '') continue; // Skip empty chunks
+
+                        const embedding = await generateEmbeddings(chunkText);
+                        points.push({
+                            id: uuidv4(),
+                            vector: embedding,
+                            payload: {
+                                text: chunkText,
+                                documentId: docId,
+                                chatId: chatId,
+                                s3Key: s3Key,
+                                fileName: fileName,
+                                pageNumber: pageNumber,         // New field: 1-indexed page number
+                                chunkIndexOnPage: chunkIndexOnPage, // New field: 0-indexed chunk on this page
+                            }
+                        });
+                    }
+                }
+                
+                if (points.length > 0) {
+                    // console.log(`Upserting ${points.length} points from ${pageContents.length} pages to Qdrant collection '${COLLECTION_NAME}'...`);
+                    await qdrantClient.upsert(COLLECTION_NAME, { points });
+                    console.log(`${points.length} points upserted successfully.`);
+                } else {
+                    console.log('No text chunks to process for Qdrant after processing all pages.');
+                    // Potentially mark as FAILED if no points were generated from non-empty pages
+                    const updateToFailedNoPointsCmd = new UpdateCommand({
+                        TableName: DocumentConfig.tableName,
+                        Key: { chatId, uploadedAt },
+                        UpdateExpression: 'set processingStatus = :status, processingError = :error',
+                        ExpressionAttributeValues: {
+                            ':status': 'FAILED',
+                            ':error': 'PDF processed, but no text chunks generated for Qdrant.',
+                        },
+                    });
+                    await docClient.send(updateToFailedNoPointsCmd);
+                    return Promise.resolve(); 
+                }
+
+                // Update status to COMPLETED
+                const updateToCompletedCmd = new UpdateCommand({
+                    TableName: DocumentConfig.tableName,
+                    Key: { chatId, uploadedAt },
+                    UpdateExpression: 'set processingStatus = :status, processingError = :err_val',
+                    ExpressionAttributeValues: {
+                         ':status': 'COMPLETED',
+                         ':err_val': 'null' // Explicitly set error to null or remove it
+                    },
+                });
+                await docClient.send(updateToCompletedCmd);
+
+            } catch (error: any) {
+                console.error(`Error processing PDF ${s3Key}:`, error);
+                // Update status to FAILED
+                try {
+                    const updateToFailedErrorCmd = new UpdateCommand({
+                        TableName: DocumentConfig.tableName,
+                        Key: { chatId, uploadedAt },
+                        UpdateExpression: 'set processingStatus = :status, processingError = :error',
+                        ExpressionAttributeValues: {
+                            ':status': 'FAILED',
+                            ':error': error.message as string || 'Unknown processing error',
+                        },
+                    });
+                    await docClient.send(updateToFailedErrorCmd);
+                } catch (statusUpdateError) {
+                    console.error(`CRITICAL: Failed to update status to FAILED for docId ${docId} after processing error:`, statusUpdateError);
+                }
+                throw error; // Re-throw the original processing error for BullMQ to handle
+            }
+        } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileType === 'application/msword') {
+            console.log(`Processing DOC/DOCX file: ${fileName} (S3 Key: ${s3Key})`);
+
+            // 1. Download the file from S3
             const getObjectCommand = new GetObjectCommand({
-                Bucket: process.env.AWS_S3_BUCKET_NAME!,
-                Key: job.data.s3Key,
-            }); 
+                Bucket: process.env.AWS_S3_BUCKET_NAME!, // Ensure this env variable is set
+                Key: s3Key,
+            });
             const s3Object = await s3Client.send(getObjectCommand);
 
             if (!s3Object.Body) {
-                throw new Error('S3 object body is empty.');
+                throw new Error(`S3 object body is empty for DOC/DOCX file: ${s3Key}`);
             }
 
-            const pdfBuffer = await streamToBuffer(s3Object.Body as Readable);
-            // console.log(`PDF downloaded successfully. Size: ${pdfBuffer.length} bytes. Parsing text...`);
+            // 2. Convert S3 stream to buffer
+            const byteArray = await s3Object.Body.transformToByteArray();
+            const nodeBuffer = Buffer.from(byteArray); // Mammoth expects a Node.js Buffer
 
-            const pdfData = await pdf(pdfBuffer);
-            const text = pdfData.text;
-            // console.log(`PDF text extracted. Length: ${text.length} characters.`);
+            if (nodeBuffer.length === 0) {
+                throw new Error(`Zero-byte buffer obtained from S3 for DOC/DOCX file: ${s3Key}`);
+            }
 
+            console.log(`DOC/DOCX file ${fileName} downloaded successfully. Size: ${nodeBuffer.length} bytes. Extracting text...`);
+
+            // 3. Pass the buffer to mammoth
+            const result = await mammoth.extractRawText({ buffer: nodeBuffer });
+            const text = result.value;
+            // console.log("text from docx", text); // Uncomment for debugging if needed
+            
             if (!text || text.trim() === '') {
-                // console.log('No text content found in PDF after parsing.');
+                // Update status to FAILED as no content was processed
+                const updateToFailedCmd = new UpdateCommand({
+                    TableName: DocumentConfig.tableName,
+                    Key: { chatId, uploadedAt },
+                    UpdateExpression: 'set processingStatus = :status, processingError = :error',
+                    ExpressionAttributeValues: {
+                        ':status': 'FAILED',
+                        ':error': 'No text content extracted from DOC/DOCX.',
+                    },
+                });
+                await docClient.send(updateToFailedCmd);
+                console.warn(`No text content extracted from DOC/DOCX: ${fileName}`);
                 return Promise.resolve(); 
             }
-
-            const splitter = new RecursiveCharacterTextSplitter({
-                chunkSize: 500, // Target size of each chunk (in characters)
-                chunkOverlap: 50, // Number of characters to overlap between chunks
-            });
-
-            const chunks = await splitter.splitText(text);
-            // console.log(`Text split into ${chunks.length} chunks.`);
             
-            if (chunks.length > 0) {
-                // console.log('Generating embeddings and preparing points for Qdrant...');
-                const points = [];
-                for (let i = 0; i < chunks.length; i++) {
-                    const chunkText = chunks[i];
-                    const embedding = await generateEmbeddings(chunkText);
-                    points.push({
-                        id: uuidv4(),
-                        vector: embedding,
-                        payload: {
-                            text: chunkText,
-                            documentId: job.data.docId,
-                            chatId: job.data.chatId,
-                            s3Key: job.data.s3Key,
-                            fileName: job.data.fileName,
-                            chunkIndex: i,
-                        }
-                    });
-                    // console.log(`Generated embedding for chunk ${i + 1}/${chunks.length}`); // Optional: can be noisy
-                }
-
-                if (points.length > 0) {
-                    // console.log(`Upserting ${points.length} points to Qdrant collection '${COLLECTION_NAME}'...`);
-                    await qdrantClient.upsert(COLLECTION_NAME, { points });
-                    // console.log(`${points.length} points upserted successfully.`);
-                }
-            } else {
-                // console.log('No text chunks to process for Qdrant.');
+            const chunks = await splitter.splitText(text);
+            console.log(`DOC/DOCX split into ${chunks.length} chunks.`);
+            for (let i = 0; i < chunks.length; i++) {
+                const chunkText = chunks[i];
+                if (chunkText.trim() === '') continue;
+                const embedding = await generateEmbeddings(chunkText);
+                points.push({
+                    id: uuidv4(), vector: embedding,
+                    payload: { text: chunkText, documentId: docId, chatId, s3Key, fileName, chunkIndex: i }
+                });
             }
-
-        } catch (error) {
-            console.error(`Error processing PDF ${job.data.s3Key}:`, error);
-            throw error; 
+        } else {
+            console.log(`Skipping unsupported file type: ${fileName} (Type: ${fileType})`);
+            // Update status to COMPLETED with a note that it's unsupported by this worker
+            const updateToSkippedCmd = new UpdateCommand({
+                TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
+                UpdateExpression: 'set processingStatus = :status, processingError = :error',
+                ExpressionAttributeValues: { ':status': 'COMPLETED', ':error': `File type ${fileType} not processed by worker.` },
+            });
+            await docClient.send(updateToSkippedCmd);
+            return Promise.resolve(); // End processing for this job
         }
-    } else {
-        // console.log(`Skipping non-PDF file: ${job.data.fileName} (Type: ${job.data.fileType})`);
-    }
 
+        if (points.length > 0) {
+            await qdrantClient.upsert(COLLECTION_NAME, { points });
+            console.log(`${points.length} points upserted successfully for ${fileName}.`);
+            const updateToCompletedCmd = new UpdateCommand({
+                TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
+                UpdateExpression: 'set processingStatus = :status, processingError = :err_val',
+                ExpressionAttributeValues: { ':status': 'COMPLETED', ':err_val': "null" },
+            });
+            await docClient.send(updateToCompletedCmd);
+        } else {
+            throw new Error('No text chunks generated for Qdrant from the document.');
+        }
+
+    } catch (error: any) {
+        console.error(`Error processing document ${s3Key} (${fileName}):`, error);
+        try {
+            const updateToFailedErrorCmd = new UpdateCommand({
+                TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
+                UpdateExpression: 'set processingStatus = :status, processingError = :error',
+                ExpressionAttributeValues: {
+                    ':status': 'FAILED',
+                    ':error': error.message as string || 'Unknown processing error',
+                },
+            });
+            await docClient.send(updateToFailedErrorCmd);
+        } catch (statusUpdateError) {
+            console.error(`CRITICAL: Failed to update status to FAILED for docId ${docId} after processing error:`, statusUpdateError);
+        }
+        // Do not re-throw if you want BullMQ to consider it handled based on status update.
+        // If you re-throw, BullMQ will mark it as failed and potentially retry based on queue settings.
+        // For now, let's not re-throw, assuming status update is sufficient.
+    }
     return Promise.resolve();
 }, { connection });
 
@@ -168,7 +390,7 @@ worker.on('failed', (job, err) => {
     }
 });
 
-console.log('Worker started listening for jobs on the \'documents\' queue with PDF processing logic...');
+console.log('Worker started listening for jobs on the \'documents\' queue with PDF and DOC/DOCX processing logic...');
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

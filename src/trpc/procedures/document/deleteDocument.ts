@@ -37,7 +37,7 @@ export const deleteDocumentProcedure = procedure
         })
     )
     .mutation(async ({ input }) => {
-        // console.log('Starting delete operation for:', input);
+        console.log('Starting delete operation for:', input);
 
         // First delete from DynamoDB
         try {
@@ -52,7 +52,7 @@ export const deleteDocumentProcedure = procedure
             });
 
             await docClient.send(dynamoCommand);
-            // console.log('DynamoDB delete successful');
+            console.log('DynamoDB delete successful');
         } catch (dynamoError) {
             console.error('DynamoDB deletion error:', dynamoError);
             throw new TRPCError({
@@ -69,7 +69,7 @@ export const deleteDocumentProcedure = procedure
                 Key: input.s3Key,
             });
             await s3Client.send(s3Command);
-            // console.log('S3 delete successful');
+            console.log('S3 delete successful');
         } catch (s3Error) {
             console.error('S3 deletion error:', s3Error);
             console.warn('Failed to delete from S3, but DynamoDB delete was successful');
@@ -77,7 +77,7 @@ export const deleteDocumentProcedure = procedure
 
         // Finally, delete from Qdrant
         try {
-            // console.log(`Attempting to delete embeddings from Qdrant for docId: ${input.docId} and chatId: ${input.chatId}`);
+            console.log(`Attempting to delete embeddings from Qdrant for docId: ${input.docId} and chatId: ${input.chatId}`);
             await qdrantClient.delete(QDRANT_COLLECTION_NAME, {
                 filter: {
                     must: [
@@ -96,7 +96,7 @@ export const deleteDocumentProcedure = procedure
                     ],
                 },
             });
-            // console.log('Qdrant embeddings deletion successful (or no matching points found).');
+            console.log('Qdrant embeddings deletion successful (or no matching points found).');
         } catch (qdrantError) {
             console.error('Qdrant deletion error:', qdrantError);
             // Decide on error handling: maybe just log, or throw if critical

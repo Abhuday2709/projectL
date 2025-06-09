@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User } from "../../../models/userModel";
+import { isNetworkScienceEmail } from '@/lib/utils';
 
 
 function Signup() {
@@ -39,6 +40,12 @@ function Signup() {
         if (!isLoaded) {
             return;
         }
+
+        if (!isNetworkScienceEmail(emailAddress)) {
+            setError("Only @networkscience.ai email addresses are allowed to sign up.");
+            return;
+        }
+
         try {
             await signUp.create({
                 emailAddress,
@@ -70,7 +77,7 @@ function Signup() {
             }
             if (completeSignup.status === "complete") {
                 setError("");
-                                try {
+                try {
                     const newUser: Omit<User, 'createdAt'> = {
                         user_id: completeSignup.createdUserId!,
                         email: emailAddress,
@@ -123,6 +130,9 @@ function Signup() {
                                     id="email"
                                     value={emailAddress}
                                     onChange={(e) => setEmailAddress(e.target.value)}
+                                    placeholder="yourname@networkscience.ai"
+                                    pattern=".*@networkscience\.ai$"
+                                    title="Please enter a valid @networkscience.ai email address"
                                     required
                                 />
                             </div>
