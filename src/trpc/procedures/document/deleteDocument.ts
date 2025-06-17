@@ -9,10 +9,10 @@ import { QdrantClient } from "@qdrant/js-client-rest"; // Qdrant client
 
 // Update S3 client initialization with proper configuration
 const s3Client = new S3Client({
-    region: process.env.AWS_REGION,
+    region: process.env.NEXT_PUBLIC_AWS_REGION,
     credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY || '',
     }, 
 });
 
@@ -65,7 +65,7 @@ export const deleteDocumentProcedure = procedure
         // Then delete from S3
         try {
             const s3Command = new DeleteObjectCommand({
-                Bucket: process.env.AWS_S3_BUCKET_NAME!,
+                Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
                 Key: input.s3Key,
             });
             await s3Client.send(s3Command);

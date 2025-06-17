@@ -7,6 +7,7 @@ import { messagesRouter } from './message';
 import { getAiResponseProcedure } from './procedures/ai/getAiResponse';
 import { questionsRouter } from './questions';
 import { reviewRouter } from './reviews';
+import { scoringSessionRouter } from './scoringSession';
 import { router } from './trpc';
 import { userRouter } from './user';
 export const appRouter = router({
@@ -18,7 +19,8 @@ export const appRouter = router({
     getAiResponse: getAiResponseProcedure,
     review:reviewRouter,
     category:categoryRouter,
-    question:questionsRouter
+    question:questionsRouter,
+    scoringSession: scoringSessionRouter
 });
 // export type definition of API
 export type AppRouter = typeof appRouter;

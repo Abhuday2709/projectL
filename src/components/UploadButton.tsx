@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Dropzone from 'react-dropzone';
-import { useRouter } from 'next/navigation';
 import { trpc } from '@/app/_trpc/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -13,11 +12,13 @@ import { useQueryClient } from '@tanstack/react-query';
 
 interface UploadButtonProps {
     chatId: string;
+    forReview?: boolean; // <-- add this
     onUploadSuccess?: () => void;
+    user_id?: string;
+    createdAt?: string; 
 }
 
-const UploadButton = ({ chatId, onUploadSuccess }: UploadButtonProps) => {
-    const router = useRouter();
+const UploadButton = ({ chatId, onUploadSuccess,forReview,user_id,createdAt}: UploadButtonProps) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const utils = trpc.useUtils();
@@ -97,6 +98,9 @@ const UploadButton = ({ chatId, onUploadSuccess }: UploadButtonProps) => {
                 fileName: files[0].name,
                 s3Key: result.key,
                 fileType: files[0].type,
+                forReview,
+                user_id: user_id ,
+                createdAt,
             };
             
             // This will trigger the onSuccess callback automatically

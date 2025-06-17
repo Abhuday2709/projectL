@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { Document } from "../../models/documentModel";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -41,8 +42,14 @@ export interface AnswerType {
   score: 0 | 1 | 2
 }
 
-export interface ScoringResult {
-  totalAttractiveness: number
-  totalAbility: number
-  quadrantLabel: string
+export interface Results {
+  categoryName: string
+  score: number
+  total: number
 }
+
+export interface ProcessDocumentForReviewJobData {
+    Document:Document;
+    user_id?: string;
+    createdAt?: string; 
+};

@@ -14,10 +14,10 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 // S3 Client Initialization
 const s3Client = new S3Client({
-    region: process.env.AWS_REGION,
+    region: process.env.NEXT_PUBLIC_AWS_REGION,
     credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY || '',
     },
 });
 
@@ -121,7 +121,7 @@ export const deleteChatProcedure = procedure
             // Delete from S3
             try {
                 const s3Command = new DeleteObjectCommand({
-                    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+                    Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
                     Key: s3Key,
                 });
                 await s3Client.send(s3Command);

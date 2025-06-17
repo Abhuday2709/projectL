@@ -3,23 +3,26 @@ import { procedure } from "../../trpc"; // Adjusted import path
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { DocumentSchema, DocumentConfig, type Document } from '../../../../models/documentModel'; // Adjusted import path
-import { ACCEPTED_FILE_TYPES } from '@/lib/utils'; 
-import { myQueue } from '@/lib/queue'; // Import BullMQ queue
+import { myQueue, myReviewQueue } from '@/lib/queue'; // Import BullMQ queue
 
 // Create a document client using a common DynamoDB client instance.
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export const createDocumentProcedure = procedure
     .input(
-        DocumentSchema.pick({ 
-            chatId: true, 
-            docId: true, 
-            fileName: true, 
-            s3Key: true, 
-            fileType: true 
+        DocumentSchema.pick({
+            chatId: true,
+            docId: true,
+            fileName: true,
+            s3Key: true,
+            fileType: true
+        }).extend({
+            forReview: z.boolean().optional(), 
+            user_id: z.string().optional(),
+            createdAt: z.string().optional(), 
         })
     )
-    .mutation(async ({ input }) : Promise<Document> => {
+    .mutation(async ({ input }): Promise<Document> => {
         const document: Document = {
             ...input,
             uploadedAt: new Date().toISOString(),
@@ -32,15 +35,21 @@ export const createDocumentProcedure = procedure
             Item: document,
             ConditionExpression: `attribute_not_exists(chatId) AND attribute_not_exists(docId)`,
         });
-        
+
         try {
             await docClient.send(command);
 
             // Enqueue the document for processing after successful DynamoDB put
             try {
-                await myQueue.add('processDocument', document, {
-                    jobId: document.docId, // Use docId for idempotency
-                });
+                if (input.forReview) {
+                    await myReviewQueue.add('processDocumentForReview', { ...document, user_id: input.user_id,createdAt:input.createdAt }, {
+                        jobId: document.docId,
+                    });
+                } else {
+                    await myQueue.add('processDocument', document, {
+                        jobId: document.docId,
+                    });
+                }
                 // console.log(`Document ${document.docId} enqueued for processing.`);
             } catch (queueError) {
                 console.error(`Failed to enqueue document ${document.docId}:`, queueError);
@@ -57,7 +66,7 @@ export const createDocumentProcedure = procedure
             }
             // If it's not a known error from queueing, throw a generic one.
             if (!(error instanceof Error && error.message === 'Document saved but failed to enqueue for processing.')) {
-                 throw new Error('Failed to create document or queue for ingestion.');
+                throw new Error('Failed to create document or queue for ingestion.');
             }
             throw error; // Re-throw the specific queueing error if it was that
         }

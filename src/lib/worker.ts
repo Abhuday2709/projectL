@@ -13,12 +13,12 @@ import { v4 as uuidv4 } from 'uuid'; // UUID generator
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
 import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
 import mammoth from 'mammoth';
-// Configure S3 client (ensure AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY are set in env)
+// Configure S3 client (ensure NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY are set in env)
 const s3Client = new S3Client({
-    region: process.env.AWS_REGION!,
+    region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
     },
 });
 
@@ -113,7 +113,7 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
             try {
                 // console.log(`Attempting to download PDF from S3: ${s3Key}`);
                 const getObjectCommand = new GetObjectCommand({
-                    Bucket: process.env.AWS_S3_BUCKET_NAME!,
+                    Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
                     Key: s3Key,
                 }); 
                 const s3Object = await s3Client.send(getObjectCommand);
@@ -279,7 +279,7 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
 
             // 1. Download the file from S3
             const getObjectCommand = new GetObjectCommand({
-                Bucket: process.env.AWS_S3_BUCKET_NAME!, // Ensure this env variable is set
+                Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!, // Ensure this env variable is set
                 Key: s3Key,
             });
             const s3Object = await s3Client.send(getObjectCommand);
@@ -323,8 +323,11 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
             console.log(`DOC/DOCX split into ${chunks.length} chunks.`);
             for (let i = 0; i < chunks.length; i++) {
                 const chunkText = chunks[i];
+                const sanitizedChunk = chunkText.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\uFFFF]/g, '');
                 if (chunkText.trim() === '') continue;
-                const embedding = await generateEmbeddings(chunkText);
+                // console.log(`Embedding chunk ${i + 1}/${chunks.length} (length: ${chunkText.length}):`, sanitizedChunk.slice(0, 500));
+                const embedding = await generateEmbeddings(sanitizedChunk);
+    
                 points.push({
                     id: uuidv4(), vector: embedding,
                     payload: { text: chunkText, documentId: docId, chatId, s3Key, fileName, chunkIndex: i }

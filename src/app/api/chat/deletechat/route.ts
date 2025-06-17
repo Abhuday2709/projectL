@@ -5,10 +5,10 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 
 // Initialize DynamoDB client with credentials
 const client = new DynamoDBClient({
-    region: process.env.AWS_REGION,
+    region: process.env.NEXT_PUBLIC_AWS_REGION,
     credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
     }
 });
 const docClient = DynamoDBDocumentClient.from(client);
@@ -16,7 +16,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 export async function DELETE(request: Request) {
     try {
         // Validate environment variables
-        if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+        if (!process.env.NEXT_PUBLIC_AWS_REGION || !process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || !process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY) {
             throw new Error('Missing AWS credentials in environment variables');
         }
 

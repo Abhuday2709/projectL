@@ -28,26 +28,27 @@ import { CategoryType, QuestionType } from "@/lib/utils";
 export default function DashboardChatPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
+
+    // All hooks must be called unconditionally
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [categories, setCategories] = useState<CategoryType[]>([]);
+    const [questions, setQuestions] = useState<QuestionType[]>([]);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [reviewName, setReviewName] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
+    const [reviewToDelete, setReviewToDelete] = useState<ScoringSession | null>(null);
+
     const user_id = userId || "";
-    // Redirect to sign-in if not authenticated.
+    const { data: reviews, refetch } = trpc.review.getReviews.useQuery({ user_id }, { enabled: !!user_id });
+    const { data: category, refetch: catRefetch } = trpc.category.getCategories.useQuery({ user_id }, { enabled: !!user_id });
+    const { data: question, refetch: QustionRefetch } = trpc.question.getQuestions.useQuery({ user_id }, { enabled: !!user_id });
+    const createReviewMutation = trpc.review.createReview.useMutation();
+    const deleteReviewMutation = trpc.review.deleteReview.useMutation();
+
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
     }, [isLoaded, isSignedIn, router]);
 
-    const [showEditModal, setShowEditModal] = useState(false)
-    const [categories, setCategories] = useState<CategoryType[]>([])
-    const [questions, setQuestions] = useState<QuestionType[]>([])
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [chatName, setChatName] = useState("");
-    const [isCreating, setIsCreating] = useState(false);
-    const [chatToDelete, setChatToDelete] = useState<ScoringSession | null>(null);
-
-    // Fetch chats using tRPC query instead of SWR if you prefer.
-    const { data: chats, refetch } = trpc.review.getReviews.useQuery({ user_id });
-    const { data: category, refetch: catRefetch } = trpc.category.getCategories.useQuery({ user_id });
-    const { data: question, refetch: QustionRefetch } = trpc.question.getQuestions.useQuery({ user_id });
-    const createChatMutation = trpc.chat.createChat.useMutation();
-    const deleteChatMutation = trpc.chat.deleteChat.useMutation();
     useEffect(() => {
         if (category) setCategories(category);
     }, [category]);
@@ -57,49 +58,54 @@ export default function DashboardChatPage() {
     }, [question]);
     const backgrounds = ["bg-lime-50", "bg-emerald-50", "bg-yellow-50", "bg-indigo-50", "bg-purple-50", "bg-orange-50"];
 
-    const handleNewChat = async () => {
+    const handleNewReview = async () => {
         setIsDialogOpen(true);
     };
 
-    const handleCreateChat = async () => {
-        if (!chatName.trim()) return;
+    const handleCreateReview = async () => {
+        if (!reviewName.trim()) return;
 
         try {
             setIsCreating(true);
-            const chatId = uuidv4();
+            const scoringSessionId = uuidv4();
             // Call tRPC mutation.
-            const chat = await createChatMutation.mutateAsync({
+            const review = await createReviewMutation.mutateAsync({
                 user_id,
-                chatId,
-                name: chatName.trim(),
+                scoringSessionId,
+                name: reviewName.trim(),
+                scores: [],
+    answers: [],
             });
             setIsDialogOpen(false);
-            setChatName("");
-            router.push(`/dashboard/temp/${chat.chatId}`);
+            setReviewName("");
+            router.push(`/dashboard/temp/${review.scoringSessionId}`);
         } catch (error) {
-            console.error("Failed to create new chat:", error);
+            console.error("Failed to create new review:", error);
         } finally {
             setIsCreating(false);
         }
     };
 
-    const handleDeleteChat = async (chat: ScoringSession) => {
-        if (!chat) return;
+    const handleDeleteReview = async (review: ScoringSession) => {
+        if (!review) return;
         try {
-            await deleteChatMutation.mutateAsync({
-                user_id: chat.user_id,
-                createdAt: chat.createdAt,
+            await deleteReviewMutation.mutateAsync({
+                user_id: review.user_id,
+                createdAt: review.createdAt,
             });
-            // Refetch chats after deletion.
+            // Refetch reviews after deletion.
             refetch();
         } catch (error) {
-            console.error("Failed to delete chat:", error);
+            console.error("Failed to delete review:", error);
         } finally {
-            setChatToDelete(null);
+            setReviewToDelete(null);
         }
     };
 
-    if (!isLoaded || !isSignedIn) return null;
+    // Only render null/loading here, after all hooks
+    if (!isLoaded || !isSignedIn || !userId) {
+        return null; // or a loading state
+    }
 
     return (
         <div className="flex z-50">
@@ -113,7 +119,7 @@ export default function DashboardChatPage() {
                             <Button variant="outline" onClick={() => setShowEditModal(true)}>
                                 Edit Questions
                             </Button>
-                            <Button onClick={handleNewChat}>New Review</Button>
+                            <Button onClick={handleNewReview}>New Review</Button>
                         </div>
                         {/* Edit Questions Modal */}
                         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
@@ -143,11 +149,11 @@ export default function DashboardChatPage() {
                                 <div className="py-4">
                                     <Input
                                         placeholder="Enter review name"
-                                        value={chatName}
-                                        onChange={(e) => setChatName(e.target.value)}
+                                        value={reviewName}
+                                        onChange={(e) => setReviewName(e.target.value)}
                                         onKeyDown={(e) => {
-                                            if (e.key === "Enter" && !isCreating && chatName.trim()) {
-                                                handleCreateChat();
+                                            if (e.key === "Enter" && !isCreating && reviewName.trim()) {
+                                                handleCreateReview();
                                             }
                                         }}
                                         required
@@ -159,31 +165,31 @@ export default function DashboardChatPage() {
                                     <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isCreating}>
                                         Cancel
                                     </Button>
-                                    <Button onClick={handleCreateChat} disabled={isCreating}>
+                                    <Button onClick={handleCreateReview} disabled={isCreating}>
                                         {isCreating ? "Creating..." : "Proceed"}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-                        {chats?.length === 0 && (
+                        {reviews?.length === 0 && (
                             <div className="col-span-full text-center p-8 text-gray-500">
                                 No reviews yet. Create a new review to get started!
                             </div>
                         )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {chats?.map((chat, idx) => (
-                                <Card key={chat.scoringSessionId} className={`hover:shadow-lg transition-shadow ${backgrounds[idx % backgrounds.length]}`}>
+                            {reviews?.map((review, idx) => (
+                                <Card key={review.scoringSessionId} className={`hover:shadow-lg transition-shadow ${backgrounds[idx % backgrounds.length]}`}>
                                     <CardHeader>
-                                        <CardTitle className="truncate">{chat.name}</CardTitle>
+                                        <CardTitle className="truncate">{review.name}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex flex-col min-h-40 justify-between">
                                             <p className="text-sm text-gray-500">
-                                                Created on {new Date(chat.createdAt).toLocaleDateString()}
+                                                Created on {new Date(review.createdAt).toLocaleDateString()}
                                             </p>
                                             <div className="flex gap-2 justify-between">
-                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/temp/${chat.scoringSessionId}`)}>
+                                                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/temp/${review.scoringSessionId}`)}>
                                                     Open
                                                 </Button>
                                                 <Button
@@ -191,7 +197,7 @@ export default function DashboardChatPage() {
                                                     size="sm"
                                                     className="bg-red-500"
                                                     onClick={() => {
-                                                        setChatToDelete(chat);
+                                                        setReviewToDelete(review);
                                                     }}
                                                 >
                                                     Delete
@@ -203,19 +209,19 @@ export default function DashboardChatPage() {
                             ))}
                         </div>
 
-                        <AlertDialog open={!!chatToDelete} onOpenChange={() => setChatToDelete(null)}>
+                        <AlertDialog open={!!reviewToDelete} onOpenChange={() => setReviewToDelete(null)}>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action will permanently delete the review "{chatToDelete?.name}". This cannot be undone.
+                                        This action will permanently delete the review "{reviewToDelete?.name}". This cannot be undone.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction
                                         className="bg-red-500 hover:bg-red-600"
-                                        onClick={() => chatToDelete && handleDeleteChat(chatToDelete)}
+                                        onClick={() => reviewToDelete && handleDeleteReview(reviewToDelete)}
                                     >
                                         Delete
                                     </AlertDialogAction>

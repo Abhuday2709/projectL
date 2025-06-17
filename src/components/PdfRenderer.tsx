@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import UploadButton from "./UploadButton";
 import { trpc } from "../app/_trpc/client";
-import DocumentViewer from "./DocumentViewer";
+import DocumentViewer from "./documentViewer/DocumentViewer";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
-import { Document } from "../../models/documentModel";
 import type { DocumentWithStatus } from "../trpc/procedures/document/getDocumentProcessingStatus";
 import {
     AlertDialog,
@@ -17,7 +16,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-export default function PdfRenderer({ chatId }: { chatId: string }) {
+export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: string, setIsViewingDocument: (isViewing: boolean) => void }) {
     const {
         data: documentsWithStatus = [],
         refetch: refetchDocumentStatuses,
@@ -44,7 +43,7 @@ export default function PdfRenderer({ chatId }: { chatId: string }) {
     const [docToDelete, setDocToDelete] = useState<DocumentWithStatus | null>(null);
     const { toast } = useToast();
     console.log("documentsWithStatus", documentsWithStatus);
-    
+
     useEffect(() => {
         if (selectedDoc && documentsWithStatus) {
             const currentSelectedDocData = documentsWithStatus.find(d => d.s3Key === selectedDoc.s3Key);
@@ -118,7 +117,7 @@ export default function PdfRenderer({ chatId }: { chatId: string }) {
     );
 
     return (
-        <div className="flex-1 max-h-[calc(100vh-11rem)] min-h-[calc(100vh-11rem)] overflow-y-auto bg-white rounded-lg">
+        <div className="flex-1 max-h-[71.5vh] overflow-y-auto bg-white rounded-lg">
             {!selectedDoc ? (
                 <div className="w-full p-4 overflow-y-auto">
                     <UploadButton chatId={chatId} onUploadSuccess={refetchDocumentStatuses} />
@@ -153,6 +152,7 @@ export default function PdfRenderer({ chatId }: { chatId: string }) {
                                             onClick={() => {
                                                 if (isCompleted) {
                                                     setSelectedDoc({ fileName: doc.fileName, s3Key: doc.s3Key });
+                                                    setIsViewingDocument(true);
                                                 }
                                             }}
                                             disabled={!isCompleted}
@@ -168,21 +168,22 @@ export default function PdfRenderer({ chatId }: { chatId: string }) {
                                             {isQueued && <span className="text-xs text-yellow-600 ml-auto">({doc.processingStatus?.toLowerCase()})</span>}
                                             {isFailed && <span className="text-xs text-red-600 ml-auto">(failed)</span>}
                                         </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setDocToDelete(doc);
-                                            }}
-                                            disabled={deletingId === doc.docId || isProcessing}
-                                            className={`p-1.5 rounded hover:bg-red-100 transition-colors ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`}
-                                            title={isProcessing ? "Cannot delete while processing" : "Delete document"}
-                                        >
-                                            {deletingId === doc.docId ? (
-                                                <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                                            ) : (
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            )}
-                                        </button>
+                                        {!(isQueued || isProcessing) && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDocToDelete(doc);
+                                                }}
+                                                disabled={deletingId === doc.docId || isProcessing}
+                                                className={`p-1.5 rounded hover:bg-red-100 transition-colors ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`}
+                                                title={isProcessing ? "Cannot delete while processing" : "Delete document"}
+                                            >
+                                                {deletingId === doc.docId ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                                                ) : (
+                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                )}
+                                            </button>)}
                                         {isFailed && doc.processingError && (
                                             <p className="text-xs text-red-500 w-full pl-8 truncate" title={doc.processingError}>Error: {doc.processingError}</p>
                                         )}
@@ -197,7 +198,10 @@ export default function PdfRenderer({ chatId }: { chatId: string }) {
                     <DocumentViewer
                         url={getDocUri(selectedDoc.s3Key)}
                         fileName={selectedDoc.fileName}
-                        onReturn={() => setSelectedDoc(null)}
+                        onReturn={() => {
+                            setSelectedDoc(null);
+                            setIsViewingDocument(false);
+                        }}
                     />
                 </div>
             )}

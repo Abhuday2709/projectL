@@ -16,6 +16,7 @@ const DocumentWithStatusSchema = DocumentSchema.pick({
     processingStatus: true,
     processingError: true,
     chatId: true, // Include chatId if useful for client-side cache or context
+    missingQuestionIds: true,
 });
 export type DocumentWithStatus = z.infer<typeof DocumentWithStatusSchema>;
 

@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq';
 import { type Document } from '../../models/documentModel'; // Assuming this type is still relevant for job data
+import { ProcessDocumentForReviewJobData } from './utils';
 
 // Configure Redis connection
 const connectionOptions = {
@@ -11,3 +12,4 @@ const connectionOptions = {
 // Create and export the queue instance
 // Other parts of your application can import this to add jobs.
 export const myQueue = new Queue<Document>('documents', { connection: connectionOptions });
+export const myReviewQueue = new Queue<ProcessDocumentForReviewJobData>('processDocumentForReview', { connection: connectionOptions });
