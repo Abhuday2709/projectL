@@ -9,6 +9,7 @@ export const DocumentSchema = z.object({
     fileType: z.string(),
     processingStatus: z.enum(['QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED']).optional(),
     processingError: z.string().optional(),
+    missingQuestionIds: z.array(z.string()).optional(),
 }); 
 export type Document = z.infer<typeof DocumentSchema>;
 export const DocumentConfig = {
