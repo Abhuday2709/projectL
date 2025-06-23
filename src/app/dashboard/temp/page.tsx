@@ -25,6 +25,7 @@ import Sidebar from "@/components/Sidebar";
 import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories";
 import { CategoryType, QuestionType } from "@/lib/utils";
 import { ClipboardList, Plus, Trash2, Calendar, ArrowRight, Settings, FileText, Loader2 } from "lucide-react";
+import { ReviewCard } from "@/components/ReviewCard";
 
 export default function DashboardReviewPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
@@ -110,8 +111,9 @@ export default function DashboardReviewPage() {
 
     // Only render null/loading here, after all hooks
     if (!isLoaded || !isSignedIn || !userId) {
-        return null; // or a loading state
+        return null;
     }
+
 
     return (
         <>
@@ -242,76 +244,13 @@ export default function DashboardReviewPage() {
                             {/* Reviews Grid */}
                             {!isLoading && reviews && reviews.length > 0 && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {reviews.map((review, idx) => (
-                                        <Card
+                                    {reviews.map((review) => (
+                                        <ReviewCard
                                             key={review.scoringSessionId}
-                                            className={`group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-2 bg-white border-[#DBE2EF] hover:border-[#3F72AF]`}
-                                            onClick={() => {
-                                                setIsPageLoading(true);
-                                                router.push(`/dashboard/temp/${review.scoringSessionId}`)
-                                            }}
-                                        >
-                                            <CardHeader className="pb-3">
-                                                <CardTitle className="flex items-start justify-between">
-                                                    <div className="flex items-start gap-2">
-                                                        <FileText className="h-4 w-4 text-[#3F72AF] mt-1 flex-shrink-0" />
-                                                        <span className="truncate text-[#112D4E] font-semibold">
-                                                            {review.name}
-                                                        </span>
-                                                    </div>
-                                                    <ArrowRight className="h-4 w-4 text-[#3F72AF] group-hover:text-[#112D4E] group-hover:translate-x-1 transition-all duration-200 flex-shrink-0" />
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="flex flex-col min-h-32 justify-between">
-                                                    <div className="space-y-2 mb-4">
-                                                        <div className="flex items-center gap-2 text-sm text-[#3F72AF]">
-                                                            <Calendar className="h-4 w-4" />
-                                                            <span>
-                                                                {new Date(review.createdAt).toLocaleDateString('en-US', {
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                    year: 'numeric'
-                                                                })}
-                                                            </span>
-                                                        </div>
-                                                        {(review.scores?.length > 0 || review.answers?.length > 0) && (
-                                                            <div className="flex items-center gap-2 text-sm text-[#3F72AF]">
-                                                                <div className="w-2 h-2 bg-[#3F72AF] rounded-full"></div>
-                                                                <span className="font-medium">
-                                                                    {review.scores?.length || review.answers?.length} responses
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="flex-1 bg-[#DBE2EF] hover:bg-[#3F72AF] border-[#DBE2EF] hover:border-[#3F72AF] text-[#112D4E] hover:text-white"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setIsPageLoading(true);
-                                                                router.push(`/dashboard/temp/${review.scoringSessionId}`);
-                                                            }}
-                                                        >
-                                                            Open
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="p-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors border-[#DBE2EF]"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setReviewToDelete(review);
-                                                            }}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                                            review={review}
+                                            setIsPageLoading={setIsPageLoading}
+                                            setReviewToDelete={setReviewToDelete}
+                                        />
                                     ))}
                                 </div>
                             )}
@@ -382,7 +321,14 @@ export default function DashboardReviewPage() {
                                         <AlertDialogCancel className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#DBE2EF]">Cancel</AlertDialogCancel>
                                         <AlertDialogAction
                                             className="bg-red-600 hover:bg-red-700"
-                                            onClick={() => reviewToDelete && handleDeleteReview(reviewToDelete)}
+                                            onClick={async () => {
+                                                setIsPageLoading(true);
+                                                if (reviewToDelete) {
+                                                    await handleDeleteReview(reviewToDelete);
+                                                    await refetch();
+                                                }
+                                                setIsPageLoading(false);
+                                            }}
                                         >
                                             <Trash2 className="h-4 w-4 mr-2" />
                                             Delete Review
