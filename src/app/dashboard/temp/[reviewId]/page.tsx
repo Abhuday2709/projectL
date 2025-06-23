@@ -241,15 +241,21 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
     }
     setHighlightedQuestionIds([])
 
-    // 2. Format and merge answers
-    const newlyAnswered = Object.entries(userAnswers).map(([questionId, answer]) => ({
-      questionId,
-      answer,
-      reasoning: "User provided answer" // Or you could add a reasoning input field for users
-    }))
+    // 2. Format and merge answers - FIXED LOGIC
+    // Only create "User provided answer" for questions that were actually answered manually
+    const manuallyAnsweredQuestionIds = questionsForManualScoring.map(q => q.evaluationQuestionId);
+    
+    const newlyAnswered = Object.entries(userAnswers)
+      .filter(([questionId]) => manuallyAnsweredQuestionIds.includes(questionId))
+      .map(([questionId, answer]) => ({
+        questionId,
+        answer,
+        reasoning: "User provided answer"
+      }))
 
+    // Keep existing AI answers with their original reasoning
     const previousAnswers = activeScoringSession?.answers?.filter(
-      (ans) => !userAnswers.hasOwnProperty(ans.questionId)
+      (ans) => !manuallyAnsweredQuestionIds.includes(ans.questionId)
     ).map(ans => ({
       ...ans,
       reasoning: ans.reasoning || "AI generated answer" // Fallback for existing data
@@ -289,12 +295,21 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
 
     // 6. Update DynamoDB with the new answers, scores, and recommendation
     try {
+      if (!activeScoringSession?.user_id || !activeScoringSession?.createdAt) {
+        toast({ 
+          title: "Error", 
+          description: "No active scoring session found", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
       await docClient.send(
         new UpdateCommand({
           TableName: scoringSessionConfig.tableName,
           Key: {
-            user_id: activeScoringSession?.user_id,
-            createdAt: activeScoringSession?.createdAt || new Date().toISOString(),
+            user_id: activeScoringSession.user_id,
+            createdAt: activeScoringSession.createdAt,
           },
           UpdateExpression: "SET answers = :answers, scores = :scores, recommendation = :recommendation",
           ExpressionAttributeValues: {
@@ -307,7 +322,12 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
       await refetchScoringSession()
       toast({ title: "Scores submitted successfully!" });
     } catch (error) {
-      toast({ title: "Error submitting scores", description: (error as Error).message, variant: "destructive" });
+      console.error("Error submitting scores:", error);
+      toast({ 
+        title: "Error submitting scores", 
+        description: (error as Error).message, 
+        variant: "destructive" 
+      });
     }
   }
 
