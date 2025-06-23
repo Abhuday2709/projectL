@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
@@ -22,13 +22,14 @@ import {
 import { trpc } from "../../_trpc/client";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
-import { MessageCircle, Plus, Trash2, Calendar, ArrowRight } from "lucide-react";
+import { MessageCircle, Plus, Trash2, Calendar, ArrowRight, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardChatPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
     const user_id = userId || "";
-    
+    const { toast } = useToast();
     // Redirect to sign-in if not authenticated.
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
@@ -38,22 +39,12 @@ export default function DashboardChatPage() {
     const [chatName, setChatName] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false); // Add this state
 
     // Fetch chats using tRPC query instead of SWR if you prefer.
     const { data: chats, refetch, isLoading } = trpc.chat.getChats.useQuery({ user_id });
     const createChatMutation = trpc.chat.createChat.useMutation();
     const deleteChatMutation = trpc.chat.deleteChat.useMutation();
-
-    const gradients = [
-        "bg-gradient-to-br from-lime-50 to-lime-100 border-lime-200",
-        "bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200",
-        "bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200",
-        "bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200",
-        "bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200",
-        "bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200",
-        "bg-gradient-to-br from-rose-50 to-rose-100 border-rose-200",
-        "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200"
-    ];
 
     const handleNewChat = async () => {
         setIsDialogOpen(true);
@@ -76,6 +67,11 @@ export default function DashboardChatPage() {
             router.push(`/dashboard/sendProposals/${chat.chatId}`);
         } catch (error) {
             console.error("Failed to create new chat:", error);
+            toast({
+                title: "Failed to create chat",
+                description: "Something went wrong while creating the chat. Please try again.",
+                variant: "destructive",
+            });
         } finally {
             setIsCreating(false);
         }
@@ -83,6 +79,7 @@ export default function DashboardChatPage() {
 
     const handleDeleteChat = async (chat: Chat) => {
         if (!chat) return;
+        setIsDeleting(true); // Start loading
         try {
             await deleteChatMutation.mutateAsync({
                 user_id: chat.user_id,
@@ -92,16 +89,22 @@ export default function DashboardChatPage() {
             refetch();
         } catch (error) {
             console.error("Failed to delete chat:", error);
+            toast({
+                title: "Failed to delete chat",
+                description: "Something went wrong while deleting the chat. Please try again.",
+                variant: "destructive",
+            });
         } finally {
+            setIsDeleting(false); // End loading
             setChatToDelete(null);
         }
     };
 
     if (!isLoaded || !isSignedIn) return null;
 
-return (
+    return (
         <div className="flex bg-[#F9F7F7]">
-            <Sidebar/> 
+            <Sidebar />
             <div className="flex-1 lg:ml-64">
                 <MaxWidthWrapper>
                     <div className="p-8">
@@ -119,8 +122,8 @@ return (
                                         </p>
                                     </div>
                                 </div>
-                                <Button 
-                                    onClick={handleNewChat} 
+                                <Button
+                                    onClick={handleNewChat}
                                     className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A94] hover:to-[#0D1F35] shadow-lg hover:shadow-xl transition-all duration-200 text-white"
                                     size="lg"
                                 >
@@ -162,7 +165,7 @@ return (
                                 <p className="text-[#3F72AF] mb-6 text-center max-w-md">
                                     Start your first conversation to begin collaborating and sharing ideas.
                                 </p>
-                                <Button 
+                                <Button
                                     onClick={handleNewChat}
                                     className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A94] hover:to-[#0D1F35] text-white"
                                     size="lg"
@@ -177,8 +180,8 @@ return (
                         {!isLoading && chats && chats.length > 0 && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {chats.map((chat, idx) => (
-                                    <Card 
-                                        key={chat.chatId} 
+                                    <Card
+                                        key={chat.chatId}
                                         className={`group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-2 bg-white border-[#DBE2EF] hover:border-[#3F72AF] hover:shadow-[#3F72AF]/20`}
                                         onClick={() => router.push(`/dashboard/sendProposals/${chat.chatId}`)}
                                     >
@@ -203,9 +206,9 @@ return (
                                                     </span>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
                                                         className="flex-1 bg-[#DBE2EF] hover:bg-[#3F72AF] border-[#DBE2EF] hover:border-[#3F72AF] text-[#112D4E] hover:text-white transition-colors"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -261,19 +264,20 @@ return (
                                     />
                                 </div>
                                 <DialogFooter className="gap-2">
-                                    <Button 
-                                        variant="outline" 
-                                        onClick={() => setIsDialogOpen(false)} 
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsDialogOpen(false)}
                                         disabled={isCreating}
                                         className="border-[#DBE2EF] text-[#3F72AF] hover:bg-[#DBE2EF] hover:text-[#112D4E]"
                                     >
                                         Cancel
                                     </Button>
-                                    <Button 
-                                        onClick={handleCreateChat} 
+                                    <Button
+                                        onClick={handleCreateChat}
                                         disabled={isCreating || !chatName.trim()}
-                                        className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A94] hover:to-[#0D1F35] text-white"
+                                        className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A94] hover:to-[#0D1F35] text-white flex items-center"
                                     >
+                                        {isCreating && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                                         {isCreating ? "Creating..." : "Create Chat"}
                                     </Button>
                                 </DialogFooter>
@@ -291,18 +295,25 @@ return (
                                         <span className="text-[#112D4E]">Delete Chat?</span>
                                     </AlertDialogTitle>
                                     <AlertDialogDescription className="text-base text-[#3F72AF]">
-                                        Are you sure you want to delete <span className="font-semibold text-[#112D4E]">"{chatToDelete?.name}"</span>? 
+                                        Are you sure you want to delete <span className="font-semibold text-[#112D4E]">"{chatToDelete?.name}"</span>?
                                         This action cannot be undone and will permanently remove all messages in this conversation.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter className="gap-2">
-                                    <AlertDialogCancel className="border-[#DBE2EF] text-[#3F72AF] hover:bg-[#DBE2EF] hover:text-[#112D4E]">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                        className="bg-red-600 hover:bg-red-700 text-white"
-                                        onClick={() => chatToDelete && handleDeleteChat(chatToDelete)}
+                                    <AlertDialogCancel
+                                        className="border-[#DBE2EF] text-[#3F72AF] hover:bg-[#DBE2EF] hover:text-[#112D4E]"
+                                        disabled={isDeleting}
                                     >
+                                        Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                        className="bg-red-600 hover:bg-red-700 text-white flex items-center"
+                                        onClick={() => chatToDelete && handleDeleteChat(chatToDelete)}
+                                        disabled={isDeleting}
+                                    >
+                                        {isDeleting && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                                         <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete Chat
+                                        {isDeleting ? "Deleting..." : "Delete Chat"}
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>

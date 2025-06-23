@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import Navbar from "@/components/Navbar";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/toaster";
+import NavbarWrapper from "@/components/NavbarWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,10 +26,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-
-  // Hide Navbar for /s/* routes
-  const hideNavbar = pathname.startsWith("/s/");
   return (
     <ClerkProvider>
       <Providers>
@@ -37,7 +33,7 @@ export default function RootLayout({
             <body className={`${geistSans.variable} ${geistMono.variable} antialiased grainy min-h-screen`}>
               <div className="flex h-screen">
                 <div className="flex-1 flex flex-col"> {/* Width matches Sidebar width */}
-                  {!hideNavbar&&<Navbar />}
+                  <NavbarWrapper/>
                   <main className="flex-1 overflow-y-auto">
                     {children}
                   </main>

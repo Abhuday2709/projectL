@@ -8,6 +8,7 @@ import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3"; // Added S3 imports
 import { QdrantClient } from "@qdrant/js-client-rest"; // Added Qdrant import
 import { TRPCError } from "@trpc/server"; // Added TRPCError import
+import { shareSessionConfig } from '../../../../models/shareSessionModel'; // Add this import
 
 // Create a document client using a common DynamoDB client instance.
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
@@ -205,6 +206,21 @@ export const deleteChatProcedure = procedure
             console.warn(`Proceeding with chat deletion despite failure to delete all associated messages.`);
         }
 
+        // Step 2.6: Delete the ShareSession associated with this chat
+        try {
+            const deleteShareSessionCommand = new DeleteCommand({
+                TableName: shareSessionConfig.tableName,
+                Key: {
+                    chatId: chatIdForDocuments,
+                },
+            });
+            await docClient.send(deleteShareSessionCommand);
+            // console.log(`ShareSession deleted for chatId: ${chatIdForDocuments}`);
+        } catch (error) {
+            console.error(`Failed to delete ShareSession for chatId ${chatIdForDocuments}:`, error);
+            // Not throwing, just logging
+        }
+
         // Step 3: Delete the chat itself from DynamoDB
         const chatDeleteCommand = new DeleteCommand({
             TableName: ChatConfig.tableName,
@@ -227,4 +243,4 @@ export const deleteChatProcedure = procedure
         }
 
         return { success: true };
-    }); 
+    });
