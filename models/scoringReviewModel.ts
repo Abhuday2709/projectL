@@ -5,7 +5,6 @@ export const ScoringSessionSchema = z.object({
     user_id: z.string(), // Partition key - references user_id from Users table
     createdAt: z.string().optional().default(() => new Date().toISOString()), // Sort key - ISO timestamp
     scoringSessionId: z.string(),
-    // docId: z.string().uuid(),
     scores: z.array(z.object({
         categoryId: z.string(),
         score: z.number(),
@@ -13,6 +12,7 @@ export const ScoringSessionSchema = z.object({
     answers: z.array(z.object({
         answer: z.number(),
         questionId: z.string(),
+        reasoning: z.string().optional(), // Added reasoning field
     })),
     recommendation: z.string(),
     name: z.string().optional().default("untitled folder"), // Optional scoringSession name
@@ -31,4 +31,4 @@ export const scoringSessionConfig = {
     indexes: {
         scoringSessionId: 'scoringSessionId-index',
     }
-} as const; 
+} as const;

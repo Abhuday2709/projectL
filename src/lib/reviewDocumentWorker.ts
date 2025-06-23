@@ -7,7 +7,7 @@ import pdf from 'pdf-parse'; // Using 'pdf-parse' for PDF text extraction
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { type Document, DocumentConfig } from '../../models/documentModel'; // Changed to relative path, Added DocumentConfig
 import { Readable } from 'stream';
-import { generateEmbeddings, generateResponse } from './gemini'; // Added import
+import { generateEmbeddings } from './gemini'; // Added import
 import { QdrantClient } from '@qdrant/js-client-rest'; // Qdrant client
 import { v4 as uuidv4 } from 'uuid'; // UUID generator
 import { DynamoDBDocumentClient, UpdateCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
@@ -16,6 +16,7 @@ import mammoth from 'mammoth';
 import { EvaluationQuestionConfig, type EvaluationQuestion } from '../../models/evaluationQuestionModel';
 import { scoringSessionConfig, ScoringSessionSchema, type ScoringSession } from '../../models/scoringReviewModel';
 import { ProcessDocumentForReviewJobData } from './utils';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 // Configure S3 client (ensure NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY are set in env)
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
@@ -35,6 +36,12 @@ const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME || 'document_embeddin
 const VECTOR_SIZE = 768; // For Gemini 'embedding-001'
 const DISTANCE_METRIC = 'Cosine';
 
+if (!process.env.GEMINI_API_KEY) {
+    throw new Error('Missing GEMINI_API_KEY environment variable');
+}
+
+// Initialize the Gemini API client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // DynamoDB Document Client
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
@@ -92,7 +99,7 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
     const user_id = job.data.user_id
     const createdAt = job.data.createdAt // Use provided createdAt or current time 
     console.log('user_id', user_id);
-    
+
     try {
         const updateToProcessingCmd = new UpdateCommand({
             TableName: DocumentConfig.tableName,
@@ -128,7 +135,7 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
     });
     let points = [];
     let unanswerableQuestions: string[] = [];
-    let questionAnswers: { questionId: string; answer: number }[] = [];
+    let questionAnswers: { questionId: string; answer: number, reasoning: string }[] = [];
 
     try {
         if (fileType === 'application/pdf') {
@@ -292,42 +299,73 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                             .filter(text => text && text.length > 0);
 
                         // Generate response using Gemini
-                        const prompt = `Based on the following context from a document, 
-                        please answer this question with ONE WORD ONLY Yes, Maybe, No or -1. 
-                        If the context doesn't have information to answer definitively, 
-                        respond with -1.
-                        Context:
-                        ${documentContext.join('\n\n')}
-                        Question: ${question.text}
-                        Please respond with exactly one of these options:
-                        - Yes
-                        - Maybe
-                        - No
-                        - -1`;
-                        const response = await generateResponse(prompt, []);
-                        const answer = response.toLowerCase().trim();
-                        console.log("answer", answer);
+                        const prompt = `You are an expert document analyst tasked with evaluating business proposals and RFPs. Based on the provided document context, answer the specific question with precision.
+
+DOCUMENT CONTEXT:
+${documentContext.join('\n\n')}
+
+QUESTION TO EVALUATE:
+${question.text}
+
+INSTRUCTIONS:
+1. Carefully analyze the document context for information directly related to the question
+2. Provide your answer in this EXACT format:
+   Answer: [Yes/Maybe/No/-1]
+   Reason: [One clear sentence explaining your reasoning]
+
+ANSWER GUIDELINES:
+- "Yes" (2 points): The document clearly and explicitly supports a positive answer
+- "Maybe" (1 point): The document provides some relevant information but it's ambiguous or partial
+- "No" (0 points): The document clearly indicates a negative answer or contradicts the question
+- "-1": The document lacks sufficient information to make any reasonable assessment
+
+IMPORTANT:
+- Base your answer ONLY on the provided document context
+- Do not make assumptions beyond what's explicitly stated
+- If information is unclear or incomplete, lean towards "Maybe" or "-1"
+- Keep your reason to one concise sentence (maximum 20 words)
+
+Your response:`;
+                        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                        const result = await model.generateContent(prompt);
+                        const response = await result.response.text();
+
+                        // Parse the structured response
+                        const answerMatch = response.match(/Answer:\s*(Yes|Maybe|No|-1)/i);
+                        const reasonMatch = response.match(/Reason:\s*(.+?)(?:\n|$)/i);
+
+                        const answer = answerMatch ? answerMatch[1].toLowerCase().trim() : null;
+                        const reasoning = reasonMatch ? reasonMatch[1].trim() : "No reasoning provided";
+
+                        console.log("Raw AI response:", response);
+                        console.log("Parsed answer:", answer);
+                        console.log("Parsed reasoning:", reasoning);
 
                         // Convert answer to numeric score
                         let score: number;
-                        if (answer.includes('yes')) {
-                            score = 2;
-                        } else if (answer.includes('-1')) {
-                            unanswerableQuestions.push(question.evaluationQuestionId);
-                            continue;
-                        }else if (answer.includes('maybe')) {
-                            score = 1;
-                        } else if (answer.includes('no')) {
-                            score = 0;
-                        }  else {
-                            continue;
-                        }
-                        console.log("score", score);
+if (answer === 'yes') {
+    score = 2;
+} else if (answer === '-1') {
+    unanswerableQuestions.push(question.evaluationQuestionId);
+    continue;
+} else if (answer === 'maybe') {
+    score = 1;
+} else if (answer === 'no') {
+    score = 0;
+} else {
+    // If parsing failed, treat as unanswerable
+    console.warn(`Failed to parse AI response for question ${question.evaluationQuestionId}: ${response}`);
+    unanswerableQuestions.push(question.evaluationQuestionId);
+    continue;
+}
 
-                        questionAnswers.push({
-                            questionId: question.evaluationQuestionId,
-                            answer: score
-                        });
+console.log("Final score:", score);
+
+questionAnswers.push({
+    questionId: question.evaluationQuestionId,
+    answer: score,
+    reasoning: reasoning // Add reasoning to the answer object
+});
 
                     } catch (error) {
                         console.error(`Error processing question ${question.evaluationQuestionId}:`, error);
@@ -337,15 +375,15 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
 
                 // Create scoring session
                 const scoringSession: ScoringSession = {
-                    user_id: user_id?user_id:"", // Use user_id if available, otherwise default
+                    user_id: user_id ? user_id : "", // Use user_id if available, otherwise default
                     createdAt: createdAt || new Date().toISOString(),
-                    scoringSessionId: user_id?user_id:uuidv4(),
+                    scoringSessionId: user_id ? user_id : uuidv4(),
                     scores: [], // You might want to calculate category scores based on question answers
                     answers: questionAnswers,
                     name: fileName,
-                    recommendation: '', 
+                    recommendation: '',
                 };
- 
+
                 // Save scoring session
                 await docClient.send(new UpdateCommand({
                     TableName: scoringSessionConfig.tableName,
@@ -360,7 +398,7 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                         ':answers': questionAnswers
                     },
                 }));
-                
+
                 // Update document status with missing questions
                 const updateToCompletedCmd = new UpdateCommand({
                     TableName: DocumentConfig.tableName,

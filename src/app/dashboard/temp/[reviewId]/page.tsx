@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
 // AWS and Database imports
-import { scoringSessionConfig } from "../../../../../models/scoringReviewModel"
+import { ScoringSession, scoringSessionConfig } from "../../../../../models/scoringReviewModel"
 import { dynamoClient } from "@/lib/AWS/AWS_CLIENT"
 import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb"
 
@@ -74,14 +74,18 @@ export default function DocumentScoringPage() {
     { enabled: !!userId }
   )
 
-  const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.scoringSession.getScoringSession.useQuery(
-    userId ? { user_id: userId } : { user_id: "" },
-    { enabled: !!userId }
-  )
+const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.scoringSession.getScoringSession.useQuery(
+  userId ? { user_id: userId } : { user_id: "" },
+  { enabled: !!userId && !!reviewId }
+)
 
-  // Memoize the active scoring session to avoid re-computation
-  const activeScoringSession = useMemo(() => scoringSessionData?.find((session) => session.user_id === userId), [scoringSessionData, userId])
-
+// Update the memoized active scoring session:
+const activeScoringSession: ScoringSession | undefined= useMemo(() => 
+  scoringSessionData?.find((session: ScoringSession) => 
+    session.user_id === userId && session.scoringSessionId === reviewId
+  ), 
+  [scoringSessionData, userId, reviewId]
+)
   // =================================================================
   // Component State
   // =================================================================
@@ -241,11 +245,15 @@ export default function DocumentScoringPage() {
     const newlyAnswered = Object.entries(userAnswers).map(([questionId, answer]) => ({
       questionId,
       answer,
+      reasoning: "User provided answer" // Or you could add a reasoning input field for users
     }))
 
     const previousAnswers = activeScoringSession?.answers?.filter(
       (ans) => !userAnswers.hasOwnProperty(ans.questionId)
-    ) ?? []
+    ).map(ans => ({
+      ...ans,
+      reasoning: ans.reasoning || "AI generated answer" // Fallback for existing data
+    })) ?? []
 
     const allAnswers = [...newlyAnswered, ...previousAnswers]
 
@@ -470,6 +478,7 @@ export default function DocumentScoringPage() {
                               {categoryAnsweredQuestions.map((q) => {
                                 const answer = activeScoringSession?.answers?.find(ans => ans.questionId === q.evaluationQuestionId);
                                 const answerText = answer?.answer === 0 ? "No" : answer?.answer === 1 ? "Maybe" : answer?.answer === 2 ? "Yes" : "Not found";
+                                const reasoning = answer?.reasoning || "No reasoning available";
 
                                 return (
                                   <div key={q.evaluationQuestionId} className="bg-[#F9F7F7] p-4 rounded-lg border border-green-400">
@@ -479,6 +488,9 @@ export default function DocumentScoringPage() {
                                     </div>
                                     <div className="mt-2 text-sm font-semibold text-[#3F72AF]">
                                       Answer: {answerText}
+                                    </div>
+                                    <div className="mt-1 text-xs text-[#112D4E] italic">
+                                      Reasoning: {reasoning}
                                     </div>
                                   </div>
                                 )
