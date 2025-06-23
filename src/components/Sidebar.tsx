@@ -1,13 +1,25 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { Menu, X, FileText, Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, FileText, Search, Loader2 } from "lucide-react"; // Add Loader2
 
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Listen for route changes to hide loader
+    useEffect(() => {
+        setIsLoading(false);
+    }, [pathname]);
+
+    const handleRouteChange = (path: string) => {
+        setIsLoading(true);
+        router.push(path);
+        setIsOpen(false);
+    };
 
     const isActiveRoute = (path: string) => {
         // For the main dashboard route, highlight sendProposals
@@ -45,8 +57,15 @@ export default function Sidebar() {
 
     return (
         <>
+            {/* Loader Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/70 backdrop-blur-sm">
+                    <Loader2 className="h-12 w-12 text-[#3F72AF] animate-spin" />
+                </div>
+            )}
+
             {/* Enhanced Hamburger menu icon for small screens */}
-            <div className="lg:hidden fixed top-7 transform -translate-y-1/2 left-4 z-[60]">
+            <div className="lg:hidden fixed top-7 transform -translate-y-1/2 left-4 z-[45]">
                 <button 
                     onClick={() => setIsOpen(!isOpen)} 
                     className="p-2.5 rounded-full text-[#112D4E] bg-[#F9F7F7]/80 backdrop-blur-sm 
@@ -67,7 +86,6 @@ export default function Sidebar() {
                     </div>
                 </button>
             </div>
-
 
             {/* Overlay when sidebar is open on small screens */}
             {isOpen && (
@@ -92,10 +110,7 @@ export default function Sidebar() {
                 {/* Navigation */}
                 <nav className="space-y-2 mt-6 pb-6">
                     <div
-                        onClick={() => {
-                            router.push('/dashboard/sendProposals');
-                            setIsOpen(false);
-                        }}
+                        onClick={() => handleRouteChange('/dashboard/sendProposals')}
                         className={linkClasses("/dashboard/sendProposals")}
                     >
                         <FileText className={iconClasses("/dashboard/sendProposals")} />
@@ -103,10 +118,7 @@ export default function Sidebar() {
                     </div>
                     
                     <div
-                        onClick={() => {
-                            router.push('/dashboard/temp');
-                            setIsOpen(false);
-                        }}
+                        onClick={() => handleRouteChange('/dashboard/temp')}
                         className={linkClasses("/dashboard/temp")}
                     >
                         <Search className={iconClasses("/dashboard/temp")} />

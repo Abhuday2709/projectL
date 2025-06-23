@@ -6,9 +6,11 @@ import Navbar from "./Navbar"
 const NavbarWrapper = () => {
     const pathname = usePathname()
     const isDashboard = pathname.startsWith('/s/')
-    if (!isDashboard) return null
+    // console.log(pathname,"pathname", isDashboard);
+    
+    if (isDashboard) return null
     return (
-       <Navbar/>
+        <Navbar />
     )
 }
 export default NavbarWrapper

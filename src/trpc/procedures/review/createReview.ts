@@ -15,6 +15,7 @@ export const createReviewProcedure = procedure
         name: z.string().min(1, "review name is required"),
         scores: z.array(z.any()),   
         answers: z.array(z.any()),
+        recommendation: z.string()
     })
 )
 .mutation(async ({ input, ctx }) => {
@@ -30,8 +31,6 @@ export const createReviewProcedure = procedure
         const command = new PutCommand({
             TableName: scoringSessionConfig.tableName,
             Item: review,
-            // Prevent overwriting an existing review.
-            ConditionExpression: `attribute_not_exists(user_id) AND attribute_not_exists(createdAt)`,
         });
         await docClient.send(command);
         return review;

@@ -3,7 +3,7 @@ import { z } from 'zod';
 // scoringSession Schema Validation
 export const ScoringSessionSchema = z.object({
     user_id: z.string(), // Partition key - references user_id from Users table
-    createdAt: z.string(), // Sort key - ISO timestamp
+    createdAt: z.string().optional().default(() => new Date().toISOString()), // Sort key - ISO timestamp
     scoringSessionId: z.string(),
     // docId: z.string().uuid(),
     scores: z.array(z.object({
