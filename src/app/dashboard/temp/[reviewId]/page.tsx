@@ -74,7 +74,7 @@ export default function DocumentScoringPage() {
     { enabled: !!userId }
   )
 
-const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.scoringSession.getScoringSession.useQuery(
+const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.review.getReviews.useQuery(
   userId ? { user_id: userId } : { user_id: "" },
   { enabled: !!userId && !!reviewId }
 )

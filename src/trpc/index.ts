@@ -7,7 +7,6 @@ import { messagesRouter } from './message';
 import { getAiResponseProcedure } from './procedures/ai/getAiResponse';
 import { questionsRouter } from './questions';
 import { reviewRouter } from './reviews';
-import { scoringSessionRouter } from './scoringSession';
 import { shareSessionRouter } from './shareSession';
 import { router } from './trpc';
 import { userRouter } from './user';
@@ -21,7 +20,6 @@ export const appRouter = router({
     review:reviewRouter,
     category:categoryRouter,
     question:questionsRouter,
-    scoringSession: scoringSessionRouter,
     shareSession:shareSessionRouter
 });
 // export type definition of API
