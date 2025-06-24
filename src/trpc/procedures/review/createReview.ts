@@ -27,6 +27,7 @@ export const createReviewProcedure = procedure
         const review = ScoringSessionSchema.parse({
             ...input,
             createdAt: new Date().toISOString(),
+            opportunityInfo:[]
         });
         const command = new PutCommand({
             TableName: scoringSessionConfig.tableName,

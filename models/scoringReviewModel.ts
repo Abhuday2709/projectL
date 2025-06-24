@@ -15,7 +15,13 @@ export const ScoringSessionSchema = z.object({
         reasoning: z.string().optional(), // Added reasoning field
     })),
     recommendation: z.string(),
-    name: z.string().optional().default("untitled folder"), // Optional scoringSession name
+    name: z.string().optional().default("untitled folder"), 
+    opportunityInfo: z.array(z.object({
+        contactName: z.string().optional(),
+        companyName: z.string().optional(),
+        useCase: z.string().optional(),
+        region: z.string().optional(),
+    })),
 });
 
 // scoringSession Type

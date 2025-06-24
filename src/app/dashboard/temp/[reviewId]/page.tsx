@@ -1,7 +1,7 @@
 "use client"
 
 // React and Next.js imports
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 
 // Custom components and utilities
@@ -123,6 +123,19 @@ export default function DocumentScoringPage() {
   // State for the overall page loading spinner
   const [isPageLoading, setIsPageLoading] = useState(false)
 
+  // Add state for the form fields
+  const [formFields, setFormFields] = useState({
+    contactName: "",
+    companyName: "",
+    useCase: "",
+    region: "",
+  });
+  const [formOpen, setFormOpen] = useState(false);
+  const [formTouched, setFormTouched] = useState(false);
+
+  // Helper to check if form is filled
+  const isFormFilled = Object.values(formFields).every((v) => v.trim() !== "");
+
   // =================================================================
   // Derived State and Memoized Values
   // =================================================================
@@ -164,6 +177,19 @@ export default function DocumentScoringPage() {
         return acc
       }, {} as Record<string, 0 | 1 | 2>)
       setUserAnswers(loadedAnswers)
+    }
+  }, [activeScoringSession])
+
+  // Effect to pre-fill form answers from a loaded scoring session
+  useEffect(() => {
+    if (activeScoringSession?.opportunityInfo && activeScoringSession.opportunityInfo.length > 0){
+      const info = activeScoringSession.opportunityInfo[0]; // Assuming only one set of info
+      setFormFields({
+        contactName: info.contactName ?? "",
+        companyName: info.companyName ?? "",
+        useCase: info.useCase ?? "",
+        region: info.region ?? "",
+      });
     }
   }, [activeScoringSession])
 
@@ -249,6 +275,18 @@ export default function DocumentScoringPage() {
    * Validates answers, calculates scores, and submits them to the database.
    */
   const handleSubmitScores = async () => {
+    // Prevent submit if form not filled
+    if (!isFormFilled) {
+      setFormTouched(true);
+      setFormOpen(true);
+      toast({
+        title: "Please fill out all details",
+        description: "Contact Name, Company Name, Use Case, and Region are required before submitting scores.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // 1. Validate that all required questions are answered
     const unansweredIds = questionsForManualScoring
       .filter(q => userAnswers[q.evaluationQuestionId] === undefined)
@@ -324,7 +362,7 @@ export default function DocumentScoringPage() {
     const finalRecommendation = getRecommendation(abilityPercentage, attractivenessPercentage, abilityQualCutoff, attractQualCutoff);
     setRecommendation(finalRecommendation);
 
-    // 6. Update DynamoDB with the new answers, scores, and recommendation
+    // 6. Update DynamoDB with the new answers, scores, recommendation, and opportunityInfo
     try {
       if (!activeScoringSession?.user_id || !activeScoringSession?.createdAt) {
         toast({
@@ -342,11 +380,12 @@ export default function DocumentScoringPage() {
             user_id: activeScoringSession.user_id,
             createdAt: activeScoringSession.createdAt,
           },
-          UpdateExpression: "SET answers = :answers, scores = :scores, recommendation = :recommendation",
+          UpdateExpression: "SET answers = :answers, scores = :scores, recommendation = :recommendation, opportunityInfo = :opportunityInfo",
           ExpressionAttributeValues: {
             ":answers": allAnswers,
             ":scores": scoresByCategoryId,
             ":recommendation": finalRecommendation,
+            ":opportunityInfo": [formFields], // Store as array for schema compatibility
           },
         })
       )
@@ -420,6 +459,75 @@ export default function DocumentScoringPage() {
             <div className="flex flex-col lg:flex-row flex-1 overflow-hidden rounded-b-lg">
               {/* Left Panel - Questions */}
               <div className="w-full lg:w-3/5 lg:border-r border-[#DBE2EF] bg-white overflow-y-auto lg:h-[calc(100vh-9rem)] order-2 lg:order-1 p-3 sm:p-4 lg:p-6">
+                {/* --- Contact/Company Form Dropdown --- */}
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-4 py-2 bg-[#F9F7F7] border border-[#DBE2EF] rounded-lg text-[#112D4E] font-medium focus:outline-none mb-2"
+                    onClick={() => setFormOpen((v) => !v)}
+                  >
+                    <span >Opportunity Details</span>
+                    <span className={`transform transition-transform ${formOpen ? "rotate-180" : ""}`}>▼</span>
+                  </button>
+                  {formOpen && (
+                    <div className="mt-3 bg-white border border-[#DBE2EF] rounded-lg p-4 space-y-3 shadow">
+                      <div>
+                        <label className="block text-sm font-medium text-[#112D4E] mb-1">Contact Name</label>
+                        <input
+                          type="text"
+                          className={`w-full border rounded px-3 py-2 text-sm ${formTouched && !formFields.contactName ? "border-red-400" : "border-[#DBE2EF]"}`}
+                          value={formFields.contactName}
+                          onChange={e => setFormFields(f => ({ ...f, contactName: e.target.value }))}
+                          placeholder="Enter contact name"
+                        />
+                        {formTouched && !formFields.contactName && (
+                          <span className="text-xs text-red-500">Required</span>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#112D4E] mb-1">Company Name</label>
+                        <input
+                          type="text"
+                          className={`w-full border rounded px-3 py-2 text-sm ${formTouched && !formFields.companyName ? "border-red-400" : "border-[#DBE2EF]"}`}
+                          value={formFields.companyName}
+                          onChange={e => setFormFields(f => ({ ...f, companyName: e.target.value }))}
+                          placeholder="Enter company name"
+                        />
+                        {formTouched && !formFields.companyName && (
+                          <span className="text-xs text-red-500">Required</span>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#112D4E] mb-1">Use Case</label>
+                        <input
+                          type="text"
+                          className={`w-full border rounded px-3 py-2 text-sm ${formTouched && !formFields.useCase ? "border-red-400" : "border-[#DBE2EF]"}`}
+                          value={formFields.useCase}
+                          onChange={e => setFormFields(f => ({ ...f, useCase: e.target.value }))}
+                          placeholder="Describe the use case"
+                        />
+                        {formTouched && !formFields.useCase && (
+                          <span className="text-xs text-red-500">Required</span>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#112D4E] mb-1">Region</label>
+                        <input
+                          type="text"
+                          className={`w-full border rounded px-3 py-2 text-sm ${formTouched && !formFields.region ? "border-red-400" : "border-[#DBE2EF]"}`}
+                          value={formFields.region}
+                          onChange={e => setFormFields(f => ({ ...f, region: e.target.value }))}
+                          placeholder="Enter region"
+                        />
+                        {formTouched && !formFields.region && (
+                          <span className="text-xs text-red-500">Required</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* --- End Form --- */}
+
                 {/* Document Status and Upload Section */}
                 <div className="mb-6">
                   {isLoadingDocuments ? (
