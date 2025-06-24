@@ -37,8 +37,10 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
         );
     }
 
-    const cat1Pct = Math.round((results[0]?.score * 100) / (results[0]?.total * 2));
-    const cat2Pct = Math.round((results[1]?.score * 100) / (results[1]?.total * 2));
+    // Swap: cat1Pct = Ability to Win (Y), cat2Pct = Attractiveness (X)
+
+    const abilityPct = (results[0].categoryName === "OUR ABILITY TO WIN") ? Math.round((results[0]?.score * 100) / (results[0]?.total * 2)) : Math.round((results[1]?.score * 100) / (results[1]?.total * 2));
+    const attractPct = (results[1].categoryName === "OPPORTUNITY ATTRACTIVENESS") ? Math.round((results[1]?.score * 100) / (results[1]?.total * 2)) : Math.round((results[0]?.score * 100) / (results[0]?.total * 2));
 
     return (
         <div className="flex flex-col">
@@ -46,22 +48,22 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
             <div className="mb-4">
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Evaluation Results</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div className="text-sm font-medium text-blue-800">{results[0]?.categoryName}</div>
-                        <div className="text-xl font-bold text-blue-900">
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <div className="text-sm font-medium text-green-800">{results[0]?.categoryName}</div>
+                        <div className="text-xl font-bold text-green-900">
                             {results[0]?.score}/{results[0]?.total * 2}
                         </div>
-                        <div className="text-sm text-blue-600">
-                            {cat1Pct}%
+                        <div className="text-sm text-green-600">
+                            {abilityPct}%
                         </div>
                     </div>
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <div className="text-sm font-medium text-green-800">{results[1]?.categoryName}</div>
-                        <div className="text-xl font-bold text-green-900">
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <div className="text-sm font-medium text-blue-800">{results[1]?.categoryName}</div>
+                        <div className="text-xl font-bold text-blue-900">
                             {results[1]?.score}/{results[1]?.total * 2}
                         </div>
-                        <div className="text-sm text-green-600">
-                            {cat2Pct}%
+                        <div className="text-sm text-blue-600">
+                            {attractPct}%
                         </div>
                     </div>
                 </div>
@@ -77,25 +79,23 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
                     <ResponsiveContainer width="100%" height={300}>
                         <ScatterChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
                             {/* Quadrant backgrounds */}
-                            <ReferenceArea x1={0} x2={50} y1={0} y2={50} fill="#fca5a5" fillOpacity={0.3} />
-                            <ReferenceArea x1={50} x2={75} y1={0} y2={50} fill="#fbbf24" fillOpacity={0.3} />
-                            <ReferenceArea x1={75} x2={100} y1={0} y2={50} fill="#fbbf24" fillOpacity={0.3} />
-                            <ReferenceArea x1={0} x2={50} y1={50} y2={100} fill="#60a5fa" fillOpacity={0.3} />
-                            <ReferenceArea x1={50} x2={100} y1={75} y2={100} fill="#34d399" fillOpacity={0.3} />
-                            <ReferenceArea x1={50} x2={100} y1={50} y2={75} fill="#34d399" fillOpacity={0.3} />
+                            <ReferenceArea x1={0} x2={results[1]?.qualificationCutoff} y1={0} y2={results[0]?.qualificationCutoff} fill="yellow" fillOpacity={0.3} />
+                            <ReferenceArea x1={results[1]?.qualificationCutoff} x2={100} y1={0} y2={results[0]?.qualificationCutoff} fill="#fbbf24" fillOpacity={0.3} />
+                            <ReferenceArea x1={0} x2={results[1]?.qualificationCutoff} y1={results[0]?.qualificationCutoff} y2={100} fill="#60a5fa" fillOpacity={0.3} />
+                            <ReferenceArea x1={results[1]?.qualificationCutoff} x2={100} y1={results[0]?.qualificationCutoff} y2={100} fill="#34d399" fillOpacity={0.3} />
                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <ReferenceLine x={50} stroke="#9ca3af" strokeDasharray="2 2" />
-                            <ReferenceLine y={50} stroke="#9ca3af" strokeDasharray="2 2" />
+                            <ReferenceLine x={results[1]?.qualificationCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
+                            <ReferenceLine y={results[0]?.qualificationCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
                             <XAxis
                                 type="number"
                                 dataKey="x"
-                                name="Attractiveness"
+                                name="Opp Attractiveness"
                                 domain={[0, 100]}
                                 tick={{ fontSize: 12, fill: '#374151' }}
                                 tickLine={{ stroke: '#9ca3af' }}
                                 axisLine={{ stroke: '#9ca3af' }}
                                 label={{
-                                    value: "Attractiveness %",
+                                    value: "Opp Attractiveness %",
                                     position: "insideBottom",
                                     offset: -10,
                                     style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px', fontWeight: 'bold' }
@@ -119,18 +119,19 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
                             <Tooltip content={<CustomTooltip />} />
                             <Scatter
                                 name="Your Score"
-                                data={[{ x: cat1Pct, y: cat2Pct }]}
+                                data={[{ x: attractPct, y: abilityPct }]}
                                 fill="#8b5cf6"
                             >
                                 <Cell fill="#8b5cf6" stroke="#ffffff" strokeWidth={3} />
                             </Scatter>
-                            <ReferenceDot x={25} y={25} r={0} isFront={true}
+                            {/* Quadrant labels updated */}
+                            <ReferenceDot x={results[1]?.qualificationCutoff/2} y={results[0]?.qualificationCutoff/2} r={0} isFront={true}
                                 label={{ value: "❌ No Bid", position: "center", fill: "#dc2626", fontWeight: "bold", fontSize: 11 }} />
-                            <ReferenceDot x={75} y={25} r={0} isFront={true}
-                                label={{ value: "🔧 Build Capability", position: "center", fill: "#d97706", fontWeight: "bold", fontSize: 11 }} />
-                            <ReferenceDot x={25} y={75} r={0} isFront={true}
+                            <ReferenceDot x={(results[1]?.qualificationCutoff + 100)/2} y={results[0]?.qualificationCutoff/2} r={0} isFront={true}
                                 label={{ value: "⏳ Faster Closure", position: "center", fill: "#2563eb", fontWeight: "bold", fontSize: 10 }} />
-                            <ReferenceDot x={75} y={75} r={0} isFront={true}
+                            <ReferenceDot x={results[1]?.qualificationCutoff/2} y={(results[0]?.qualificationCutoff + 100)/2} r={0} isFront={true}
+                                label={{ value: "🔧 Build Capability", position: "center", fill: "#d97706", fontWeight: "bold", fontSize: 11 }} />
+                            <ReferenceDot x={(results[1]?.qualificationCutoff + 100)/2} y={(results[0]?.qualificationCutoff + 100)/2} r={0} isFront={true}
                                 label={{ value: "✅ Bid to Win", position: "center", fill: "#059669", fontWeight: "bold", fontSize: 11 }} />
                         </ScatterChart>
                     </ResponsiveContainer>

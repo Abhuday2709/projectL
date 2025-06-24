@@ -122,7 +122,7 @@ export default function Sidebar() {
                         className={linkClasses("/dashboard/temp")}
                     >
                         <Search className={iconClasses("/dashboard/temp")} />
-                        <span className="font-medium">RFP Evaluation</span>
+                        <span className="font-medium">Bid/No Bid</span>
                     </div>
                 </nav>
 

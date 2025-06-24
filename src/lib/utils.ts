@@ -31,6 +31,7 @@ export interface CategoryType {
   categoryId: string
   categoryName: string
   order: number
+  qualificationCutoff: number
 }
 
 export interface QuestionType {
@@ -52,6 +53,8 @@ export interface Results {
   categoryName: string
   score: number
   total: number
+  categoryId: string
+  qualificationCutoff: number
 }
 
 export interface ProcessDocumentForReviewJobData {

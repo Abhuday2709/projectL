@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "
 
 // TRPC and data-related imports
 import { trpc } from "@/app/_trpc/client"
-import { CategoryType, QuestionType, Results } from "@/lib/utils"
+import { Results } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
@@ -74,18 +74,33 @@ export default function DocumentScoringPage() {
     { enabled: !!userId }
   )
 
-const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.review.getReviews.useQuery(
-  userId ? { user_id: userId } : { user_id: "" },
-  { enabled: !!userId && !!reviewId }
-)
+  const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.review.getReviews.useQuery(
+    userId ? { user_id: userId } : { user_id: "" },
+    { enabled: !!userId && !!reviewId }
+  )
 
-// Update the memoized active scoring session:
-const activeScoringSession: ScoringSession | undefined= useMemo(() => 
-  scoringSessionData?.find((session: ScoringSession) => 
-    session.user_id === userId && session.scoringSessionId === reviewId
-  ), 
-  [scoringSessionData, userId, reviewId]
-)
+  // Update the memoized active scoring session:
+  const activeScoringSession: ScoringSession | undefined = useMemo(() =>
+    scoringSessionData?.find((session: ScoringSession) =>
+      session.user_id === userId && session.scoringSessionId === reviewId
+    ),
+    [scoringSessionData, userId, reviewId]
+  )
+
+  // =================================================================
+  // Sorted Categories - Ability to Win first, then Attractiveness
+  // =================================================================
+  const sortedCategories = useMemo(() => {
+    const sorted = [...allCategories].sort((a, b) => {
+      // Put "Ability to Win" first
+      if (a.categoryName.toLowerCase().includes('ability')) return -1;
+      if (b.categoryName.toLowerCase().includes('ability')) return 1;
+      // Then sort by order
+      return a.order - b.order;
+    });
+    return sorted;
+  }, [allCategories]);
+
   // =================================================================
   // Component State
   // =================================================================
@@ -208,18 +223,27 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
   }
 
   /**
-   * Generates a recommendation based on category scores.
-   * @param abilityPct - The percentage score for the 'Ability to Win' category.
-   * @param attractPct - The percentage score for the 'Attractiveness' category.
+   * Generates a recommendation based on category scores and qualification cutoffs.
+   * @param abilityPct - The percentage score for the 'Ability to Win' category (Y axis).
+   * @param attractPct - The percentage score for the 'Attractiveness' category (X axis).
+   * @param abilityQualCutoff - The qualification cutoff for Ability to Win category.
+   * @param attractQualCutoff - The qualification cutoff for Attractiveness category.
    */
-  function getRecommendation(abilityPct: number, attractPct: number): string {
-    if (abilityPct < 50 && attractPct < 50) return "❌ No Bid"
-    if (abilityPct < 50 && attractPct <= 100) return "⏳ Faster Closure"
-    if (abilityPct <= 100 && attractPct < 50) return "🔧 Build Capability"
-    if (abilityPct <= 100 && attractPct <= 100) return "✅ Bid to Win"
-    return "" // Default case
+  function getRecommendation(abilityPct: number, attractPct: number, abilityQualCutoff: number, attractQualCutoff: number): string {
+    // Both below qualification cutoff
+    if (abilityPct < abilityQualCutoff && attractPct < attractQualCutoff) return "❌ No Bid";
+    
+    // Both above qualification cutoff  
+    if (abilityPct >= abilityQualCutoff && attractPct >= attractQualCutoff) return "✅ Bid to Win";
+    
+    // Ability to Win above cutoff, Attractiveness below cutoff
+    if (abilityPct >= abilityQualCutoff && attractPct < attractQualCutoff) return "🔧 Build Capability";
+    
+    // Ability to Win below cutoff, Attractiveness above cutoff
+    if (abilityPct < abilityQualCutoff && attractPct >= attractQualCutoff) return "⏳ Faster Closure";
+    
+    return ""; // Default case
   }
-
 
   /**
    * Validates answers, calculates scores, and submits them to the database.
@@ -244,7 +268,7 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
     // 2. Format and merge answers - FIXED LOGIC
     // Only create "User provided answer" for questions that were actually answered manually
     const manuallyAnsweredQuestionIds = questionsForManualScoring.map(q => q.evaluationQuestionId);
-    
+
     const newlyAnswered = Object.entries(userAnswers)
       .filter(([questionId]) => manuallyAnsweredQuestionIds.includes(questionId))
       .map(([questionId, answer]) => ({
@@ -263,8 +287,8 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
 
     const allAnswers = [...newlyAnswered, ...previousAnswers]
 
-    // 3. Calculate category scores
-    const scoresByCategoryId = allCategories.reduce((acc, cat) => {
+    // 3. Calculate category scores using sorted categories
+    const scoresByCategoryId = sortedCategories.reduce((acc, cat) => {
       acc[cat.categoryId] = 0;
       return acc;
     }, {} as Record<string, number>);
@@ -276,30 +300,37 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
       }
     })
 
-    // 4. Prepare results for UI display
-    const calculatedResults = allCategories.map((cat) => {
+    // 4. Prepare results for UI display using sorted categories (Ability to Win first)
+    const calculatedResults = sortedCategories.map((cat) => {
       const questionsInCategory = allQuestions.filter(q => q.categoryId === cat.categoryId)
       return {
+        categoryId: cat.categoryId,
         categoryName: cat.categoryName,
         score: scoresByCategoryId[cat.categoryId] ?? 0,
         total: questionsInCategory.length,
+        qualificationCutoff: cat.qualificationCutoff,
       }
     })
     setResults(calculatedResults)
 
     // 5. Calculate percentages and get recommendation
+    // calculatedResults[0] = Ability to Win (Y-axis), calculatedResults[1] = Attractiveness (X-axis)
     const abilityPercentage = Math.round((calculatedResults[0]?.score * 100) / (calculatedResults[0]?.total * 2)) || 0;
     const attractivenessPercentage = Math.round((calculatedResults[1]?.score * 100) / (calculatedResults[1]?.total * 2)) || 0;
-    const finalRecommendation = getRecommendation(abilityPercentage, attractivenessPercentage);
+    
+    const abilityQualCutoff = calculatedResults[0]?.qualificationCutoff || 50;
+    const attractQualCutoff = calculatedResults[1]?.qualificationCutoff || 50;
+    
+    const finalRecommendation = getRecommendation(abilityPercentage, attractivenessPercentage, abilityQualCutoff, attractQualCutoff);
     setRecommendation(finalRecommendation);
 
     // 6. Update DynamoDB with the new answers, scores, and recommendation
     try {
       if (!activeScoringSession?.user_id || !activeScoringSession?.createdAt) {
-        toast({ 
-          title: "Error", 
-          description: "No active scoring session found", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: "No active scoring session found",
+          variant: "destructive"
         });
         return;
       }
@@ -323,10 +354,10 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
       toast({ title: "Scores submitted successfully!" });
     } catch (error) {
       console.error("Error submitting scores:", error);
-      toast({ 
-        title: "Error submitting scores", 
-        description: (error as Error).message, 
-        variant: "destructive" 
+      toast({
+        title: "Error submitting scores",
+        description: (error as Error).message,
+        variant: "destructive"
       });
     }
   }
@@ -437,7 +468,7 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
                 <div className="mb-8">
                   <h2 className="text-lg font-semibold text-[#112D4E] mb-2">Unanswered Questions</h2>
                   <Accordion type="multiple" className="space-y-4">
-                    {allCategories.map((cat) => {
+                    {sortedCategories.map((cat) => {
                       const categoryUnansweredQuestions = questionsForManualScoring.filter(q => q.categoryId === cat.categoryId);
                       if (categoryUnansweredQuestions.length === 0) return null;
 
@@ -484,7 +515,7 @@ const activeScoringSession: ScoringSession | undefined= useMemo(() =>
                 <div>
                   <h2 className="text-lg font-semibold text-[#112D4E] mb-2 mt-8">Answered Questions</h2>
                   <Accordion type="multiple" className="space-y-4">
-                    {allCategories.map((cat) => {
+                    {sortedCategories.map((cat) => {
                       const categoryAnsweredQuestions = questionsAnsweredByAI.filter(q => q.categoryId === cat.categoryId);
                       if (categoryAnsweredQuestions.length === 0) return null;
 
