@@ -63,6 +63,7 @@
     "react-resize-detector": "^12.0.2",
     "react-textarea-autosize": "^8.5.9",
     "recharts": "^2.15.3",
+    "svix": "^1.67.0",
     "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.1.0",

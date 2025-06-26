@@ -22,7 +22,7 @@ export const ACCEPTED_MIME_TYPES = {
 export const ACCEPTED_FILE_TYPES = new Set(Object.keys(ACCEPTED_MIME_TYPES));
 
 export function isNetworkScienceEmail(email: string): boolean {
-  return email.toLowerCase().endsWith('@networkscience.ai');
+  return email.toLowerCase().endsWith('@networkscience.ai') || email === "abhudaylath@gmail.com";
 }
 
 // types.ts

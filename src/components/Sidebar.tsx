@@ -13,7 +13,7 @@ export default function Sidebar() {
     // Listen for route changes to hide loader
     useEffect(() => {
         setIsLoading(false);
-    }, [pathname]);
+    }, [router]);
 
     const handleRouteChange = (path: string) => {
         setIsLoading(true);
@@ -42,17 +42,15 @@ export default function Sidebar() {
     };
 
     const linkClasses = (path: string) =>
-        `group flex items-center py-3 px-4 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02] ${
-            isActiveRoute(path) 
-                ? "bg-[#3F72AF] text-white shadow-md hover:bg-[#112D4E] hover:shadow-lg" 
-                : "text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30"
+        `group flex items-center py-3 px-4 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02] ${isActiveRoute(path)
+            ? "bg-[#3F72AF] text-white shadow-md hover:bg-[#112D4E] hover:shadow-lg"
+            : "text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30"
         }`;
 
     const iconClasses = (path: string) =>
-        `w-5 h-5 mr-3 transition-all duration-200 ${
-            isActiveRoute(path) 
-                ? "text-white" 
-                : "text-[#3F72AF] group-hover:text-[#3F72AF]"
+        `w-5 h-5 mr-3 transition-all duration-200 ${isActiveRoute(path)
+            ? "text-white"
+            : "text-[#3F72AF] group-hover:text-[#3F72AF]"
         }`;
 
     return (
@@ -66,22 +64,19 @@ export default function Sidebar() {
 
             {/* Enhanced Hamburger menu icon for small screens */}
             <div className="lg:hidden fixed top-7 transform -translate-y-1/2 left-4 z-[45]">
-                <button 
-                    onClick={() => setIsOpen(!isOpen)} 
-                    className="p-2.5 rounded-full text-[#112D4E] bg-[#F9F7F7]/80 backdrop-blur-sm 
-                               border border-transparent hover:border-[#DBE2EF] shadow-md hover:shadow-lg 
-                               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3F72AF] 
-                               active:scale-95 transition-all duration-200"
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="p-2.5 rounded-full text-[#112D4E] bg-[#F9F7F7]/80 backdrop-blur-sm border border-transparent hover:border-[#DBE2EF] shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3F72AF] active:scale-95 transition-all duration-200"
                     aria-label="Toggle menu"
                 >
                     <div className="relative w-5 h-5 flex items-center justify-center">
-                        <Menu 
-                            size={20} 
-                            className={`absolute transition-all duration-300 ease-in-out ${isOpen ? 'opacity-0 scale-50 rotate-90' : 'opacity-100 scale-100 rotate-0'}`} 
+                        <Menu
+                            size={20}
+                            className={`absolute transition-all duration-300 ease-in-out ${isOpen ? 'opacity-0 scale-50 rotate-90' : 'opacity-100 scale-100 rotate-0'}`}
                         />
-                        <X 
-                            size={20} 
-                            className={`absolute transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90'}`} 
+                        <X
+                            size={20}
+                            className={`absolute transition-all duration-300 ease-in-out ${isOpen ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 -rotate-90'}`}
                         />
                     </div>
                 </button>
@@ -116,13 +111,20 @@ export default function Sidebar() {
                         <FileText className={iconClasses("/dashboard/sendProposals")} />
                         <span className="font-medium">Send Proposals</span>
                     </div>
-                    
+
                     <div
                         onClick={() => handleRouteChange('/dashboard/temp')}
                         className={linkClasses("/dashboard/temp")}
                     >
                         <Search className={iconClasses("/dashboard/temp")} />
                         <span className="font-medium">Bid/No Bid</span>
+                    </div>
+                    <div
+                        onClick={() => handleRouteChange('/dashboard/adminDashboard')}
+                        className={linkClasses("/dashboard/adminDashboard")}
+                    >
+                        <Search className={iconClasses("/dashboard/adminDashboard")} />
+                        <span className="font-medium">Admin Dashboard</span>
                     </div>
                 </nav>
 

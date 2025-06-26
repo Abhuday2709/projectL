@@ -28,14 +28,8 @@ export const getAiResponseProcedure = procedure
         })
     )
     .mutation(async ({ input }): Promise<Message> => {
-        // console.log(`Received AI response request for chatId: ${input.chatId}, message: "${input.userMessage}"`);
-
         try {
-            // 1. Generate embedding for the user's message
             const queryEmbedding = await generateEmbeddings(input.userMessage);
-            // console.log("User message embedding generated.");
-
-            // 2. Search Qdrant for relevant document chunks
             const searchResults = await qdrantClient.search(QDRANT_COLLECTION_NAME, {
                 vector: queryEmbedding,
                 filter: {
@@ -49,14 +43,9 @@ export const getAiResponseProcedure = procedure
                     ],
                 },
                 limit: SEARCH_RESULT_LIMIT,
-                with_payload: true, // We need the payload to get the text
-                // with_vector: false, // No need for the vector itself in the result
+                with_payload: true,
             });
-            // console.log(`Found ${searchResults.length} relevant chunks from Qdrant.`);
-
-            // 3. Prepare context for the LLM
             const documentContext: string[] = searchResults.map((result) => {
-                // Assuming payload has a 'text' field and 'fileName' for context
                 let contextString = "";
                 if (result.payload && typeof result.payload.text === 'string') {
                     contextString = result.payload.text;
@@ -66,40 +55,26 @@ export const getAiResponseProcedure = procedure
                     }
                 }
                 return contextString;
-            }).filter(text => text.length > 0); // Filter out any empty contexts
-
+            }).filter(text => text.length > 0); 
             if (documentContext.length === 0) {
                 console.log("No relevant context found in Qdrant for the query.");
-                // Optionally, you could still call generateResponse without context,
-                // or return a specific message indicating no context was found.
-                // For now, let's try to answer without specific document context.
             }
-            
-            // console.log("Context prepared for LLM:", documentContext.join('\\n\\n').substring(0, 500) + "..."); // Log a snippet
-
-            // 4. Generate AI response using the retrieved context
-            // console.log("Generating AI response with Gemini...");
             const aiTextResponse = await generateResponse(input.userMessage, documentContext);
             console.log("AI response text generated.");
-
-            // 5. Create and save the AI message to DynamoDB
             const aiMessageToSave: Message = {
                 messageId: uuidv4(),
                 chatId: input.chatId,
                 text: aiTextResponse,
                 isUserMessage: false,
                 createdAt: new Date().toISOString(),
-                isLoading: false, // AI message is complete and ready
+                isLoading: false, 
             };
-
             await docClient.send(new PutCommand({
                 TableName: MessageConfig.tableName,
                 Item: aiMessageToSave,
             }));
             console.log("AI message saved to DynamoDB.");
-
-            return aiMessageToSave; // Return the saved AI Message object
-
+            return aiMessageToSave;
         } catch (error) {
             console.error("Error in getAiResponseProcedure:", error);
             if (error instanceof TRPCError) {

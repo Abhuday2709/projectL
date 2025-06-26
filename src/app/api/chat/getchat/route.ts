@@ -1,98 +1,38 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { 
-    DynamoDBDocumentClient, 
-    QueryCommand
-} from "@aws-sdk/lib-dynamodb";
-import { NextResponse } from "next/server";
-import { ChatConfig } from "../../../../../models/chatModel";
+// src/app/api/chat/[chatId]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { QueryCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
+import { Chat, ChatConfig } from '../../../../../models/chatModel';
 
-// Initialize DynamoDB client
-const client = new DynamoDBClient({
-    region: process.env.NEXT_PUBLIC_AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+// GET - Get all chats for a user
+export async function GET(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User is not authenticated." },
+        { status: 401 }
+      );
     }
-});
-const docClient = DynamoDBDocumentClient.from(client);
 
-export async function GET(request: Request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('userId');
-        const chatId = searchParams.get('chatId');
+    const command = new QueryCommand({
+      TableName: ChatConfig.tableName,
+      KeyConditionExpression: 'user_id = :uid',
+      ExpressionAttributeValues: { ':uid': userId },
+      ScanIndexForward: false, // Get newest chats first
+    });
 
-        if (!userId) {
-            return NextResponse.json(
-                { error: 'userId is required' },
-                { status: 400 }
-            );
-        }
-
-        // If chatId is provided, get specific chat
-        if (chatId) {
-            const command = new QueryCommand({
-                TableName: ChatConfig.tableName,
-                KeyConditionExpression: `${ChatConfig.keys.partition} = :userId`,
-                FilterExpression: 'chatId = :chatId',
-                ExpressionAttributeValues: {
-                    ':userId': userId,
-                    ':chatId': chatId
-                }
-            });
-
-            const response = await docClient.send(command);
-            const chat = response.Items?.[0];
-
-            if (!chat) {
-                return NextResponse.json(
-                    { error: 'Chat not found' },
-                    { status: 404 }
-                );
-            }
-
-            return NextResponse.json(chat);
-        }
-
-        // Get all chats for the user
-        const command = new QueryCommand({
-            TableName: ChatConfig.tableName,
-            KeyConditionExpression: `${ChatConfig.keys.partition} = :userId`,
-            ExpressionAttributeValues: {
-                ':userId': userId
-            },
-            // Sort by createdAt in descending order (newest first)
-            ScanIndexForward: false
-        });
-
-        const response = await docClient.send(command);
-        return NextResponse.json(response.Items || []);
-
-    } catch (error: unknown) {
-        console.error('Get chat error:', error);
-
-        if (error instanceof Error) {
-            if (error.name === 'ResourceNotFoundException') {
-                return NextResponse.json(
-                    { 
-                        error: 'Chat table not found',
-                        details: process.env.NODE_ENV === 'development' 
-                            ? 'Ensure the Chats table is created' 
-                            : undefined
-                    },
-                    { status: 500 }
-                );
-            }
-        }
-
-        return NextResponse.json(
-            { 
-                error: 'Failed to get chat(s)',
-                details: process.env.NODE_ENV === 'development' && error instanceof Error 
-                    ? error.message 
-                    : undefined
-            },
-            { status: 500 }
-        );
-    }
+    const result = await docClient.send(command);
+    return NextResponse.json(result.Items as Chat[]);
+  } catch (error) {
+    console.error("Error in getChats:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch chats" },
+      { status: 500 }
+    );
+  }
 }

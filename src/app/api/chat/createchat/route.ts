@@ -1,83 +1,85 @@
+// src/app/api/chat/[chatId]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { ChatConfig, ChatSchema } from "../../../../../models/chatModel";
-import { NextResponse } from "next/server";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
+import { ChatConfig, ChatSchema, type Chat } from '../../../../../models/chatModel';
+import { shareSessionConfig, ShareSessionSchema } from '../../../../../models/shareSessionModel';
+import { v4 as uuidv4 } from "uuid";
 
-// Initialize DynamoDB client with credentials
-const client = new DynamoDBClient({
-    region: process.env.NEXT_PUBLIC_AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+
+// POST - Create a new chat
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User is not authenticated." },
+        { status: 401 }
+      );
     }
-});
-const docClient = DynamoDBDocumentClient.from(client);
 
-export async function POST(request: Request) {
-    try {
-        // Validate environment variables
-        if (!process.env.NEXT_PUBLIC_AWS_REGION || !process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || !process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY) {
-            throw new Error('Missing AWS credentials in environment variables');
-        }
+    const body = await request.json();
+    const { chatId, name } = body;
 
-        const body = await request.json();
-
-        // Log incoming data for debugging
-        console.log('Incoming chat data:', body);
-
-        const chat = ChatSchema.parse({
-            ...body,
-            createdAt: new Date().toISOString()
-        });
-
-        const command = new PutCommand({
-            TableName: ChatConfig.tableName,
-            Item: chat,
-            // Ensure we don't overwrite existing chats with same user_id and createdAt
-            ConditionExpression: `attribute_not_exists(user_id) AND attribute_not_exists(createdAt)`
-        });
-
-        await docClient.send(command);
-        return NextResponse.json(chat, { status: 201 });
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            console.error('Create chat error:', {
-                message: error.message,
-                name: error.name,
-                stack: error.stack
-            });
-
-            if (error.name === 'ResourceNotFoundException') {
-                return NextResponse.json(
-                    {
-                        error: 'Chat table not found. Please ensure the table is created.',
-                        details: process.env.NODE_ENV === 'development'
-                            ? 'Run the createChatTable script to create the table.'
-                            : undefined
-                    },
-                    { status: 500 }
-                );
-            }
-
-            if (error.name === 'ConditionalCheckFailedException') {
-                return NextResponse.json(
-                    {
-                        error: 'Chat already exists',
-                        details: 'A chat with this user_id and timestamp already exists'
-                    },
-                    { status: 409 }
-                );
-            }
-        }
-
-        return NextResponse.json(
-            {
-                error: 'Failed to create chat',
-                details: process.env.NODE_ENV === 'development' && error instanceof Error
-                    ? error.message
-                    : undefined
-            },
-            { status: 500 }
-        );
+    if (!chatId || !name) {
+      return NextResponse.json(
+        { error: "chatId and name are required" },
+        { status: 400 }
+      );
     }
+
+    if (name.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Chat name is required" },
+        { status: 400 }
+      );
+    }
+
+    // Create chat object
+    const chat = ChatSchema.parse({
+      user_id: userId,
+      chatId,
+      name,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Create share session
+    const share_id = uuidv4();
+    const share = ShareSessionSchema.parse({
+      chatId: chat.chatId,
+      shareId: share_id,
+      questionsAndAnswers: [],
+      password: "",
+      isActive: true,
+    });
+
+    // Create commands
+    const chatCommand = new PutCommand({
+      TableName: ChatConfig.tableName,
+      Item: chat,
+      ConditionExpression: `attribute_not_exists(user_id) AND attribute_not_exists(createdAt)`,
+    });
+
+    const shareCommand = new PutCommand({
+      TableName: shareSessionConfig.tableName,
+      Item: share,
+      ConditionExpression: `attribute_not_exists(chatId)`,
+    });
+
+    // Execute commands
+    await docClient.send(shareCommand);
+    await docClient.send(chatCommand);
+
+    return NextResponse.json(chat, { status: 201 });
+  } catch (error) {
+    console.error("Error in createChat:", error);
+    return NextResponse.json(
+      { error: "Failed to create chat" },
+      { status: 500 }
+    );
+  }
 }

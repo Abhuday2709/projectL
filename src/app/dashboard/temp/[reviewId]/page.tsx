@@ -467,7 +467,7 @@ export default function DocumentScoringPage() {
                     onClick={() => setFormOpen((v) => !v)}
                   >
                     <span >Opportunity Details</span>
-                    <span className={`transform transition-transform ${formOpen ? "rotate-180" : ""}`}>▼</span>
+                    <span className={`transform transition-transform duration-300 ${formOpen ? "rotate-180" : ""}`}>▼</span>
                   </button>
                   {formOpen && (
                     <div className="mt-3 bg-white border border-[#DBE2EF] rounded-lg p-4 space-y-3 shadow">
