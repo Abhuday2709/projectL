@@ -2,8 +2,8 @@
 import { CategoryType, QuestionType } from "@/lib/utils"
 import { useState } from "react"
 import { Button } from "./ui/button"
-import { trpc } from "@/app/_trpc/client";
-import { useToast } from "@/hooks/use-toast";
+import { trpc } from "@/app/_trpc/client"
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -11,9 +11,9 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function EditQuestionsAndCategories({
   userId,
@@ -29,45 +29,44 @@ export default function EditQuestionsAndCategories({
   // Local state clones
   const [localCategories, setLocalCategories] = useState<CategoryType[]>([...categories])
   const [localQuestions, setLocalQuestions] = useState<QuestionType[]>([...questions])
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false)
 
-  const createQuestion = trpc.question.createQuestion.useMutation();
-  const deleteQuestion = trpc.question.deleteQuestion.useMutation();
-  const editQuestion = trpc.question.updateQuestion.useMutation();
-  const updateCategoryName = trpc.category.updateCategoryName.useMutation();
+  const createQuestion = trpc.question.createQuestion.useMutation()
+  const deleteQuestion = trpc.question.deleteQuestion.useMutation()
+  const editQuestion = trpc.question.updateQuestion.useMutation()
 
-  const { toast } = useToast();
+  const { toast } = useToast()
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"addQuestion" | "editQuestion" | null>(null);
-  const [dialogValue, setDialogValue] = useState("");
-  const [dialogTargetId, setDialogTargetId] = useState<string | null>(null);
-  const [dialogCategoryId, setDialogCategoryId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogType, setDialogType] = useState<"addQuestion" | "editQuestion" | null>(null)
+  const [dialogValue, setDialogValue] = useState("")
+  const [dialogTargetId, setDialogTargetId] = useState<string | null>(null)
+  const [dialogCategoryId, setDialogCategoryId] = useState<string | null>(null)
 
   const openAddQuestionDialog = (categoryId: string) => {
-    setDialogType("addQuestion");
-    setDialogCategoryId(categoryId);
-    setDialogValue("");
-    setDialogOpen(true);
-  };
+    setDialogType("addQuestion")
+    setDialogCategoryId(categoryId)
+    setDialogValue("")
+    setDialogOpen(true)
+  }
 
   const openEditQuestionDialog = (questionId: string, currentText: string) => {
-    setDialogType("editQuestion");
-    setDialogTargetId(questionId);
-    setDialogValue(currentText);
-    setDialogOpen(true);
-  };
+    setDialogType("editQuestion")
+    setDialogTargetId(questionId)
+    setDialogValue(currentText)
+    setDialogOpen(true)
+  }
 
   const handleDialogConfirm = () => {
     if (dialogType === "addQuestion" && dialogCategoryId) {
-      if (!dialogValue.trim()) return;
+      if (!dialogValue.trim()) return
       const order =
         Math.max(
           0,
           ...localQuestions
             .filter((q) => q.categoryId === dialogCategoryId)
             .map((q) => q.order ?? 0)
-        ) + 1;
+        ) + 1
       const added = {
         evaluationQuestionId: crypto.randomUUID(),
         user_id: userId,
@@ -75,109 +74,114 @@ export default function EditQuestionsAndCategories({
         text: dialogValue.trim(),
         order,
         isMaster: false,
-      };
-      setLocalQuestions([...localQuestions, added]);
-      toast({ title: "Question added", description: `Question "${dialogValue.trim()}" was added.` });
+      }
+      setLocalQuestions([...localQuestions, added])
+      toast({ title: "Question added", description: `Question "${dialogValue.trim()}" was added.` })
     }
     if (dialogType === "editQuestion" && dialogTargetId) {
       setLocalQuestions(
         localQuestions.map((qq) =>
           qq.evaluationQuestionId === dialogTargetId ? { ...qq, text: dialogValue.trim() } : qq
         )
-      );
-      toast({ title: "Question edited", description: `Question updated to "${dialogValue.trim()}".` });
+      )
+      toast({ title: "Question edited", description: `Question updated to "${dialogValue.trim()}".` })
     }
-    setDialogOpen(false);
-    setDialogType(null);
-    setDialogValue("");
-    setDialogTargetId(null);
-    setDialogCategoryId(null);
-  };
+    setDialogOpen(false)
+    setDialogType(null)
+    setDialogValue("")
+    setDialogTargetId(null)
+    setDialogCategoryId(null)
+  }
 
   const handleDeleteQuestion = async (questionId: string) => {
-    setLocalQuestions(localQuestions.filter((qq) => qq.evaluationQuestionId !== questionId));
-  };
+    setLocalQuestions(localQuestions.filter((qq) => qq.evaluationQuestionId !== questionId))
+  }
 
   const handleQualificationCutoffChange = (categoryId: string, newCutoff: number) => {
     setLocalCategories(
       localCategories.map((cat) =>
-        cat.categoryId === categoryId 
+        cat.categoryId === categoryId
           ? { ...cat, qualificationCutoff: newCutoff }
           : cat
       )
-    );
-  };
+    )
+  }
 
   const handleReviewAndConfirm = async () => {
-    setIsSaving(true);
+    setIsSaving(true)
 
-    // Questions
-    const originalQIds = new Set(questions.map((q) => q.evaluationQuestionId));
-    const localQIds = new Set(localQuestions.map((q) => q.evaluationQuestionId));
+    // Questions diff
+    const originalQIds = new Set(questions.map((q) => q.evaluationQuestionId))
+    const localQIds = new Set(localQuestions.map((q) => q.evaluationQuestionId))
 
-    // Added questions
-    const addedQs = localQuestions.filter((q) => !originalQIds.has(q.evaluationQuestionId));
-    // Deleted questions
-    const deletedQs = questions.filter((q) => !localQIds.has(q.evaluationQuestionId));
-    // Updated questions
+    const addedQs = localQuestions.filter((q) => !originalQIds.has(q.evaluationQuestionId))
+    const deletedQs = questions.filter((q) => !localQIds.has(q.evaluationQuestionId))
     const updatedQs = localQuestions.filter((q) => {
-      const orig = questions.find((o) => o.evaluationQuestionId === q.evaluationQuestionId);
-      return orig && orig.text !== q.text;
-    });
+      const orig = questions.find((o) => o.evaluationQuestionId === q.evaluationQuestionId)
+      return orig && orig.text !== q.text
+    })
 
-    // Updated categories (qualification cutoff changes)
+    // Categories diff
     const updatedCategories = localCategories.filter((cat) => {
-      const orig = categories.find((o) => o.categoryId === cat.categoryId);
-      return orig && orig.qualificationCutoff !== cat.qualificationCutoff;
-    });
+      const orig = categories.find((o) => o.categoryId === cat.categoryId)
+      return orig && orig.qualificationCutoff !== cat.qualificationCutoff
+    })
 
     try {
-      // Questions
+      // Sync Questions via tRPC
       for (const q of addedQs) {
         await createQuestion.mutateAsync({
           userId,
           categoryId: q.categoryId,
           questionText: q.text,
           order: q.order,
-        });
+        })
       }
       for (const q of deletedQs) {
         await deleteQuestion.mutateAsync({
           userId,
           evaluationQuestionId: q.evaluationQuestionId,
-        });
+        })
       }
       for (const q of updatedQs) {
         await editQuestion.mutateAsync({
           userId,
           evaluationQuestionId: q.evaluationQuestionId,
           questionText: q.text,
-        });
+        })
       }
 
-      // Categories (qualification cutoff updates)
+      // Sync Categories via Next.js API
       for (const cat of updatedCategories) {
-        await updateCategoryName.mutateAsync({
-          userId,
-          order: cat.order,
-          categoryId: cat.categoryId,
-          categoryName: cat.categoryName,
-          qualificationCutoff: cat.qualificationCutoff,
-        });
+        const res = await fetch(`/api/category/updateCategory`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            order: cat.order,
+            categoryId: cat.categoryId,
+            categoryName: cat.categoryName,
+            qualificationCutoff: cat.qualificationCutoff,
+          }),
+        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || "Category update failed")
+        }
       }
 
-      onClose();
-      toast({ title: "Changes saved", description: "Your changes have been saved successfully." });
+      onClose()
+      toast({ title: "Changes saved", description: "Your changes have been saved successfully." })
     } catch (err) {
       toast({
         title: "Failed to save changes",
         description: (err as Error).message,
         variant: "destructive",
-      });
+      })
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6 min-w-[500px] p-6 bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] min-h-screen">
@@ -241,7 +245,7 @@ export default function EditQuestionsAndCategories({
                         size="sm" 
                         variant="outline"
                         onClick={() => openEditQuestionDialog(q.evaluationQuestionId, q.text)}
-                        className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white transition-colors duration-200"
+                        className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover=text-[#112D4E] transition-colors duration-200"
                       >
                         Edit
                       </Button>
@@ -249,7 +253,7 @@ export default function EditQuestionsAndCategories({
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteQuestion(q.evaluationQuestionId)}
-                        className="border-red-400 text-red-600 hover:bg-red-500 hover:text-white transition-colors duration-200"
+                        className="border-red-400 text-red-600 hover:bg-red-500 hover=text-white transition-colors duration-200"
                       >
                         Delete
                       </Button>
@@ -295,7 +299,7 @@ export default function EditQuestionsAndCategories({
               value={dialogValue}
               onChange={(e) => setDialogValue(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleDialogConfirm();
+                if (e.key === "Enter") handleDialogConfirm()
               }}
               placeholder="Enter question text..."
               className="border-[#3F72AF] focus:border-[#112D4E] focus:ring-[#112D4E]"

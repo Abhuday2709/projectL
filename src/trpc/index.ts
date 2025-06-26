@@ -1,6 +1,5 @@
 
 import { awsRouter } from './aws';
-import { categoryRouter } from './categories';
 import { chatRouter } from './chat';
 import { documentsRouter } from './documents';
 import { messagesRouter } from './message';
@@ -18,7 +17,6 @@ export const appRouter = router({
     messages: messagesRouter,
     getAiResponse: getAiResponseProcedure,
     review:reviewRouter,
-    category:categoryRouter,
     question:questionsRouter,
     shareSession:shareSessionRouter
 });

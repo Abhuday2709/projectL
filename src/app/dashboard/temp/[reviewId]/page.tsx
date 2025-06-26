@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "
 
 // TRPC and data-related imports
 import { trpc } from "@/app/_trpc/client"
-import { Results } from "@/lib/utils"
+import { CategoryType, Results } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
@@ -55,20 +55,33 @@ export default function DocumentScoringPage() {
 
   // Extract reviewId from URL parameters, ensuring it's a string
   const reviewId = params.reviewId as string
-
+  const [allCategories, setAllCategories] = useState<CategoryType[]>([])
   // =================================================================
   // Data Fetching using tRPC
   // =================================================================
   const { data: documents = [], refetch: refetchDocuments, isLoading: isLoadingDocuments } = trpc.documents.getStatus.useQuery(
     { chatId: reviewId },
-    { enabled: !!reviewId }
+    { enabled: !!reviewId } 
   )
 
-  const { data: allCategories = [], refetch: refetchCategories } = trpc.category.getCategories.useQuery(
-    userId ? { user_id: userId } : { user_id: "" },
-    { enabled: !!userId }
-  )
-
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch')
+      const data = await res.json()
+      setAllCategories(data)
+    } catch (err) {
+      toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
+    }
+  }
+  useEffect(() => { if (userId) fetchCategories() }, [userId])
+  const [sortedCategories, setSortedCategories] = useState<CategoryType[]>([])
+  useEffect(() => {
+    if (allCategories.length > 0) {
+      const sorted = [...allCategories].sort((a, b) => a.order - b.order)
+      setSortedCategories(sorted)
+    }
+  }, [allCategories])
   const { data: allQuestions = [], refetch: refetchQuestions } = trpc.question.getQuestions.useQuery(
     userId ? { user_id: userId } : { user_id: "" },
     { enabled: !!userId }
@@ -86,20 +99,6 @@ export default function DocumentScoringPage() {
     ),
     [scoringSessionData, userId, reviewId]
   )
-
-  // =================================================================
-  // Sorted Categories - Ability to Win first, then Attractiveness
-  // =================================================================
-  const sortedCategories = useMemo(() => {
-    const sorted = [...allCategories].sort((a, b) => {
-      // Put "Ability to Win" first
-      if (a.categoryName.toLowerCase().includes('ability')) return -1;
-      if (b.categoryName.toLowerCase().includes('ability')) return 1;
-      // Then sort by order
-      return a.order - b.order;
-    });
-    return sorted;
-  }, [allCategories]);
 
   // =================================================================
   // Component State
@@ -325,7 +324,7 @@ export default function DocumentScoringPage() {
 
     const allAnswers = [...newlyAnswered, ...previousAnswers]
 
-    // 3. Calculate category scores using sorted categories
+    // 3. Calculate category scores using all categories
     const scoresByCategoryId = sortedCategories.reduce((acc, cat) => {
       acc[cat.categoryId] = 0;
       return acc;
@@ -338,7 +337,7 @@ export default function DocumentScoringPage() {
       }
     })
 
-    // 4. Prepare results for UI display using sorted categories (Ability to Win first)
+    // 4. Prepare results for UI display using all categories
     const calculatedResults = sortedCategories.map((cat) => {
       const questionsInCategory = allQuestions.filter(q => q.categoryId === cat.categoryId)
       return {

@@ -26,38 +26,53 @@ import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories
 import { CategoryType, QuestionType } from "@/lib/utils";
 import { ClipboardList, Plus, Trash2, Calendar, ArrowRight, Settings, FileText, Loader2 } from "lucide-react";
 import { ReviewCard } from "@/components/ReviewCard";
+import { useToast } from "@/hooks/use-toast";
 
-export default function AdminDashboardReviewPage() {
+export default function DashboardReviewPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
-
+    const {toast} = useToast();
     // All hooks must be called unconditionally
     const [showEditModal, setShowEditModal] = useState(false);
     const [categories, setCategories] = useState<CategoryType[]>([]);
     const [questions, setQuestions] = useState<QuestionType[]>([]);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [reviewName, setReviewName] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const [reviewToDelete, setReviewToDelete] = useState<ScoringSession | null>(null);
     const [isPageLoading, setIsPageLoading] = useState(false);
-
+    const [allCategories, setAllCategories] = useState<CategoryType[]>([]);
     const user_id = userId || "";
     const { data: reviews, refetch, isLoading } = trpc.review.getReviews.useQuery({ user_id }, { enabled: !!user_id });
-    const { data: category, refetch: catRefetch } = trpc.category.getCategories.useQuery({ user_id }, { enabled: !!user_id });
     const { data: question, refetch: QustionRefetch } = trpc.question.getQuestions.useQuery({ user_id }, { enabled: !!user_id });
     const createReviewMutation = trpc.review.createReview.useMutation();
     const deleteReviewMutation = trpc.review.deleteReview.useMutation();
-
+    const fetchCategories = async () => {
+        try {
+            const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
+            if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch')
+            const data = await res.json()
+            setAllCategories(data)
+        } catch (err) {
+            toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
+        }
+    }
+    useEffect(() => { if (userId) fetchCategories() }, [userId])
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
     }, [isLoaded, isSignedIn, router]);
 
     useEffect(() => {
-        if (category) setCategories(category);
-    }, [category]);
+        if (allCategories) setCategories(allCategories);
+    }, [allCategories]);
 
     useEffect(() => {
         if (question) setQuestions(question);
     }, [question]);
+
+    const handleNewReview = async () => {
+        setIsDialogOpen(true);
+    };
 
     const handleCreateReview = async () => {
         if (!reviewName.trim()) return;
@@ -74,6 +89,7 @@ export default function AdminDashboardReviewPage() {
                 answers: [],
                 recommendation: "",
             });
+            setIsDialogOpen(false);
             setReviewName("");
             setIsPageLoading(true);
             router.push(`/dashboard/temp/${review.scoringSessionId}`);
@@ -144,6 +160,14 @@ export default function AdminDashboardReviewPage() {
                                             <Settings className="h-4 w-4 mr-2" />
                                             Edit Questions
                                         </Button>
+                                        <Button
+                                            onClick={handleNewReview}
+                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32] shadow-lg hover:shadow-xl transition-all duration-200"
+                                            size="lg"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            New Review
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -168,7 +192,7 @@ export default function AdminDashboardReviewPage() {
                                         questions={questions}
                                         onClose={async () => {
                                             setShowEditModal(false);
-                                            await Promise.all([catRefetch(), QustionRefetch()]);
+                                            await Promise.all([fetchCategories(), QustionRefetch()]);
                                         }}
                                     />
                                 </DialogContent>
@@ -215,6 +239,14 @@ export default function AdminDashboardReviewPage() {
                                             <Settings className="h-4 w-4 mr-2" />
                                             Setup Questions First
                                         </Button>
+                                        <Button
+                                            onClick={handleNewReview}
+                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32]"
+                                            size="lg"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Create Your First Review
+                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -232,6 +264,54 @@ export default function AdminDashboardReviewPage() {
                                     ))}
                                 </div>
                             )}
+
+                            {/* Create Review Dialog */}
+                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                                <DialogContent className="sm:max-w-md bg-[#F9F7F7]">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2 text-[#112D4E]">
+                                            <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
+                                                <Plus className="h-4 w-4 text-white" />
+                                            </div>
+                                            Create New Review
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="py-4">
+                                        <Input
+                                            placeholder="Enter a descriptive review session name..."
+                                            value={reviewName}
+                                            onChange={(e) => setReviewName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !isCreating && reviewName.trim()) {
+                                                    handleCreateReview();
+                                                }
+                                            }}
+                                            required
+                                            aria-required="true"
+                                            className="h-12 border-[#DBE2EF] focus:border-[#3F72AF]"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <DialogFooter className="gap-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setIsDialogOpen(false)}
+                                            disabled={isCreating}
+                                            className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#DBE2EF]"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            onClick={handleCreateReview}
+                                            disabled={isCreating || !reviewName.trim()}
+                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32]"
+                                        >
+                                            {isCreating ? "Creating..." : "Create Review"}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+
                             {/* Delete Confirmation Dialog */}
                             <AlertDialog open={!!reviewToDelete} onOpenChange={() => setReviewToDelete(null)}>
                                 <AlertDialogContent className="bg-[#F9F7F7]">
