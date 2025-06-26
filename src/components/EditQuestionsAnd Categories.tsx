@@ -2,7 +2,6 @@
 import { CategoryType, QuestionType } from "@/lib/utils"
 import { useState } from "react"
 import { Button } from "./ui/button"
-import { trpc } from "@/app/_trpc/client"
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -30,10 +29,6 @@ export default function EditQuestionsAndCategories({
   const [localCategories, setLocalCategories] = useState<CategoryType[]>([...categories])
   const [localQuestions, setLocalQuestions] = useState<QuestionType[]>([...questions])
   const [isSaving, setIsSaving] = useState(false)
-
-  const createQuestion = trpc.question.createQuestion.useMutation()
-  const deleteQuestion = trpc.question.deleteQuestion.useMutation()
-  const editQuestion = trpc.question.updateQuestion.useMutation()
 
   const { toast } = useToast()
 
@@ -130,25 +125,49 @@ export default function EditQuestionsAndCategories({
     try {
       // Sync Questions via tRPC
       for (const q of addedQs) {
-        await createQuestion.mutateAsync({
-          userId,
-          categoryId: q.categoryId,
-          questionText: q.text,
-          order: q.order,
+        const res = await fetch(`/api/evaluation-questions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            order: q.order,
+            categoryId: q.categoryId,
+            questionText: q.text,
+          }),
         })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || "adding questions failed")
+        }
       }
       for (const q of deletedQs) {
-        await deleteQuestion.mutateAsync({
-          userId,
-          evaluationQuestionId: q.evaluationQuestionId,
+        const res = await fetch(`/api/evaluation-questions`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            evaluationQuestionId: q.evaluationQuestionId,
+          }),
         })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || "deleting questions failed")
+        }
       }
       for (const q of updatedQs) {
-        await editQuestion.mutateAsync({
-          userId,
-          evaluationQuestionId: q.evaluationQuestionId,
-          questionText: q.text,
+        const res = await fetch(`/api/evaluation-questions`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            evaluationQuestionId: q.evaluationQuestionId,
+            questionText: q.text,
+          }),
         })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || "updating questions failed")
+        }
       }
 
       // Sync Categories via Next.js API

@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "
 
 // TRPC and data-related imports
 import { trpc } from "@/app/_trpc/client"
-import { CategoryType, Results } from "@/lib/utils"
+import { CategoryType, QuestionType, Results } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
@@ -56,12 +56,13 @@ export default function DocumentScoringPage() {
   // Extract reviewId from URL parameters, ensuring it's a string
   const reviewId = params.reviewId as string
   const [allCategories, setAllCategories] = useState<CategoryType[]>([])
+  const [allQuestions, setAllQuestions] = useState<QuestionType[]>([])
   // =================================================================
   // Data Fetching using tRPC
   // =================================================================
   const { data: documents = [], refetch: refetchDocuments, isLoading: isLoadingDocuments } = trpc.documents.getStatus.useQuery(
     { chatId: reviewId },
-    { enabled: !!reviewId } 
+    { enabled: !!reviewId }
   )
 
   const fetchCategories = async () => {
@@ -74,7 +75,6 @@ export default function DocumentScoringPage() {
       toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
     }
   }
-  useEffect(() => { if (userId) fetchCategories() }, [userId])
   const [sortedCategories, setSortedCategories] = useState<CategoryType[]>([])
   useEffect(() => {
     if (allCategories.length > 0) {
@@ -82,10 +82,18 @@ export default function DocumentScoringPage() {
       setSortedCategories(sorted)
     }
   }, [allCategories])
-  const { data: allQuestions = [], refetch: refetchQuestions } = trpc.question.getQuestions.useQuery(
-    userId ? { user_id: userId } : { user_id: "" },
-    { enabled: !!userId }
-  )
+  const fetchQuestions = async () => {
+    const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || "adding questions failed")
+    }
+    const data = await res.json()
+    setAllQuestions(data)
+  }
 
   const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.review.getReviews.useQuery(
     userId ? { user_id: userId } : { user_id: "" },
@@ -168,6 +176,13 @@ export default function DocumentScoringPage() {
     setIsPageLoading(false)
   }, [reviewId]) // Using reviewId as it's part of the pathname
 
+  useEffect(() => {
+    if (userId) {
+      fetchCategories()
+      fetchQuestions()
+    }
+  }, [userId])
+
   // Effect to pre-fill answers from a loaded scoring session
   useEffect(() => {
     if (activeScoringSession?.answers) {
@@ -181,7 +196,7 @@ export default function DocumentScoringPage() {
 
   // Effect to pre-fill form answers from a loaded scoring session
   useEffect(() => {
-    if (activeScoringSession?.opportunityInfo && activeScoringSession.opportunityInfo.length > 0){
+    if (activeScoringSession?.opportunityInfo && activeScoringSession.opportunityInfo.length > 0) {
       const info = activeScoringSession.opportunityInfo[0]; // Assuming only one set of info
       setFormFields({
         contactName: info.contactName ?? "",
@@ -257,16 +272,16 @@ export default function DocumentScoringPage() {
   function getRecommendation(abilityPct: number, attractPct: number, abilityQualCutoff: number, attractQualCutoff: number): string {
     // Both below qualification cutoff
     if (abilityPct < abilityQualCutoff && attractPct < attractQualCutoff) return "❌ No Bid";
-    
+
     // Both above qualification cutoff  
     if (abilityPct >= abilityQualCutoff && attractPct >= attractQualCutoff) return "✅ Bid to Win";
-    
+
     // Ability to Win above cutoff, Attractiveness below cutoff
     if (abilityPct >= abilityQualCutoff && attractPct < attractQualCutoff) return "🔧 Build Capability";
-    
+
     // Ability to Win below cutoff, Attractiveness above cutoff
     if (abilityPct < abilityQualCutoff && attractPct >= attractQualCutoff) return "⏳ Faster Closure";
-    
+
     return ""; // Default case
   }
 
@@ -354,10 +369,10 @@ export default function DocumentScoringPage() {
     // calculatedResults[0] = Ability to Win (Y-axis), calculatedResults[1] = Attractiveness (X-axis)
     const abilityPercentage = Math.round((calculatedResults[0]?.score * 100) / (calculatedResults[0]?.total * 2)) || 0;
     const attractivenessPercentage = Math.round((calculatedResults[1]?.score * 100) / (calculatedResults[1]?.total * 2)) || 0;
-    
+
     const abilityQualCutoff = calculatedResults[0]?.qualificationCutoff || 50;
     const attractQualCutoff = calculatedResults[1]?.qualificationCutoff || 50;
-    
+
     const finalRecommendation = getRecommendation(abilityPercentage, attractivenessPercentage, abilityQualCutoff, attractQualCutoff);
     setRecommendation(finalRecommendation);
 

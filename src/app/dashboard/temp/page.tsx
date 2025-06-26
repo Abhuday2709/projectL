@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function DashboardReviewPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
-    const {toast} = useToast();
+    const { toast } = useToast();
     // All hooks must be called unconditionally
     const [showEditModal, setShowEditModal] = useState(false);
     const [categories, setCategories] = useState<CategoryType[]>([]);
@@ -42,9 +42,23 @@ export default function DashboardReviewPage() {
     const [reviewToDelete, setReviewToDelete] = useState<ScoringSession | null>(null);
     const [isPageLoading, setIsPageLoading] = useState(false);
     const [allCategories, setAllCategories] = useState<CategoryType[]>([]);
+    const [question, setQuestion] = useState<QuestionType[]>([]);
     const user_id = userId || "";
     const { data: reviews, refetch, isLoading } = trpc.review.getReviews.useQuery({ user_id }, { enabled: !!user_id });
-    const { data: question, refetch: QustionRefetch } = trpc.question.getQuestions.useQuery({ user_id }, { enabled: !!user_id });
+    const fetchQuestions = async () => {
+        const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+        })
+        if (!res.ok) {
+            const err = await res.json()
+            throw new Error(err.error || "adding questions failed")
+        }
+        const data = await res.json()
+        console.log("Fetched Questions:", data);
+        
+        setQuestion(data)
+    }
     const createReviewMutation = trpc.review.createReview.useMutation();
     const deleteReviewMutation = trpc.review.deleteReview.useMutation();
     const fetchCategories = async () => {
@@ -57,7 +71,12 @@ export default function DashboardReviewPage() {
             toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
         }
     }
-    useEffect(() => { if (userId) fetchCategories() }, [userId])
+    useEffect(() => {
+        if (userId) {
+            fetchCategories()
+            fetchQuestions()
+        }
+    }, [userId])
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
     }, [isLoaded, isSignedIn, router]);
@@ -67,7 +86,8 @@ export default function DashboardReviewPage() {
     }, [allCategories]);
 
     useEffect(() => {
-        if (question) setQuestions(question);
+        if (question) {setQuestions(question);
+        }
     }, [question]);
 
     const handleNewReview = async () => {
@@ -192,7 +212,7 @@ export default function DashboardReviewPage() {
                                         questions={questions}
                                         onClose={async () => {
                                             setShowEditModal(false);
-                                            await Promise.all([fetchCategories(), QustionRefetch()]);
+                                            await Promise.all([fetchCategories(), fetchQuestions()]);
                                         }}
                                     />
                                 </DialogContent>
