@@ -7,7 +7,6 @@ import {
   DynamoDBDocumentClient
 } from "@aws-sdk/lib-dynamodb";
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-// import { generateResponse } from '@/lib/gemini'; // Removed - AI response is handled by getAiResponseProcedure
 import { v4 as uuidv4 } from 'uuid';
 // Create a document client using DynamoDB client instance
 const docClient = DynamoDBDocumentClient.from(dynamoClient);

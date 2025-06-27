@@ -1,63 +1,130 @@
-import { Send } from 'lucide-react'
-import { Button } from '../ui/button'
-import { Textarea } from '../ui/textarea'
-import { useContext, useRef } from 'react'
+import React, { useContext, useRef, useEffect } from 'react'
 import { ChatContext } from './ChatContext'
+import { Send, Paperclip, Mic, Square } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ChatInputProps {
-    isDisabled?: boolean
+    isDisabled: boolean
 }
 
-const ChatInput = ({ isDisabled }: ChatInputProps) => {
+function ChatInput({ isDisabled }: ChatInputProps) {
     const {
-        addMessage,
-        handleInputChange,
-        isLoading,
         message,
+        handleInputChange,
+        addMessage,
+        isLoading,
+        isGeneratingResponse
     } = useContext(ChatContext)
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const [isFocused, setIsFocused] = React.useState(false)
 
-    const handleSend = () => {
-        if (message.trim()) {
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px'
+        }
+    }, [message])
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (message.trim() && !isDisabled && !isLoading) {
             addMessage()
-            textareaRef.current?.focus() // Keep focus on textarea after send
         }
     }
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            handleSubmit(e)
+        }
+    }
+
+    const canSend = message.trim() && !isDisabled && !isLoading
+
     return (
-        <div className='w-full p-2'> {/* Added some padding to the outer div */}
-            <div className='mx-auto flex flex-row gap-3 md:mx-4 lg:mx-auto lg:max-w-2xl xl:max-w-3xl items-end'> {/* items-end to align button with textarea bottom */}
-                <div className='relative flex h-full flex-1 items-stretch md:flex-col'>
-                    <div className='relative flex flex-col w-full flex-grow p-1'> {/* Reduced padding slightly */}
-                        <Textarea
-                            rows={1}
-                            ref={textareaRef}
-                            maxRows={4}
-                            autoFocus
-                            onChange={handleInputChange}
-                            value={message}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault()
-                                    handleSend() // Use handleSend
-                                }
-                            }}
-                            placeholder='Ask a question about the documents...'
-                            className='resize-none pr-12 text-base py-3 scrollbar-thumb-blue scrollbar-thumb-rounded scrollbar-track-blue-lighter scrollbar-w-2 scrolling-touch'
-                            disabled={isDisabled || isLoading}
-                        />
+        <div className='p-4 space-y-3'>
+            {/* Typing Indicator */}
+            {isGeneratingResponse && (
+                <div className='flex items-center gap-2 text-sm text-[#3F72AF] animate-fade-in'>
+                    <div className='flex space-x-1'>
+                        <div className='w-2 h-2 bg-[#3F72AF] rounded-full animate-bounce' style={{ animationDelay: '0ms' }} />
+                        <div className='w-2 h-2 bg-[#3F72AF] rounded-full animate-bounce' style={{ animationDelay: '150ms' }} />
+                        <div className='w-2 h-2 bg-[#3F72AF] rounded-full animate-bounce' style={{ animationDelay: '300ms' }} />
                     </div>
+                    <span className='font-medium'>AI is generating response...</span>
                 </div>
-                <Button
-                    disabled={isLoading || isDisabled || !message.trim()}
-                    className="px-3 py-2 self-end mb-1" // Align button nicely, add bottom margin to match textarea padding
-                    onClick={handleSend} // Use handleSend
-                    aria-label="send message"
-                >
-                    <Send className="h-5 w-5" />
-                </Button>
-            </div>
+            )}
+
+            {/* Input Container */}
+            <form onSubmit={handleSubmit} className='relative'>
+                <div className={cn(
+                    'relative flex items-end gap-3 p-3 rounded-2xl border-2 transition-all duration-300 backdrop-blur-sm',
+                    'bg-white/70 border-[#DBE2EF]/50 shadow-sm',
+                    {
+                        'border-[#3F72AF]/50 bg-white/90 shadow-md': isFocused,
+                        'border-[#DBE2EF]/30 bg-white/50': !isFocused,
+                        'opacity-50 cursor-not-allowed': isDisabled
+                    }
+                )}>
+                    
+                    {/* Text Input */}
+                    <div className='flex-1 relative'>
+                        <textarea
+                            ref={textareaRef}
+                            value={message}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            disabled={isDisabled}
+                            placeholder={isDisabled ? "Upload documents to start chatting..." : "Ask me anything about your documents..."}
+                            className={cn(
+                                'w-full resize-none border-0 bg-transparent text-[#112D4E] placeholder-[#3F72AF]/50',
+                                'focus:outline-none focus:ring-0 text-sm leading-relaxed',
+                                'min-h-[24px] max-h-[120px] scrollbar-thin scrollbar-thumb-[#DBE2EF] scrollbar-track-transparent',
+                                {
+                                    'cursor-not-allowed': isDisabled
+                                }
+                            )}
+                            rows={1}
+                        />
+
+                        {/* Character Count */}
+                        {message.length > 0 && (
+                            <div className='absolute bottom-0 right-0 text-xs text-[#3F72AF]/50'>
+                                {message.length}/2000
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Send Button */}
+                    <button
+                        type="submit"
+                        disabled={!canSend}
+                        className={cn(
+                            'flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-200 flex-shrink-0',
+                            'shadow-sm transform',
+                            {
+                                'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white hover:shadow-md hover:scale-105 active:scale-95': canSend,
+                                'bg-[#DBE2EF]/50 text-[#3F72AF]/50 cursor-not-allowed': !canSend
+                            }
+                        )}
+                    >
+                        {isLoading ? (
+                            <Square className='w-4 h-4' />
+                        ) : (
+                            <Send className='w-4 h-4' />
+                        )}
+                    </button>
+                </div>
+
+                {/* Background Glow Effect */}
+                {isFocused && (
+                    <div className='absolute inset-0 bg-gradient-to-r from-[#3F72AF]/10 via-[#DBE2EF]/10 to-[#3F72AF]/10 rounded-2xl blur-xl -z-10 animate-pulse'></div>
+                )}
+            </form>
         </div>
     )
 }

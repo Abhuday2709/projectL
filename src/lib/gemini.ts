@@ -1,38 +1,55 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { Message } from '../../models/messageModel';
 
 if (!process.env.GEMINI_API_KEY) {
     throw new Error('Missing GEMINI_API_KEY environment variable');
 }
 
-// Initialize the Gemini API client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function generateResponse(
     userMessage: string,
-    documentContext: string[]
+    documentContext: string[],
+    recentMessages: Message[] = []
 ): Promise<string> {
     try {
-        // Initialize the model
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        // Prepare the context from documents
-        const context = documentContext.length > 0
-            ? `Context from documents:\n${documentContext.join('\n\n')}\n\n`
+        
+        // Format conversation history
+        const conversationHistory = recentMessages.length > 0
+            ? recentMessages.map(msg => 
+                `${msg.isUserMessage ? 'User' : 'Assistant'}: ${msg.text}`
+            ).join('\n')
             : '';
-        // Create the prompt with formatting instructions
-        const prompt = `${context}User message: ${userMessage}\n\nPlease provide a helpful response based on the context and user's message and if the answer is not present in the context, please say so and just say that you don't know. Format your response using HTML tags instead of markdown (don't include \`\`\` html \`\`\`):
-        - Use <strong>text</strong> for bold text
-        - Use <em>text</em> for italic text
-        - Use <h1>text</h1> for main headings
-        - Use <h2>text</h2> for subheadings
-        - Use <ul><li>item</li></ul> for bullet points
-        - Use <ol><li>item</li></ol> for numbered lists
-        - Use <p>text</p> for paragraphs
-        - Use <code>text</code> for code or technical terms`;
+        
+        // Prepare document context
+        const documentContextText = documentContext.length > 0
+            ? `\n\nRELEVANT DOCUMENT CONTEXT:\n${documentContext.map((doc, i) => `[Document ${i + 1}]: ${doc}`).join('\n\n')}`
+            : '';
+        
+        // Enhanced prompt with better instructions
+        const prompt = `Use the following pieces of context (or previous conversaton if needed) to answer the users question in markdown format.
 
-        // Generate response
+        Use the following pieces of context (or previous conversaton if needed) to answer the users question in markdown format. \nIf you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+        ${conversationHistory ? `CONVERSATION HISTORY:\n${conversationHistory}\n` : ''}
+        CURRENT USER QUESTION: ${userMessage}${documentContextText}
+        INSTRUCTIONS:
+    RESPONSE QUALITY:
+    - Be comprehensive but concise
+    - Provide specific examples when helpful
+    - Structure your response logically
+    - Address all parts of the user's question
+
+    TONE: Be professional, helpful, and conversational. Adapt your tone to match the context of the conversation.
+
+    ACCURACY: If you're uncertain about something, express that uncertainty rather than guessing.
+
+    Please provide your response now:`;
+
         const result = await model.generateContent(prompt);
         const response = await result.response;
+        console.log('Gemini API Response:', response.text());
         
         return response.text();
     } catch (error) {

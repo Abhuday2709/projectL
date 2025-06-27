@@ -3,7 +3,6 @@ import { awsRouter } from './aws';
 import { chatRouter } from './chat';
 import { documentsRouter } from './documents';
 import { messagesRouter } from './message';
-import { getAiResponseProcedure } from './procedures/ai/getAiResponse';
 import { reviewRouter } from './reviews';
 import { shareSessionRouter } from './shareSession';
 import { router } from './trpc';
@@ -14,7 +13,6 @@ export const appRouter = router({
     aws: awsRouter,
     documents: documentsRouter,
     messages: messagesRouter,
-    getAiResponse: getAiResponseProcedure,
     review:reviewRouter,
     shareSession:shareSessionRouter
 });

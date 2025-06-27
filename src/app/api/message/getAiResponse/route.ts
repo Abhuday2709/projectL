@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { generateEmbeddings, generateResponse } from '@/lib/gemini';
 import { MessageConfig, type Message } from '../../../../../models/messageModel';
@@ -20,6 +20,23 @@ export async function POST(request: NextRequest) {
 
     const { chatId, userMessage } = body;
     try {
+        // Fetch last 8 recent messages for this chat
+        const messagesQuery = new QueryCommand({
+            TableName: MessageConfig.tableName,
+            KeyConditionExpression: 'chatId = :cid',
+            ExpressionAttributeValues: { ':cid': chatId },
+            ScanIndexForward: false, // Descending order (newest first)
+            Limit: 8,
+        });
+        const messagesResult = await msgClient.send(messagesQuery);
+        const recentMessages = (messagesResult.Items || []) as Message[];
+        
+        // Reverse the messages to get chronological order (oldest first)
+        const chronologicalMessages = recentMessages.reverse();
+        
+        console.log(`Found ${chronologicalMessages.length} recent messages for chatId ${chatId}`);
+        console.log('chronologicalMessages:', chronologicalMessages.map(m => `${m.isUserMessage ? 'User' : 'AI'}: ${m.text}`).join(' | '));
+
         const embedding = await generateEmbeddings(userMessage);
         const results = await qdrant.search(process.env.QDRANT_COLLECTION_NAME!, {
             vector: embedding,
@@ -32,8 +49,17 @@ export async function POST(request: NextRequest) {
             .map(r => (r.payload?.text as string) || '')
             .filter(Boolean);
 
-        const aiText = await generateResponse(userMessage, contexts);
-        const aiMsg: Message = { messageId: uuidv4(), chatId, text: aiText, isUserMessage: false, createdAt: new Date().toISOString(), isLoading: false };
+        // Pass the chronological messages to generateResponse
+        const aiText = await generateResponse(userMessage, contexts, chronologicalMessages);
+
+        const aiMsg: Message = {
+            messageId: uuidv4(),
+            chatId,
+            text: aiText,
+            isUserMessage: false,
+            createdAt: new Date().toISOString(),
+            isLoading: false,
+        };
 
         await msgClient.send(new PutCommand({ TableName: MessageConfig.tableName, Item: aiMsg }));
         return NextResponse.json(aiMsg);

@@ -1,12 +1,10 @@
 import React, { createContext, ReactNode, useState } from 'react'
 import { Message } from '../../../models/messageModel'
-import { useMutation, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { trpc } from '@/app/_trpc/client'
-
+import { useInfiniteQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 
 export interface MessagesResponse {
   items: Message[];
-  nextCursor?: string | undefined;
+  nextCursor?: string;
 }
 
 type StreamResponse = {
@@ -21,13 +19,13 @@ type StreamResponse = {
 }
 
 export const ChatContext = createContext<StreamResponse>({
-  addMessage: () => { },
+  addMessage: () => {},
   message: '',
-  handleInputChange: () => { },
+  handleInputChange: () => {},
   isLoading: false,
   messages: [],
   hasMore: false,
-  loadMoreMessages: () => { },
+  loadMoreMessages: () => {},
   isGeneratingResponse: false
 })
 
@@ -41,29 +39,36 @@ export const ChatContextProvider = ({ chatId, children }: Props) => {
   const [isGeneratingResponse, setIsGeneratingResponse] = useState(false)
   const queryClient = useQueryClient()
 
-  // Update the useInfiniteQuery to use TRPC's useInfiniteQuery
-  const { data, fetchNextPage, hasNextPage, isLoading: isMessagesLoading} = trpc.messages.list.useInfiniteQuery(
-    {
-      chatId,
-      limit: 10
+  const { data, fetchNextPage, hasNextPage, isLoading: isMessagesLoading } = useInfiniteQuery({
+    queryKey: ['messages.list', { chatId }],
+    queryFn: ({ pageParam }) => {
+      const url = new URL('/api/message', window.location.origin);
+      url.searchParams.set('chatId', chatId);
+      url.searchParams.set('limit', '10');
+      if (pageParam) {
+        url.searchParams.set('cursor', pageParam);
+      }
+      return fetch(url.toString()).then(res => res.json());
     },
-    {
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-      refetchOnWindowFocus: true,
-      refetchInterval: 1000,
-    }
-  );
+    getNextPageParam: (lastPage: MessagesResponse) => lastPage.nextCursor,
+    refetchOnWindowFocus: true,
+    refetchInterval: 1000,
+    initialPageParam: undefined,
+  })
 
-  const messages = data?.pages.flatMap((page) => page.items) ?? []
+  const messages = data?.pages.flatMap((page: MessagesResponse) => page.items) ?? []
 
-  // Mutation for getting AI response - defined without callbacks here
-  const getAiResponseMutation = trpc.getAiResponse.useMutation();
-
-  const addMessageMutation = trpc.messages.add.useMutation({
+  const addMessageMutation = useMutation({
+    mutationFn: (payload: { chatId: string; text: string }) =>
+      fetch('/api/message/saveUserMessage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then(res => res.json()),
     onMutate: async ({ chatId, text }) => {
-      setIsGeneratingResponse(true);
-      await queryClient.cancelQueries({ queryKey: ['messages.list', { chatId }] });
-      const previousMessages = queryClient.getQueryData(['messages.list', { chatId }]);
+      setIsGeneratingResponse(true)
+      await queryClient.cancelQueries({ queryKey: ['messages.list', { chatId }] })
+      const previous = queryClient.getQueryData(['messages.list', { chatId }])
 
       const optimisticUserMessage: Message = {
         messageId: crypto.randomUUID(),
@@ -71,8 +76,7 @@ export const ChatContextProvider = ({ chatId, children }: Props) => {
         text,
         isUserMessage: true,
         createdAt: new Date().toISOString(),
-      };
-
+      }
       const tempAiMessage: Message = {
         messageId: 'temp-ai-' + crypto.randomUUID(),
         chatId,
@@ -80,7 +84,7 @@ export const ChatContextProvider = ({ chatId, children }: Props) => {
         isUserMessage: false,
         createdAt: new Date().toISOString(),
         isLoading: true,
-      };
+      }
 
       queryClient.setQueryData(['messages.list', { chatId }], (old: any) => ({
         pages: [
@@ -91,123 +95,95 @@ export const ChatContextProvider = ({ chatId, children }: Props) => {
           ...(old?.pages.slice(1) || []),
         ],
         pageParams: old?.pageParams || [],
-      }));
+      }))
 
-      setMessage('');
-      return { previousMessages, tempAiMessageId: tempAiMessage.messageId, userMessageText: text };
+      setMessage('')
+      return { previous, tempAiId: tempAiMessage.messageId, userText: text }
     },
-    onSuccess: (data, variables, context) => {
-        if (context?.tempAiMessageId && context?.userMessageText) {
-            const currentChatId = variables.chatId;
-            const currentUserMessage = context.userMessageText;
-            const currentTempAiMessageId = context.tempAiMessageId;
+    onSuccess: async (_data, variables, context) => {
+      if (context?.tempAiId && context?.userText) {
+        const currentChatId = variables.chatId
+        const currentUserText = context.userText
+        const currentTempAiId = context.tempAiId
 
-            getAiResponseMutation.mutate(
-                { // Procedure Input for getAiResponse
-                    chatId: currentChatId,
-                    userMessage: currentUserMessage,
-                },
-                { // Mutation Options with callbacks that close over currentTempAiMessageId
-                    onSuccess: (savedAiMessage: Message) => { // savedAiMessage is the full Message object
-                        queryClient.setQueryData(['messages.list', { chatId: currentChatId }], (old: any) => {
-                            let updated = false;
-                            const newPages = old.pages.map((page: any) => ({
-                                ...page,
-                                items: page.items.map((msg: Message) => {
-                                    if (msg.messageId === currentTempAiMessageId) {
-                                        updated = true;
-                                        // Replace temp message with the actual saved AI message, ensuring all fields are updated
-                                        return { 
-                                            ...savedAiMessage, // Spread the complete saved message
-                                            isLoading: false, // Explicitly ensure isLoading is false
-                                        }; 
-                                    }
-                                    return msg;
-                                }),
-                            }));
-                            if (!updated) { // Fallback if temp message wasn't found
-                                console.warn('Optimistic AI message not found for update, adding new message.');
-                                const newAiMessage: Message = {
-                                    ...savedAiMessage, // Use the complete saved message
-                                    isLoading: false,
-                                };
-                                if (newPages.length > 0 && newPages[0].items) {
-                                    newPages[0].items.unshift(newAiMessage);
-                                } else {
-                                     newPages[0] = { items: [newAiMessage], nextCursor: undefined };
-                                }
-                            }
-                            return { ...old, pages: newPages };
-                        });
-                    },
-                    onError: (error) => {
-                        console.error("Error getting AI response:", error);
-                        queryClient.setQueryData(['messages.list', { chatId: currentChatId }], (old: any) => {
-                            const newPages = old.pages.map((page: any) => ({
-                                ...page,
-                                items: page.items.map((msg: Message) => {
-                                    if (msg.messageId === currentTempAiMessageId) {
-                                        return { ...msg, text: "Error: Could not get AI response.", isLoading: false };
-                                    }
-                                    return msg;
-                                }),
-                            }));
-                            return { ...old, pages: newPages };
-                        });
-                    },
-                    onSettled: () => {
-                        setIsGeneratingResponse(false);
-                        queryClient.invalidateQueries({ queryKey: ['messages.list', { chatId: currentChatId }] });
-                    }
+        try {
+          const res = await fetch('/api/message/getAiResponse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chatId: currentChatId, userMessage: currentUserText }),
+          })
+          if (!res.ok) throw new Error('AI response failed')
+          const savedAiMessage: Message = await res.json()
+
+          queryClient.setQueryData(['messages.list', { chatId: currentChatId }], (old: any) => {
+            let found = false
+            const pages = old.pages.map((page: any) => ({
+              ...page,
+              items: page.items.map((msg: Message) => {
+                if (msg.messageId === currentTempAiId) {
+                  found = true
+                  return { ...savedAiMessage, isLoading: false }
                 }
-            );
-        } else {
-            console.error("Missing context for AI call after adding message");
-            setIsGeneratingResponse(false);
+                return msg
+              }),
+            }))
+            if (!found) {
+              pages[0].items.unshift({ ...savedAiMessage, isLoading: false })
+            }
+            return { ...old, pages }
+          })
+        } catch (err) {
+          console.error('Error getting AI response:', err)
+          queryClient.setQueryData(['messages.list', { chatId: currentChatId }], (old: any) => {
+            const pages = old.pages.map((page: any) => ({
+              ...page,
+              items: page.items.map((msg: Message) =>
+                msg.messageId === currentTempAiId
+                  ? { ...msg, text: 'Error: Could not get AI response.', isLoading: false }
+                  : msg
+              ),
+            }))
+            return { ...old, pages }
+          })
+        } finally {
+          setIsGeneratingResponse(false)
+          queryClient.invalidateQueries({ queryKey: ['messages.list', { chatId: currentChatId }] })
         }
-    },
-    onError: (err, newMessage, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['messages.list', { chatId: newMessage.chatId }], context.previousMessages);
+      } else {
+        console.error('Missing context for AI call')
+        setIsGeneratingResponse(false)
       }
-      setIsGeneratingResponse(false);
     },
-    onSettled: (data, error, variables, context) => {
+    onError: (err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['messages.list', { chatId: _vars.chatId }], context.previous)
+      }
+      setIsGeneratingResponse(false)
+    },
+    onSettled: (_data, error, vars) => {
       if (error) {
-        queryClient.invalidateQueries({ queryKey: ['messages.list', { chatId: variables.chatId }] });
-        setIsGeneratingResponse(false);
+        queryClient.invalidateQueries({ queryKey: ['messages.list', { chatId: vars.chatId }] })
+        setIsGeneratingResponse(false)
       }
-    }
-  });
+    },
+  })
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessage(e.target.value)
-  }
-
-  const addMessage = () => {
-    if (!message.trim()) return
-    
-    addMessageMutation.mutate({
-      chatId,
-      text: message
-    })
-  }
-
-  const isLoading = isMessagesLoading || addMessageMutation.isPending || isGeneratingResponse; // isGeneratingResponse is now more accurate
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)
+  const addMessage = () => message.trim() && addMessageMutation.mutate({ chatId, text: message })
+  const isLoading = isMessagesLoading || addMessageMutation.isPending || isGeneratingResponse
 
   return (
     <ChatContext.Provider
-      value={{
-        addMessage,
-        message,
-        handleInputChange,
-        isLoading,
-        messages,
-        hasMore: !!hasNextPage,
-        loadMoreMessages: () => fetchNextPage(),
-        isGeneratingResponse
-      }}
-    >
+      value={{ 
+        addMessage, 
+        message, 
+        handleInputChange, 
+        isLoading, 
+        messages, 
+        hasMore: !!hasNextPage, 
+        loadMoreMessages: () => fetchNextPage(), 
+        isGeneratingResponse 
+      }}>
       {children}
     </ChatContext.Provider>
   )
