@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import PdfControls from './PdfControls';
 import { useToast } from '@/hooks/use-toast';
-import { useResizeDetector } from 'react-resize-detector';
 
 interface DocxViewerProps {
     content: string;

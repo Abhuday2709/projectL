@@ -5,10 +5,8 @@ import { documentsRouter } from './documents';
 import { reviewRouter } from './reviews';
 import { shareSessionRouter } from './shareSession';
 import { router } from './trpc';
-import { userRouter } from './user';
 export const appRouter = router({
     chat: chatRouter,
-    user: userRouter,
     aws: awsRouter,
     documents: documentsRouter,
     review:reviewRouter,

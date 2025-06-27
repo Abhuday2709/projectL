@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FileText, AlertCircle, Loader2 } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import PdfViewer from './PdfViewer';
@@ -24,9 +24,21 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string>('');
     const { width, ref } = useResizeDetector();
+    const processedUrlRef = useRef<string>('');
+    const isMountedRef = useRef(true);
 
     const CustomPageValidator = z.object({ page: z.string().refine((num) => Number(num) > 0 && Number(num) <= (1)) });
-    const { register, handleSubmit, formState: { errors }, setValue } = useForm({ defaultValues: { page: '1' }, resolver: zodResolver(CustomPageValidator) });
+    const { register, handleSubmit, formState: { errors }, setValue } = useForm({ 
+        defaultValues: { page: '1' }, 
+        resolver: zodResolver(CustomPageValidator) 
+    });
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     const getDocumentType = (url: string, fileName: string): DocumentType => {
         const ext = fileName.split('.').pop()?.toLowerCase() || url.split('.').pop()?.toLowerCase().split('?')[0];
@@ -40,7 +52,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
 
     const fetchDocument = async (url: string): Promise<File> => {
         try {
-            const response = await fetch(url, { mode: 'cors', headers: { 'Accept': '*/*' } });
+            const response = await fetch(url, { 
+                mode: 'cors', 
+                headers: { 'Accept': '*/*' },
+                signal: AbortSignal.timeout(30000) // 30 second timeout
+            });
             if (!response.ok) throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
             const blob = await response.blob();
             const filename = url.split('/').pop()?.split('?')[0] || 'document';
@@ -54,33 +70,64 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
     };
 
     const processDocument = useCallback(async (documentUrl: string, fileName: string) => {
-        setLoading(true); setError(''); setValue('page', '1');
+        // Prevent processing the same URL multiple times
+        if (processedUrlRef.current === documentUrl) {
+            return;
+        }
+        
+        processedUrlRef.current = documentUrl;
+        setLoading(true); 
+        setError(''); 
+        setValue('page', '1');
+        
         try {
             const type = getDocumentType(documentUrl, fileName);
+            
+            if (!isMountedRef.current) return;
             setDocumentType(type);
+            
             switch (type) {
                 case 'pdf':
-                    setContent(documentUrl);
+                    if (isMountedRef.current) {
+                        setContent(documentUrl);
+                    }
                     break;
                 case 'docx': {
                     const docxFile = await fetchDocument(documentUrl);
+                    if (!isMountedRef.current) return;
+                    
                     const arrayBuffer = await docxFile.arrayBuffer();
+                    if (!isMountedRef.current) return;
+                    
                     const result = await mammoth.convertToHtml({ arrayBuffer });
-                    setContent(result.value);
+                    if (isMountedRef.current) {
+                        setContent(result.value);
+                    }
                     break;
                 }
                 default:
                     throw new Error('Unsupported file type');
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to process document');
+            if (isMountedRef.current) {
+                setError(err instanceof Error ? err.message : 'Failed to process document');
+            }
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     }, [setValue]);
 
     useEffect(() => {
-        if (url && fileName) processDocument(url, fileName);
+        if (url && fileName) {
+            processDocument(url, fileName);
+        }
+        
+        return () => {
+            // Reset processed URL when component unmounts or URL changes
+            processedUrlRef.current = '';
+        };
     }, [url, fileName, processDocument]);
 
     const renderContent = () => {
@@ -114,9 +161,28 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
                 </div>
             );
         }
+        
         switch (documentType) {
-            case 'pdf': return <PdfViewer content={content} fileName = {fileName} documentType = {documentType} onReturn={onReturn}/>;
-            case 'docx': return <DocxViewer content={content} fileName = {fileName} documentType = {documentType} onReturn={onReturn}/>;
+            case 'pdf': 
+                return (
+                    <PdfViewer 
+                        key={`pdf-${url}`} // Add key to force re-mount when URL changes
+                        content={content} 
+                        fileName={fileName} 
+                        documentType={documentType} 
+                        onReturn={onReturn}
+                    />
+                );
+            case 'docx': 
+                return (
+                    <DocxViewer 
+                        key={`docx-${url}`} // Add key to force re-mount when URL changes
+                        content={content} 
+                        fileName={fileName} 
+                        documentType={documentType} 
+                        onReturn={onReturn}
+                    />
+                );
             default:
                 return (
                     <div className="flex items-center justify-center h-64 text-gray-500">
@@ -132,25 +198,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
 
     return (
         <div className="h-[71.5vh] flex flex-col bg-white rounded-lg shadow-lg">
-            {/* {documentType !== 'pdf' && (
-                <div className="bg-gray-50 border-b flex-shrink-0">
-                    <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center">
-                            <FileText className="w-5 h-5 text-gray-500 mr-2" />
-                            <span className="text-sm font-medium text-gray-700 truncate">{fileName}</span>
-                            <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">{documentType.toUpperCase()}</span>
-                        </div> 
-                        <div className="flex items-center gap-2">
-                            {onReturn && (
-                                <button onClick={onReturn} className="px-4 py-2 bg-gray-200 shadow-lg hover:bg-gray-100 rounded-md flex items-center">
-                                    <span>Return</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )} */}
-            <div className={documentType === 'pdf' ? '' : 'overflow-auto flex-1'}>{renderContent()}</div>
+            <div className={documentType === 'pdf' ? '' : 'overflow-auto flex-1'}>
+                {renderContent()}
+            </div>
         </div>
     );
 };

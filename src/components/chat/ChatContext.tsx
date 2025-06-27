@@ -56,7 +56,9 @@ export const ChatContextProvider = ({ chatId, children }: Props) => {
     initialPageParam: undefined,
   })
 
-  const messages = data?.pages.flatMap((page: MessagesResponse) => page.items) ?? []
+  const messages = data?.pages.flatMap((page: MessagesResponse) =>
+  Array.isArray(page.items) ? page.items : []
+).filter(msg => msg && msg.messageId) ?? [];
 
   const addMessageMutation = useMutation({
     mutationFn: (payload: { chatId: string; text: string }) =>

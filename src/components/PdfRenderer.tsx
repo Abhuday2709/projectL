@@ -3,7 +3,7 @@ import UploadButton from "./UploadButton";
 import { trpc } from "../app/_trpc/client";
 import DocumentViewer from "./documentViewer/DocumentViewer";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle, Clock } from "lucide-react";
+import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Download } from "lucide-react";
 import type { DocumentWithStatus } from "../trpc/procedures/document/getDocumentProcessingStatus";
 import {
     AlertDialog,
@@ -112,34 +112,91 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
             setDocToDelete(null);
         }
     };
+
     const isAnyDocumentProcessing = documentsWithStatus.some(
         doc => doc.processingStatus === 'QUEUED' || doc.processingStatus === 'PROCESSING'
     );
 
+    const getStatusColor = (status: string|undefined) => {
+        switch (status) {
+            case 'COMPLETED':
+                return 'text-[#3F72AF]';
+            case 'PROCESSING':
+                return 'text-[#3F72AF]';
+            case 'QUEUED':
+                return 'text-[#112D4E]';
+            case 'FAILED':
+                return 'text-red-500';
+            default:
+                return 'text-[#112D4E]';
+        }
+    };
+
+    const getStatusBg = (status: string|undefined) => {
+        switch (status) {
+            case 'COMPLETED':
+                return 'bg-[#DBE2EF]';
+            case 'PROCESSING':
+                return 'bg-[#DBE2EF]';
+            case 'QUEUED':
+                return 'bg-[#F9F7F7]';
+            case 'FAILED':
+                return 'bg-red-50';
+            default:
+                return 'bg-[#F9F7F7]';
+        }
+    };
+
+    const getStatusIcon = (doc: DocumentWithStatus) => {
+        const isQueued = doc.processingStatus === 'QUEUED';
+        const isProcessing = doc.processingStatus === 'PROCESSING';
+        const isFailed = doc.processingStatus === 'FAILED';
+        const isCompleted = doc.processingStatus === 'COMPLETED';
+
+        if (isCompleted) return <CheckCircle2 size={20} className="text-[#3F72AF]" />;
+        if (isQueued) return <Clock size={20} className="text-[#112D4E]" />;
+        if (isProcessing) return <Loader2 className="h-5 w-5 animate-spin text-[#3F72AF]" />;
+        if (isFailed) return <XCircle size={20} className="text-red-500" />;
+        return <AlertTriangle size={20} className="text-[#112D4E]" />;
+    };
+
     return (
-        <div className="flex-1 max-h-[71.5vh] overflow-y-auto bg-white rounded-lg h-full">
+        <div className="flex-1 max-h-[71.5vh] overflow-y-auto bg-[#F9F7F7] rounded-lg h-full">
             {!selectedDoc ? (
-                <div className="w-full p-4 overflow-y-auto">
+                <div className="w-full overflow-y-auto">
                     {!isClient &&
                         <UploadButton chatId={chatId} onUploadSuccess={refetchDocumentStatuses} />}
+                    
                     {isAnyDocumentProcessing && (
-                        <div className="my-2 p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-700 flex items-center">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Some documents are being processed. Please wait...
+                        <div className="my-4 p-4 bg-[#DBE2EF] border-l-4 border-[#3F72AF] rounded-r-lg shadow-sm">
+                            <div className="flex items-center">
+                                <Loader2 className="h-5 w-5 animate-spin text-[#3F72AF] mr-3" />
+                                <div>
+                                    <p className="font-medium text-[#112D4E]">Processing Documents</p>
+                                    <p className="text-sm text-[#3F72AF]">Some documents are being processed. Please wait...</p>
+                                </div>
+                            </div>
                         </div>
                     )}
-                    <div className="mt-4">
-                        <div className="font-semibold mb-2">Documents</div>
-                        {/*isLoadingStatuses && documentsWithStatus.length === 0 && (
-                        <div className="flex justify-center items-center h-32">
-                            <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
-                            <p className="ml-2 text-zinc-500">Loading documents...</p>
+                    
+                    <div className="mt-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <FileText className="h-6 w-6 text-[#3F72AF]" />
+                            <h3 className="text-xl font-semibold text-[#112D4E]">Documents</h3>
+                            <span className="bg-[#DBE2EF] text-[#3F72AF] px-3 py-1 rounded-full text-sm font-medium">
+                                {documentsWithStatus.length}
+                            </span>
                         </div>
-                    )*/}
+                        
                         {documentsWithStatus.length === 0 && !isLoadingStatuses && (
-                            <p className="text-zinc-500">No documents uploaded yet. Click above to add some!</p>
+                            <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-[#DBE2EF]">
+                                <FileText className="h-12 w-12 text-[#DBE2EF] mx-auto mb-4" />
+                                <p className="text-[#3F72AF] text-lg font-medium mb-2">No documents uploaded yet</p>
+                                <p className="text-[#112D4E] opacity-70">Click the upload button above to add your first document</p>
+                            </div>
                         )}
-                        <ul className="space-y-1">
+                        
+                        <div className="space-y-3">
                             {documentsWithStatus.map((doc: DocumentWithStatus) => {
                                 const isQueued = doc.processingStatus === 'QUEUED';
                                 const isProcessing = doc.processingStatus === 'PROCESSING';
@@ -147,51 +204,95 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                 const isCompleted = doc.processingStatus === 'COMPLETED';
 
                                 return (
-                                    <li key={doc.docId} className={`flex items-center gap-1 p-1 rounded ${isCompleted ? 'hover:bg-gray-200' : ''} ${isFailed ? 'bg-red-50' : ''}`}>
-                                        <button
-                                            className={`flex-1 text-left px-2 py-1.5 rounded flex items-center gap-2 overflow-auto ${!isCompleted ? 'cursor-not-allowed opacity-70' : ''}`}
-                                            onClick={() => {
-                                                if (isCompleted) {
-                                                    setSelectedDoc({ fileName: doc.fileName, s3Key: doc.s3Key });
-                                                    setIsViewingDocument(true);
-                                                }
-                                            }}
-                                            disabled={!isCompleted}
-                                            title={isCompleted ? doc.fileName : `Status: ${doc.processingStatus}`}
-                                        >
-                                            {isCompleted && <span className="text-green-500"><CheckCircle2 size={18} /></span>}
-                                            {isQueued && <span className="text-yellow-500"><Clock size={18} /></span>}
-                                            {isProcessing && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                                            {isFailed && <span className="text-red-500"><XCircle size={18} /></span>}
-                                            {!isCompleted && !isProcessing && !isFailed && !isQueued && <span className="text-yellow-500"><AlertTriangle size={18} /></span>}
-                                            <span className="truncate flex-1">{doc.fileName}</span>
-                                            {isProcessing && <span className="text-xs text-blue-600 ml-auto">({doc.processingStatus?.toLowerCase()})</span>}
-                                            {isQueued && <span className="text-xs text-yellow-600 ml-auto">({doc.processingStatus?.toLowerCase()})</span>}
-                                            {isFailed && <span className="text-xs text-red-600 ml-auto">(failed)</span>}
-                                        </button>
-                                        {!(isQueued || isProcessing) && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setDocToDelete(doc);
-                                                }}
-                                                disabled={deletingId === doc.docId || isProcessing}
-                                                className={`p-1.5 rounded hover:bg-red-100 transition-colors ${isProcessing ? 'cursor-not-allowed opacity-50' : ''}`}
-                                                title={isProcessing ? "Cannot delete while processing" : "Delete document"}
-                                            >
-                                                {deletingId === doc.docId ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                    <div 
+                                        key={doc.docId} 
+                                        className={`
+                                            group relative bg-white rounded-lg border shadow-sm hover:shadow-md transition-all duration-200
+                                            ${isCompleted ? 'border-[#DBE2EF] hover:border-[#3F72AF]' : ''}
+                                            ${isFailed ? 'border-red-200 bg-red-50' : ''}
+                                            ${(isQueued || isProcessing) ? 'border-[#DBE2EF]' : ''}
+                                        `}
+                                    >
+                                        <div className="p-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex-shrink-0">
+                                                    {getStatusIcon(doc)}
+                                                </div>
+                                                
+                                                <div className="flex-1 min-w-0">
+                                                    <button
+                                                        className={`
+                                                            w-full text-left group-hover:text-[#3F72AF] transition-colors duration-200
+                                                            ${!isCompleted ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}
+                                                        `}
+                                                        onClick={() => {
+                                                            if (isCompleted) {
+                                                                setSelectedDoc({ fileName: doc.fileName, s3Key: doc.s3Key });
+                                                                setIsViewingDocument(true);
+                                                            }
+                                                        }}
+                                                        disabled={!isCompleted}
+                                                        title={isCompleted ? `Click to view ${doc.fileName}` : `Status: ${doc.processingStatus}`}
+                                                    >
+                                                        <h4 className="font-medium text-[#112D4E] truncate mb-1">
+                                                            {doc.fileName}
+                                                        </h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`
+                                                                inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                                ${getStatusBg(doc.processingStatus)} ${getStatusColor(doc.processingStatus)}
+                                                            `}>
+                                                                {doc.processingStatus?.toLowerCase()}
+                                                            </span>
+                                                            {(isProcessing || isQueued) && (
+                                                                <span className="text-xs text-[#3F72AF] opacity-70">
+                                                                    Processing...
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                                
+                                                {!(isQueued || isProcessing) && (
+                                                    <div className="flex-shrink-0">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setDocToDelete(doc);
+                                                            }}
+                                                            disabled={deletingId === doc.docId || isProcessing}
+                                                            className={`
+                                                                p-2 rounded-lg transition-all duration-200
+                                                                ${isProcessing 
+                                                                    ? 'cursor-not-allowed opacity-50' 
+                                                                    : 'hover:bg-red-50 hover:text-red-600 text-gray-400'
+                                                                }
+                                                            `}
+                                                            title={isProcessing ? "Cannot delete while processing" : "Delete document"}
+                                                        >
+                                                            {deletingId === doc.docId ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                                                            ) : (
+                                                                <Trash2 className="h-4 w-4" />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 )}
-                                            </button>)}
-                                        {isFailed && doc.processingError && (
-                                            <p className="text-xs text-red-500 w-full pl-8 truncate" title={doc.processingError}>Some error has occured plsease delete this and try again</p>
-                                        )}
-                                    </li>
+                                            </div>
+                                            
+                                            {isFailed && doc.processingError && (
+                                                <div className="mt-3 p-3 bg-red-100 rounded-lg border border-red-200">
+                                                    <p className="text-sm text-red-700 font-medium mb-1">Processing Failed</p>
+                                                    <p className="text-xs text-red-600 opacity-80">
+                                                        Please delete this document and try uploading again
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 );
                             })}
-                        </ul>
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -206,18 +307,21 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                     />
                 </div>
             )}
+            
             <AlertDialog open={!!docToDelete} onOpenChange={() => setDocToDelete(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-[#F9F7F7] border-[#DBE2EF]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-[#112D4E]">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-[#3F72AF]">
                             This will permanently delete "{docToDelete?.fileName}" and remove it from our servers.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="border-[#DBE2EF] text-[#112D4E] hover:bg-[#DBE2EF]">
+                            Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-red-500 hover:bg-red-600"
+                            className="bg-red-500 hover:bg-red-600 text-white"
                             onClick={() => docToDelete && handleDelete(docToDelete)}
                         >
                             Delete

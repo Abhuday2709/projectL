@@ -194,21 +194,19 @@ export default function ChatPage() {
                 {/* Main Content - Responsive Panel Layout */}
                 <div className="flex-1 overflow-hidden">
                     {/* Desktop Layout - Horizontal Panels */}
-                    <div className="hidden lg:block min-h-[calc(100vh-9rem)]">
+                    <div className="hidden lg:block h-[calc(100vh-9.5rem)]">
                         <PanelGroup direction="horizontal" className="flex-1 overflow-scoll h-full">
                             <Panel defaultSize={55} minSize={42}>
                                 <div className="h-full flex flex-col gap-4 p-5">
-                                    <div className={`flex flex-col overflow-y-auto rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-4 ${isViewingDocument ? "h-[95%]" : "h-[50%]"}`}>
+                                    <div className={`flex flex-col overflow-y-auto rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-4 ${isViewingDocument ? "h-[95%]" : "min-h-[60%]"}`}>
                                         <div className="flex-1 h-full">
                                             <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} />
                                         </div>
                                     </div>
                                     {!isViewingDocument && (
-                                        <div className="min-h-[45%] flex flex-col rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-4">
+                                        <div className=" flex flex-col rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-4 overflow-y-auto">
+                                            <div className="flex justify-between items-center">
                                             <h2 className="text-lg font-semibold text-[#112D4E]">Generate Podcast</h2>
-                                            <p className="text-sm text-[#3F72AF] mb-2">
-                                                Generate an audio podcast summary of the uploaded documents.
-                                            </p>
                                             <Button
                                                 onClick={handleGeneratePodcast}
                                                 disabled={isGenerating || (documents?.length || 0) === 0}
@@ -223,12 +221,16 @@ export default function ChatPage() {
                                                     "Generate Podcast"
                                                 )}
                                             </Button>
+                                            </div>
+                                            {!isGenerating && <p className="text-xs sm:text-sm text-[#3F72AF] mb-2 sm:mb-3">
+                                                Listen to an audio podcast summary of the uploaded documents.
+                                            </p>}
                                             {isGenerating && (
                                                 <p className="text-sm text-[#3F72AF]">Generating your podcast, till then chat with the documents.</p>
                                             )}
                                             {podcastUrl && !isGenerating && (
-                                                <div className="space-y-2 mt-2">
-                                                    <h3 className="font-semibold text-base text-[#112D4E]">Podcast Audio</h3>
+                                                <div className="space-y-2">
+                                                    
                                                     <div className="mb-2">
                                                         <audio controls className="w-full accent-[#3F72AF]">
                                                             <source src={podcastUrl} />
@@ -253,65 +255,65 @@ export default function ChatPage() {
                     </div>
 
                     {/* Mobile/Tablet Layout - Vertical Panels */}
-                        <div className="h-full">
-                            <PanelGroup direction="vertical" className="flex-1 overflow-hidden h-full">
-                                <Panel defaultSize={50} minSize={45}>
-                                    <div className="h-full flex flex-col gap-4 p-3 sm:p-4">
-                                        <div className={`flex flex-col overflow-y-auto rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-3 sm:p-4 ${isViewingDocument ? "flex-1" : "h-1/2"}`}>
-                                            <div className="flex-1">
-                                                <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} />
-                                            </div>
+                    <div className="h-full">
+                        <PanelGroup direction="vertical" className="flex-1 overflow-hidden h-full">
+                            <Panel defaultSize={50} minSize={45}>
+                                <div className="h-full flex flex-col gap-4 p-3 sm:p-4">
+                                    <div className={`flex flex-col overflow-y-auto rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-3 sm:p-4 ${isViewingDocument ? "flex-1" : "h-1/2"}`}>
+                                        <div className="flex-1">
+                                            <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} />
                                         </div>
-                                        {!isViewingDocument && (
-                                            <div className="flex-1 flex flex-col rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-3 sm:p-4 min-h-[120px]">
-                                                <h2 className="text-base sm:text-lg font-semibold text-[#112D4E]">Generate Podcast</h2>
-                                                <p className="text-xs sm:text-sm text-[#3F72AF] mb-2 sm:mb-3">
-                                                    Generate an audio podcast summary of the uploaded documents.
-                                                </p>
-                                                <Button
-                                                    onClick={handleGeneratePodcast}
-                                                    disabled={isGenerating || (documents?.length || 0) === 0}
-                                                    className="mb-2 w-full sm:w-40 bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF] text-xs sm:text-sm"
-                                                >
-                                                    {isGenerating ? (
-                                                        <>
-                                                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-2" />
-                                                            Generating...
-                                                        </>
-                                                    ) : (
-                                                        "Generate Podcast"
-                                                    )}
-                                                </Button>
-                                                {isGenerating && (
-                                                    <p className="text-xs sm:text-sm text-[#3F72AF]">Generating your podcast, till then chat with the documents.</p>
+                                    </div>
+                                    {!isViewingDocument && (
+                                        <div className="flex-1 flex flex-col rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-3 sm:p-4 min-h-[120px]">
+                                            <h2 className="text-base sm:text-lg font-semibold text-[#112D4E]">Generate Podcast</h2>
+                                            <p className="text-xs sm:text-sm text-[#3F72AF] mb-2 sm:mb-3">
+                                                Generate an audio podcast summary of the uploaded documents.
+                                            </p>
+                                            <Button
+                                                onClick={handleGeneratePodcast}
+                                                disabled={isGenerating || (documents?.length || 0) === 0}
+                                                className="mb-2 w-full sm:w-40 bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF] text-xs sm:text-sm"
+                                            >
+                                                {isGenerating ? (
+                                                    <>
+                                                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-2" />
+                                                        Generating...
+                                                    </>
+                                                ) : (
+                                                    "Generate Podcast"
                                                 )}
-                                                {podcastUrl && !isGenerating && (
-                                                    <div className="space-y-2 mt-2">
-                                                        <h3 className="font-semibold text-sm sm:text-base text-[#112D4E]">Podcast Audio</h3>
-                                                        <div className="mb-2">
-                                                            <audio controls className="w-full accent-[#3F72AF] h-8">
-                                                                <source src={podcastUrl} />
-                                                                Your browser does not support the audio element.
-                                                            </audio>
-                                                        </div>
+                                            </Button>
+                                            {isGenerating && (
+                                                <p className="text-xs sm:text-sm text-[#3F72AF]">Generating your podcast, till then chat with the documents.</p>
+                                            )}
+                                            {podcastUrl && !isGenerating && (
+                                                <div className="space-y-2 mt-2">
+                                                    <h3 className="font-semibold text-sm sm:text-base text-[#112D4E]">Podcast Audio</h3>
+                                                    <div className="mb-2">
+                                                        <audio controls className="w-full accent-[#3F72AF] h-8">
+                                                            <source src={podcastUrl} />
+                                                            Your browser does not support the audio element.
+                                                        </audio>
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </Panel>
-                                <PanelResizeHandle className="h-1 bg-[#DBE2EF] hover:bg-[#3F72AF] transition-colors flex items-center justify-center">
-                                    <div className="w-8 h-1 bg-[#3F72AF] rounded-full" />
-                                </PanelResizeHandle>
-                                <Panel defaultSize={50} minSize={50}>
-                                    <div className="h-full p-3 sm:p-4 flex flex-col">
-                                        <div className="flex-1 overflow-hidden rounded-lg border-2 border-[#DBE2EF] bg-white shadow-lg">
-                                            <ChatWrapper chatId={chatIdStr} />
+                                                </div>
+                                            )}
                                         </div>
+                                    )}
+                                </div>
+                            </Panel>
+                            <PanelResizeHandle className="h-1 bg-[#DBE2EF] hover:bg-[#3F72AF] transition-colors flex items-center justify-center">
+                                <div className="w-8 h-1 bg-[#3F72AF] rounded-full" />
+                            </PanelResizeHandle>
+                            <Panel defaultSize={50} minSize={50}>
+                                <div className="h-full p-3 sm:p-4 flex flex-col">
+                                    <div className="flex-1 overflow-hidden rounded-lg border-2 border-[#DBE2EF] bg-white shadow-lg">
+                                        <ChatWrapper chatId={chatIdStr} />
                                     </div>
-                                </Panel>
-                            </PanelGroup>
-                        </div>
+                                </div>
+                            </Panel>
+                        </PanelGroup>
+                    </div>
                 </div>
             </div>
             {/* Share Dialog */}

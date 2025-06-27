@@ -39,7 +39,7 @@ function Messages() {
       const { scrollTop, scrollHeight, clientHeight } = container
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight
       const nearBottom = distanceFromBottom < 100
-      
+
       setIsNearBottom(nearBottom)
       setShowScrollButton(!nearBottom && messages.length > 0)
     }
@@ -58,8 +58,8 @@ function Messages() {
   return (
     <div className='relative h-full'>
       {/* Messages Container */}
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         className='flex flex-col-reverse h-full overflow-y-auto scroll-smooth px-4 py-6 space-y-4 space-y-reverse scrollbar-thin scrollbar-thumb-[#DBE2EF] scrollbar-track-transparent hover:scrollbar-thumb-[#3F72AF]/50'
         style={{
           scrollbarWidth: 'thin',
@@ -72,7 +72,7 @@ function Messages() {
             <div className='text-center space-y-4 max-w-md'>
               <div className='bg-gradient-to-r from-[#3F72AF] to-[#112D4E] p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center shadow-lg'>
                 <svg className='w-8 h-8 text-white' fill='currentColor' viewBox='0 0 24 24'>
-                  <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/>
+                  <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z' />
                 </svg>
               </div>
               <div>
@@ -86,22 +86,18 @@ function Messages() {
         )}
 
         {/* Messages */}
-        {messages.map((message, i) => {
-          const isLastMessage = i === 0
-          const isOptimistic = i === 0 && isLoading
-          return (
-            <div
-              key={message.messageId}
-              ref={isLastMessage ? loadMoreRef : undefined}
-              className='transform transition-all duration-300 ease-out animate-in slide-in-from-bottom-2'
-            >
-              <Message 
-                message={message} 
-                isOptimistic={isOptimistic}
-              />
-            </div>
-          )
-        })}
+        {messages.filter(msg => msg && msg.messageId).map((message, i) => (
+          <div
+            key={message.messageId}
+            ref={i === 0 ? loadMoreRef : undefined}
+            className='transform transition-all duration-300 ease-out animate-in slide-in-from-bottom-2'
+          >
+            <Message
+              message={message}
+              isOptimistic={i === 0 && isLoading}
+            />
+          </div>
+        ))}
 
         {/* Load More Indicator */}
         {hasMore && (

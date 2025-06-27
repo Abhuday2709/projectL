@@ -18,10 +18,10 @@ const ChatWrapper = ({
     if (documents.length === 0) {
         return (
             <div className='relative min-h-[calc(100vh-11rem)] max-h-[calc(100vh-11rem)] bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] rounded-2xl flex flex-col justify-between gap-2 shadow-lg border border-[#DBE2EF]/30'>
-                <div className='flex-1 flex justify-center items-center flex-col mb-28 px-4'>
+                <div className='flex-1 flex justify-center items-center flex-col px-4'>
                     <div className='flex flex-col items-center gap-6 text-center max-w-md'>
                         {/* Animated Icon */}
-                        <div className='relative'>
+                        <div className='relative top-5'>
                             <div className='absolute inset-0 bg-[#3F72AF]/20 rounded-full animate-ping'></div>
                             <div className='relative bg-gradient-to-r from-[#3F72AF] to-[#112D4E] p-4 rounded-full shadow-lg'>
                                 <FileX className='h-8 w-8 text-white' />
@@ -37,15 +37,7 @@ const ChatWrapper = ({
                                 Upload your documents to start an intelligent conversation with AI
                             </p>
                         </div>
-
-                        {/* Upload Suggestion */}
-                        <div className='bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-[#DBE2EF]/50 shadow-sm'>
-                            <div className='flex items-center gap-3 text-[#3F72AF]'>
-                                <Upload className='h-5 w-5' />
-                                <span className='text-sm font-medium'>Click to upload documents</span>
-                            </div>
-                        </div>
-                        
+                                              
                         {/* Features */}
                         <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mt-6'>
                             <div className='bg-white/40 backdrop-blur-sm rounded-lg p-3 text-center border border-[#DBE2EF]/30'>

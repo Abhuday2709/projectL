@@ -34,6 +34,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items, nextCursor });
   } catch (err) {
     console.error('Error fetching messages:', err);
-    return NextResponse.json({ message: 'Failed to fetch messages' }, { status: 500 });
+    return NextResponse.json({ items: [], nextCursor: undefined, error: 'Failed to fetch messages' }, { status: 500 });
   }
 }
