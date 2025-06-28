@@ -3,7 +3,6 @@
 import { notFound, useParams } from "next/navigation";
 import ChatWrapper from "@/components/chat/ChatWrapper";
 import PdfRenderer from "@/components/PdfRenderer";
-import { trpc } from "@/app/_trpc/client";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useState, useEffect } from "react";
@@ -23,18 +22,18 @@ export default function ChatPage() {
     const [shareSessionError, setShareSessionError] = useState<null | string>(null);
 
     const fetchShareSession = async () => {
-            if (!shareIdStr) return;
-            try {
-                const res = await fetch(`/api/shareSession/byShareId?shareId=${shareIdStr}`);
-                if (!res.ok) throw new Error("Share session not found");
-                const data = await res.json();
-                setShareSession(data);
-            } catch (err: any) {
-                setShareSessionError(err.message);
-            } finally {
-                setIsShareSessionLoading(false);
-            }
-        };
+        if (!shareIdStr) return;
+        try {
+            const res = await fetch(`/api/shareSession/byShareId?shareId=${shareIdStr}`);
+            if (!res.ok) throw new Error("Share session not found");
+            const data = await res.json();
+            setShareSession(data);
+        } catch (err: any) {
+            setShareSessionError(err.message);
+        } finally {
+            setIsShareSessionLoading(false);
+        }
+    };
     useEffect(() => {
         fetchShareSession();
     }, [shareIdStr]);
@@ -59,34 +58,12 @@ export default function ChatPage() {
             setPasswordError("Incorrect password. Please try again.");
         }
     }
-
     const chatIdStr = shareSession?.chatId || "";
-
-    const { data: chatDetails, isLoading: isChatDetailsLoading, refetch: refetchChatDetails } = trpc.chat.getChatById.useQuery(
-        { chatId: chatIdStr },
-        { enabled: !!chatIdStr }
-    );
-    const { data: documents, refetch } = trpc.documents.listByChat.useQuery(
-        { chatId: chatIdStr },
-        { enabled: !!chatIdStr }
-    );
-    const deleteFileMutation = trpc.aws.deleteFile.useMutation();
-
     const [isGenerating, setIsGenerating] = useState(false);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
     const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (chatDetails?.podcastFinal) {
-            if (podcastUrl) {
-                const urlParts = podcastUrl.split('/');
-                const s3Key = urlParts.slice(3).join('/');
-                deleteFileMutation.mutate({ key: s3Key });
-            }
-            setIsGenerating(false);
-            setPodcastUrl(chatDetails.podcastFinal);
-        }
-    }, [chatDetails?.podcastFinal]);
+
     // If loading, show nothing
     if (isShareSessionLoading) return null;
 

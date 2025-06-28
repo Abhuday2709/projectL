@@ -1,4 +1,4 @@
-// src/app/api/chat/[chatId]/route.ts
+// src/app/api/chat/createChat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";

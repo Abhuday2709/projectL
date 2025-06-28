@@ -11,18 +11,29 @@ import Sidebar from "@/components/Sidebar";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from "bcryptjs";
+import { Chat } from "../../../../../models/chatModel";
 
 export default function ChatPage() {
     const { chatId } = useParams();
     const router = useRouter();
     const { toast } = useToast(); // Ensure useToast is called inside the component
-
+ const [chatDetails, setChatDetails] = useState<Chat | null>(null);
+     const [isChatLoading, setIsChatLoading] = useState(false);
     const chatIdStr = typeof chatId === "string" ? chatId : Array.isArray(chatId) ? chatId[0] ?? "" : "";
-
-    const { data: chatDetails, isLoading: isChatDetailsLoading, refetch: refetchChatDetails } = trpc.chat.getChatById.useQuery(
-        { chatId: chatIdStr },
-        { enabled: !!chatIdStr }
-    );
+    const fetchChatDetails = async () => {
+        if (!chatIdStr) return;
+        setIsChatLoading(true);
+        try {
+            const res = await fetch(`/api/chat/${chatIdStr}`);
+            if (!res.ok) throw new Error("Chat not found");
+            const data = await res.json();
+            setChatDetails(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
     const { data: documents, refetch } = trpc.documents.listByChat.useQuery(
         { chatId: chatIdStr },
         { enabled: !!chatIdStr }
@@ -83,7 +94,10 @@ export default function ChatPage() {
             }
         };
     useEffect(() => {
+        if (chatIdStr) {
+            fetchChatDetails();
         fetchShareSession();
+        }
     }, [chatIdStr]);
     useEffect(() => {
         if (chatDetails?.podcastFinal) {
@@ -191,7 +205,7 @@ export default function ChatPage() {
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 sm:py-4 px-3 sm:px-4 flex-shrink-0 bg-[#F9F7F7] border-b border-[#3F72AF]/20 gap-3 sm:gap-2">
                     <div className="flex items-center gap-2 w-full sm:w-auto">
-                        {isChatDetailsLoading ? (
+                        {isChatLoading ? (
                             <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-[#3F72AF]" />
                         ) : (
                             <h1 className="text-base sm:text-xl font-semibold truncate bg-[#DBE2EF] text-[#112D4E] px-3 sm:px-4 py-2 rounded-lg shadow-sm border border-[#DBE2EF] max-w-full">

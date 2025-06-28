@@ -1,4 +1,4 @@
-// src/app/api/chat/deletechat/route.ts
+// src/app/api/chat/deleteChat/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';

@@ -21,7 +21,7 @@ export async function GET(
             );
         }
 
-        const { chatId } = params;
+        const { chatId } = await params;
 
         if (!chatId) {
             return NextResponse.json(

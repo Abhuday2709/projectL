@@ -19,7 +19,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { trpc } from "../../_trpc/client";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
 import { MessageCircle, Plus, Trash2, Calendar, ArrowRight, Loader2 } from "lucide-react";
@@ -36,14 +35,31 @@ export default function DashboardChatPage() {
     const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(false);
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
     }, [isLoaded, isSignedIn, router]);
 
-    const { data: chats, refetch, isLoading } = trpc.chat.getChats.useQuery({ user_id });
-    const createChatMutation = trpc.chat.createChat.useMutation();
-    const deleteChatMutation = trpc.chat.deleteChat.useMutation();
+    const fetchChats = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/chat/getChat');
+            if (!res.ok) throw new Error('Failed to fetch chats');
+            const data: Chat[] = await res.json();
+            setChats(data);
+        } catch (error) {
+            console.error(error);
+            toast({ title: 'Error', description: 'Could not load chats.', variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isLoaded && isSignedIn) fetchChats();
+    }, [isLoaded, isSignedIn]);
 
     const handleNewChat = async () => {
         setIsDialogOpen(true);
@@ -51,47 +67,41 @@ export default function DashboardChatPage() {
 
     const handleCreateChat = async () => {
         if (!chatName.trim()) return;
-
+        setIsCreating(true);
         try {
-            setIsCreating(true);
             const chatId = uuidv4();
-            const chat = await createChatMutation.mutateAsync({
-                user_id,
-                chatId,
-                name: chatName.trim(),
+            const res = await fetch('/api/chat/createChat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId, name: chatName.trim() }),
             });
+            if (!res.ok) throw new Error('Failed to create chat');
+            const newChat: Chat = await res.json();
             setIsDialogOpen(false);
-            setChatName("");
+            setChatName('');
             setIsPageLoading(true);
-            router.push(`/dashboard/sendProposals/${chat.chatId}`);
+            router.push(`/dashboard/sendProposals/${newChat.chatId}`);
         } catch (error) {
-            console.error("Failed to create new chat:", error);
-            toast({
-                title: "Failed to create chat",
-                description: "Something went wrong while creating the chat. Please try again.",
-                variant: "destructive",
-            });
+            console.error(error);
+            toast({ title: 'Failed to create chat', description: 'Please try again.', variant: 'destructive' });
         } finally {
             setIsCreating(false);
         }
     };
 
     const handleDeleteChat = async (chat: Chat) => {
-        if (!chat) return;
         setIsDeleting(true);
         try {
-            await deleteChatMutation.mutateAsync({
-                user_id: chat.user_id,
-                createdAt: chat.createdAt,
+            const res = await fetch('/api/chat/deleteChat', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: chat.user_id, createdAt: chat.createdAt }),
             });
-            refetch();
+            if (!res.ok) throw new Error('Failed to delete chat');
+            await fetchChats();
         } catch (error) {
-            console.error("Failed to delete chat:", error);
-            toast({
-                title: "Failed to delete chat",
-                description: "Something went wrong while deleting the chat. Please try again.",
-                variant: "destructive",
-            });
+            console.error(error);
+            toast({ title: 'Failed to delete chat', description: 'Please try again.', variant: 'destructive' });
         } finally {
             setIsDeleting(false);
             setChatToDelete(null);
