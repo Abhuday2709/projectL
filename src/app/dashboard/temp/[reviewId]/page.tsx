@@ -57,6 +57,8 @@ export default function DocumentScoringPage() {
   const reviewId = params.reviewId as string
   const [allCategories, setAllCategories] = useState<CategoryType[]>([])
   const [allQuestions, setAllQuestions] = useState<QuestionType[]>([])
+  const [reviews, setReviews] = useState<ScoringSession[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   // =================================================================
   // Data Fetching using tRPC
   // =================================================================
@@ -95,17 +97,26 @@ export default function DocumentScoringPage() {
     setAllQuestions(data)
   }
 
-  const { data: scoringSessionData, refetch: refetchScoringSession } = trpc.review.getReviews.useQuery(
-    userId ? { user_id: userId } : { user_id: "" },
-    { enabled: !!userId && !!reviewId }
-  )
+  const fetchReviews = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/reviews?user_id=${userId}`);
+      if (!res.ok) throw new Error("Failed to fetch reviews");
+      const data: ScoringSession[] = await res.json();
+      setReviews(data);
+    } catch (err) {
+      toast({ title: 'Error fetching reviews', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Update the memoized active scoring session:
   const activeScoringSession: ScoringSession | undefined = useMemo(() =>
-    scoringSessionData?.find((session: ScoringSession) =>
+    reviews?.find((session: ScoringSession) =>
       session.user_id === userId && session.scoringSessionId === reviewId
     ),
-    [scoringSessionData, userId, reviewId]
+    [reviews, userId, reviewId]
   )
 
   // =================================================================
@@ -180,6 +191,7 @@ export default function DocumentScoringPage() {
     if (userId) {
       fetchCategories()
       fetchQuestions()
+      fetchReviews()
     }
   }, [userId])
 
@@ -242,7 +254,7 @@ export default function DocumentScoringPage() {
 
       toast({ title: "Document and scores deleted successfully." })
       refetchDocuments() // Refetch to show the empty state
-      refetchScoringSession() // Refetch to clear session data
+      fetchReviews() // Refetch to clear session data
     } catch (err) {
       toast({
         title: "Failed to delete document",
@@ -403,7 +415,7 @@ export default function DocumentScoringPage() {
           },
         })
       )
-      await refetchScoringSession()
+      await fetchReviews()
       toast({ title: "Scores submitted successfully!" });
     } catch (error) {
       console.error("Error submitting scores:", error);
@@ -678,7 +690,7 @@ export default function DocumentScoringPage() {
               </div>
 
               {/* Right Panel - Results */}
-              <div className="w-full lg:w-2/5 bg-white overflow-y-auto lg:h-[calc(100vh-9rem)] order-1 lg:order-2 border-b lg:border-b-0 border-[#DBE2EF]">
+              <div className="w-full lg:w-2/5   bg-white overflow-y-auto lg:h-[calc(100vh-9rem)] order-1 lg:order-2 border-b lg:border-b-0 border-[#DBE2EF]">
                 <div className="p-4">
                   <div className="lg:hidden mb-3">
                     <h2 className="text-lg font-semibold text-[#112D4E]">Results</h2>

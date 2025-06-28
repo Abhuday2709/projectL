@@ -19,7 +19,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { trpc } from "../../_trpc/client";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
 import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories";
@@ -43,8 +42,9 @@ export default function DashboardReviewPage() {
     const [isPageLoading, setIsPageLoading] = useState(false);
     const [allCategories, setAllCategories] = useState<CategoryType[]>([]);
     const [question, setQuestion] = useState<QuestionType[]>([]);
+    const [reviews, setReviews] = useState<ScoringSession[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const user_id = userId || "";
-    const { data: reviews, refetch, isLoading } = trpc.review.getReviews.useQuery({ user_id }, { enabled: !!user_id });
     const fetchQuestions = async () => {
         const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
             method: "GET",
@@ -56,11 +56,9 @@ export default function DashboardReviewPage() {
         }
         const data = await res.json()
         console.log("Fetched Questions:", data);
-        
+
         setQuestion(data)
     }
-    const createReviewMutation = trpc.review.createReview.useMutation();
-    const deleteReviewMutation = trpc.review.deleteReview.useMutation();
     const fetchCategories = async () => {
         try {
             const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
@@ -71,10 +69,24 @@ export default function DashboardReviewPage() {
             toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
         }
     }
+    const fetchReviews = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch(`/api/reviews?user_id=${user_id}`);
+            if (!res.ok) throw new Error("Failed to fetch reviews");
+            const data: ScoringSession[] = await res.json();
+            setReviews(data);
+        } catch (err) {
+            toast({ title: 'Error fetching reviews', description: (err as Error).message, variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
     useEffect(() => {
         if (userId) {
             fetchCategories()
             fetchQuestions()
+            fetchReviews()
         }
     }, [userId])
     useEffect(() => {
@@ -86,7 +98,8 @@ export default function DashboardReviewPage() {
     }, [allCategories]);
 
     useEffect(() => {
-        if (question) {setQuestions(question);
+        if (question) {
+            setQuestions(question);
         }
     }, [question]);
 
@@ -96,25 +109,23 @@ export default function DashboardReviewPage() {
 
     const handleCreateReview = async () => {
         if (!reviewName.trim()) return;
-
+        setIsCreating(true);
         try {
-            setIsCreating(true);
             const scoringSessionId = uuidv4();
-            // Call tRPC mutation.
-            const review = await createReviewMutation.mutateAsync({
-                user_id,
-                scoringSessionId,
-                name: reviewName.trim(),
-                scores: [],
-                answers: [],
-                recommendation: "",
+            const payload = { user_id, scoringSessionId, name: reviewName.trim(), scores: [], answers: [], recommendation: "" };
+            const res = await fetch(`/api/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
             });
+            if (!res.ok) throw new Error('Failed to create review');
+            const review: ScoringSession = await res.json();
             setIsDialogOpen(false);
             setReviewName("");
             setIsPageLoading(true);
             router.push(`/dashboard/temp/${review.scoringSessionId}`);
-        } catch (error) {
-            console.error("Failed to create new review:", error);
+        } catch (err) {
+            console.error(err);
         } finally {
             setIsCreating(false);
         }
@@ -124,18 +135,20 @@ export default function DashboardReviewPage() {
     }, [router]);
 
     const handleDeleteReview = async (review: ScoringSession) => {
-        if (!review) return;
+        setIsPageLoading(true);
         try {
-            await deleteReviewMutation.mutateAsync({
-                user_id: review.user_id,
-                createdAt: review.createdAt,
+            const res = await fetch(`/api/reviews`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: review.user_id, createdAt: review.createdAt }),
             });
-            // Refetch reviews after deletion.
-            refetch();
-        } catch (error) {
-            console.error("Failed to delete review:", error);
+            if (!res.ok) throw new Error('Failed to delete review');
+            await fetchReviews();
+        } catch (err) {
+            console.error(err);
         } finally {
             setReviewToDelete(null);
+            setIsPageLoading(false);
         }
     };
 
@@ -355,7 +368,7 @@ export default function DashboardReviewPage() {
                                                 setIsPageLoading(true);
                                                 if (reviewToDelete) {
                                                     await handleDeleteReview(reviewToDelete);
-                                                    await refetch();
+                                                    await fetchReviews();
                                                 }
                                                 setIsPageLoading(false);
                                             }}
