@@ -1,25 +1,43 @@
 "use client";
 
-import { notFound, useParams, useRouter } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import ChatWrapper from "@/components/chat/ChatWrapper";
 import PdfRenderer from "@/components/PdfRenderer";
 import { trpc } from "@/app/_trpc/client";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
 import bcrypt from "bcryptjs";
 
 export default function ChatPage() {
     const { shareId } = useParams();
-    const router = useRouter();
-    const { toast } = useToast();
 
     const shareIdStr = typeof shareId === "string" ? shareId : Array.isArray(shareId) ? shareId[0] ?? "" : "";
-    const { data: shareSession, isLoading: isShareSessionLoading, refetch: refetchShareSession, error: shareSessionError } = trpc.shareSession.getByShareId.useQuery(
-        { shareId: shareIdStr },
-        { enabled: !!shareIdStr }
-    );
+    const [shareSession, setShareSession] = useState<{
+        shareId: string;
+        chatId: string;
+        password: string;
+        isActive: boolean;
+    } | null>(null);
+    const [isShareSessionLoading, setIsShareSessionLoading] = useState(true);
+    const [shareSessionError, setShareSessionError] = useState<null | string>(null);
+
+    const fetchShareSession = async () => {
+            if (!shareIdStr) return;
+            try {
+                const res = await fetch(`/api/shareSession/byShareId?shareId=${shareIdStr}`);
+                if (!res.ok) throw new Error("Share session not found");
+                const data = await res.json();
+                setShareSession(data);
+            } catch (err: any) {
+                setShareSessionError(err.message);
+            } finally {
+                setIsShareSessionLoading(false);
+            }
+        };
+    useEffect(() => {
+        fetchShareSession();
+    }, [shareIdStr]);
 
     // Password dialog state
     const [passwordInput, setPasswordInput] = useState("");

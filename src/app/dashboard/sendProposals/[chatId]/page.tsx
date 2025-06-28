@@ -28,26 +28,6 @@ export default function ChatPage() {
         { enabled: !!chatIdStr }
     );
     const deleteFileMutation = trpc.aws.deleteFile.useMutation();
-    const { data: shareSessionData, refetch: refetchShareSession } = trpc.shareSession.getByChatId.useQuery(
-        { chatId: chatIdStr },
-        { enabled: !!chatIdStr }
-    );
-    const updateShareSessionMutation = trpc.shareSession.updateShareSession.useMutation({
-        onSuccess: () => {
-            refetchShareSession();
-            toast({
-                title: "Share settings updated!",
-                description: "Your share settings have been updated successfully.",
-            });
-        },
-        onError: (error) => {
-            toast({
-                title: "Error updating share settings",
-                description: error.message,
-                variant: "destructive",
-            });
-        }
-    });
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
@@ -56,6 +36,55 @@ export default function ChatPage() {
     const [sharePassword, setSharePassword] = useState("");
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [shareSessionData, setShareSessionData] = useState<{
+        shareId: string;
+        chatId: string;
+        password: string;
+        isActive: boolean;
+    } | null>(null);
+    const updateShareSession = async (payload: { chatId: string; password: string; isActive: boolean }) => {
+    try {
+        const res = await fetch("/api/shareSession/update", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to update shareSession");
+        const data = await res.json();
+        toast({
+            title: "Share settings updated!",
+            description: "Your share settings have been updated successfully.",
+        });
+        setShareSessionData((prev) => ({
+            shareId: prev?.shareId ?? "",
+            chatId: payload.chatId,
+            password: payload.password,
+            isActive: payload.isActive,
+        }));
+    } catch (error: any) {
+        toast({
+            title: "Error updating share settings",
+            description: error.message,
+            variant: "destructive",
+        });
+    }
+};
+    const fetchShareSession = async () => {
+            if (!chatIdStr) return;
+            try {
+                const res = await fetch(`/api/shareSession/byChatId?chatId=${chatIdStr}`);
+                if (!res.ok) throw new Error('Share session not found');
+                const data = await res.json();
+                setShareSessionData(data);
+            } catch (err) {
+                console.error("Failed to fetch shareSessionData", err);
+            }
+        };
+    useEffect(() => {
+        fetchShareSession();
+    }, [chatIdStr]);
     useEffect(() => {
         if (chatDetails?.podcastFinal) {
             if (podcastUrl) {
@@ -116,11 +145,12 @@ export default function ChatPage() {
         const hashedPassword = await bcrypt.hash(sharePassword.trim(), 10);
         console.log("hashedPassword", hashedPassword);
 
-        updateShareSessionMutation.mutate({
-            chatId: chatIdStr,
-            password: hashedPassword,
-            isActive: shareSessionData?.isActive ?? true
-        });
+        await updateShareSession({
+        chatId: chatIdStr,
+        password: hashedPassword,
+        isActive: shareSessionData?.isActive ?? true,
+    });
+
 
         setIsChangingPassword(false);
         setSharePassword("");
@@ -128,11 +158,11 @@ export default function ChatPage() {
     const handleToggleActive = async () => {
         const newActiveState = !shareSessionData?.isActive;
 
-        updateShareSessionMutation.mutate({
-            chatId: chatIdStr,
-            password: shareSessionData?.password || "",
-            isActive: newActiveState
-        });
+        await updateShareSession({
+        chatId: chatIdStr,
+        password: shareSessionData?.password || "",
+        isActive: newActiveState,
+    });
     };
     const copyToClipboard = async (text: string) => {
         try {
@@ -206,21 +236,21 @@ export default function ChatPage() {
                                     {!isViewingDocument && (
                                         <div className=" flex flex-col rounded-lg border-2 border-[#DBE2EF] bg-[#F9F7F7] shadow-lg p-4 overflow-y-auto">
                                             <div className="flex justify-between items-center">
-                                            <h2 className="text-lg font-semibold text-[#112D4E]">Generate Podcast</h2>
-                                            <Button
-                                                onClick={handleGeneratePodcast}
-                                                disabled={isGenerating || (documents?.length || 0) === 0}
-                                                className="mb-2 w-40 bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF]"
-                                            >
-                                                {isGenerating ? (
-                                                    <>
-                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                        Generating...
-                                                    </>
-                                                ) : (
-                                                    "Generate Podcast"
-                                                )}
-                                            </Button>
+                                                <h2 className="text-lg font-semibold text-[#112D4E]">Generate Podcast</h2>
+                                                <Button
+                                                    onClick={handleGeneratePodcast}
+                                                    disabled={isGenerating || (documents?.length || 0) === 0}
+                                                    className="mb-2 w-40 bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF]"
+                                                >
+                                                    {isGenerating ? (
+                                                        <>
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                            Generating...
+                                                        </>
+                                                    ) : (
+                                                        "Generate Podcast"
+                                                    )}
+                                                </Button>
                                             </div>
                                             {!isGenerating && <p className="text-xs sm:text-sm text-[#3F72AF] mb-2 sm:mb-3">
                                                 Listen to an audio podcast summary of the uploaded documents.
@@ -230,7 +260,7 @@ export default function ChatPage() {
                                             )}
                                             {podcastUrl && !isGenerating && (
                                                 <div className="space-y-2">
-                                                    
+
                                                     <div className="mb-2">
                                                         <audio controls className="w-full accent-[#3F72AF]">
                                                             <source src={podcastUrl} />
