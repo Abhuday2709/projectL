@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import UploadButton from "./UploadButton";
-import { trpc } from "../app/_trpc/client";
 import DocumentViewer from "./documentViewer/DocumentViewer";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Download } from "lucide-react";
-import type { DocumentWithStatus } from "../trpc/procedures/document/getDocumentProcessingStatus";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -15,33 +13,72 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { DocumentWithStatus } from "@/lib/utils";
 
 export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = false }: { chatId: string, setIsViewingDocument: (isViewing: boolean) => void, isClient?: boolean }) {
-    const {
-        data: documentsWithStatus = [],
-        refetch: refetchDocumentStatuses,
-        isLoading: isLoadingStatuses
-    } = trpc.documents.getStatus.useQuery(
-        { chatId },
-        {
-            refetchInterval: (query) => {
-                const data = query.state.data;
-                if (Array.isArray(data)) {
-                    const isAnyProcessing = data.some(
-                        (doc: DocumentWithStatus) => doc.processingStatus === 'QUEUED' || doc.processingStatus === 'PROCESSING'
-                    );
-                    return isAnyProcessing ? 5000 : false;
-                }
-                return false;
-            },
-            refetchOnWindowFocus: true,
+    const { toast } = useToast();
+    const [documentsWithStatus, setDocumentsWithStatus] = useState<DocumentWithStatus[]>([])
+    const [loading, setLoading] = useState<boolean>(false)
+    const [error, setError] = useState<string | null>(null)
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    const fetchStatuses = async () => {
+        try {
+            const res = await fetch(`/api/documents/status?chatId=${encodeURIComponent(chatId)}`)
+            if (!res.ok) throw new Error(`Error ${res.status}`)
+            const data = await res.json() as DocumentWithStatus[]
+            setDocumentsWithStatus(data)
+            return data
+        } catch (err: any) {
+            setError(err.message)
+            return []
         }
-    );
+    }
+
+    // Separate function to manage polling
+    const managePolling = (documents: DocumentWithStatus[]) => {
+        const anyProcessing = documents.some(
+            doc =>
+                typeof doc.processingStatus === "string" &&
+                ["QUEUED", "PROCESSING"].includes(doc.processingStatus)
+        );
+
+        if (anyProcessing && !intervalRef.current) {
+            // Start polling if not already running
+            intervalRef.current = setInterval(fetchStatuses, 5000);
+        } else if (!anyProcessing && intervalRef.current) {
+            // Stop polling if no documents are processing
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        const start = async () => {
+            setLoading(true)
+            const data = await fetchStatuses()
+            setLoading(false)
+            managePolling(data);
+        }
+        start()
+        
+        return () => { 
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current)
+                intervalRef.current = null;
+            }
+        }
+    }, [chatId])
+
+    // Monitor document status changes to manage polling
+    useEffect(() => {
+        managePolling(documentsWithStatus);
+    }, [documentsWithStatus]);
 
     const [selectedDoc, setSelectedDoc] = useState<null | { fileName: string; s3Key: string }>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [docToDelete, setDocToDelete] = useState<DocumentWithStatus | null>(null);
-    const { toast } = useToast();
+
     console.log("documentsWithStatus", documentsWithStatus);
 
     useEffect(() => {
@@ -61,63 +98,40 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
         return `${base}/${s3Key}`;
     };
 
-    const deleteDocument = trpc.documents.delete.useMutation({
-        onSuccess: () => {
-            toast({
-                title: "Success",
-                description: "Document deleted successfully",
-            });
-            refetchDocumentStatuses();
-        },
-        onError: (error) => {
-            toast({
-                title: "Error",
-                description: error.message,
-                variant: "destructive",
-            });
-        },
-        onSettled: () => {
-            setDeletingId(null);
-        },
-    });
-
     const handleDelete = async (doc: DocumentWithStatus) => {
-        if (!doc.uploadedAt) {
-            toast({
-                title: "Error",
-                description: "Cannot delete document: missing upload date.",
-                variant: "destructive",
-            });
-            setDeletingId(null);
-            setDocToDelete(null);
-            return;
-        }
+        if (!doc.uploadedAt) return
+        setDeletingId(doc.docId)
         try {
-            setDeletingId(doc.docId);
-            await deleteDocument.mutateAsync({
-                chatId: doc.chatId,
-                docId: doc.docId,
-                s3Key: doc.s3Key,
-                uploadedAt: doc.uploadedAt,
-            });
-        } catch (error: any) {
-            console.error('Error deleting document:', error);
-            toast({
-                title: "Error",
-                description: error?.message || "Failed to delete document. Please try again.",
-                variant: "destructive",
-            });
+            const res = await fetch(
+                `/api/documents/${encodeURIComponent(doc.chatId)}/${encodeURIComponent(doc.uploadedAt)}`,
+                {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ s3Key: doc.s3Key, docId: doc.docId }),
+                }
+            )
+            if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`)
+            toast({ title: 'Deleted', description: 'Document deleted successfully' })
+            await fetchStatuses() // Ensure status is refreshed after deletion
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message, variant: 'destructive' })
         } finally {
-            setDeletingId(null);
-            setDocToDelete(null);
+            setDeletingId(null)
+            setDocToDelete(null)
         }
+    }
+
+    // Enhanced upload success handler
+    const handleUploadSuccess = async () => {
+        await fetchStatuses();
+        // Polling will be automatically managed by the useEffect watching documentsWithStatus
     };
 
     const isAnyDocumentProcessing = documentsWithStatus.some(
         doc => doc.processingStatus === 'QUEUED' || doc.processingStatus === 'PROCESSING'
     );
 
-    const getStatusColor = (status: string|undefined) => {
+    const getStatusColor = (status: string | undefined) => {
         switch (status) {
             case 'COMPLETED':
                 return 'text-[#3F72AF]';
@@ -132,7 +146,7 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
         }
     };
 
-    const getStatusBg = (status: string|undefined) => {
+    const getStatusBg = (status: string | undefined) => {
         switch (status) {
             case 'COMPLETED':
                 return 'bg-[#DBE2EF]';
@@ -165,8 +179,7 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
             {!selectedDoc ? (
                 <div className="w-full overflow-y-auto">
                     {!isClient &&
-                        <UploadButton chatId={chatId} onUploadSuccess={refetchDocumentStatuses} />}
-                    
+                        <UploadButton chatId={chatId} onUploadSuccess={handleUploadSuccess} />}
                     {isAnyDocumentProcessing && (
                         <div className="my-4 p-4 bg-[#DBE2EF] border-l-4 border-[#3F72AF] rounded-r-lg shadow-sm">
                             <div className="flex items-center">
@@ -178,7 +191,7 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                             </div>
                         </div>
                     )}
-                    
+
                     <div className="mt-6">
                         <div className="flex items-center gap-3 mb-4">
                             <FileText className="h-6 w-6 text-[#3F72AF]" />
@@ -187,15 +200,15 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                 {documentsWithStatus.length}
                             </span>
                         </div>
-                        
-                        {documentsWithStatus.length === 0 && !isLoadingStatuses && (
+
+                        {documentsWithStatus.length === 0 && !loading && (
                             <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-[#DBE2EF]">
                                 <FileText className="h-12 w-12 text-[#DBE2EF] mx-auto mb-4" />
                                 <p className="text-[#3F72AF] text-lg font-medium mb-2">No documents uploaded yet</p>
                                 <p className="text-[#112D4E] opacity-70">Click the upload button above to add your first document</p>
                             </div>
                         )}
-                        
+
                         <div className="space-y-3">
                             {documentsWithStatus.map((doc: DocumentWithStatus) => {
                                 const isQueued = doc.processingStatus === 'QUEUED';
@@ -204,8 +217,8 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                 const isCompleted = doc.processingStatus === 'COMPLETED';
 
                                 return (
-                                    <div 
-                                        key={doc.docId} 
+                                    <div
+                                        key={doc.docId}
                                         className={`
                                             group relative bg-white rounded-lg border shadow-sm hover:shadow-md transition-all duration-200
                                             ${isCompleted ? 'border-[#DBE2EF] hover:border-[#3F72AF]' : ''}
@@ -218,7 +231,7 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                                 <div className="flex-shrink-0">
                                                     {getStatusIcon(doc)}
                                                 </div>
-                                                
+
                                                 <div className="flex-1 min-w-0">
                                                     <button
                                                         className={`
@@ -252,7 +265,7 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                                         </div>
                                                     </button>
                                                 </div>
-                                                
+
                                                 {!(isQueued || isProcessing) && (
                                                     <div className="flex-shrink-0">
                                                         <button
@@ -263,8 +276,8 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                                             disabled={deletingId === doc.docId || isProcessing}
                                                             className={`
                                                                 p-2 rounded-lg transition-all duration-200
-                                                                ${isProcessing 
-                                                                    ? 'cursor-not-allowed opacity-50' 
+                                                                ${isProcessing
+                                                                    ? 'cursor-not-allowed opacity-50'
                                                                     : 'hover:bg-red-50 hover:text-red-600 text-gray-400'
                                                                 }
                                                             `}
@@ -279,7 +292,7 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                                                     </div>
                                                 )}
                                             </div>
-                                            
+
                                             {isFailed && doc.processingError && (
                                                 <div className="mt-3 p-3 bg-red-100 rounded-lg border border-red-200">
                                                     <p className="text-sm text-red-700 font-medium mb-1">Processing Failed</p>
@@ -296,36 +309,17 @@ export default function PdfRenderer({ chatId, setIsViewingDocument, isClient = f
                     </div>
                 </div>
             ) : (
-                <div className="">
-                    <DocumentViewer
-                        url={getDocUri(selectedDoc.s3Key)}
-                        fileName={selectedDoc.fileName}
-                        onReturn={() => {
-                            setSelectedDoc(null);
-                            setIsViewingDocument(false);
-                        }}
-                    />
-                </div>
+                <DocumentViewer url={getDocUri(selectedDoc.s3Key)} fileName={selectedDoc.fileName} onReturn={() => { setSelectedDoc(null); setIsViewingDocument(false); }} />
             )}
-            
             <AlertDialog open={!!docToDelete} onOpenChange={() => setDocToDelete(null)}>
                 <AlertDialogContent className="bg-[#F9F7F7] border-[#DBE2EF]">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-[#112D4E]">Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-[#3F72AF]">
-                            This will permanently delete "{docToDelete?.fileName}" and remove it from our servers.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription className="text-[#3F72AF]">This will permanently delete "{docToDelete?.fileName}" and remove it from our servers.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="border-[#DBE2EF] text-[#112D4E] hover:bg-[#DBE2EF]">
-                            Cancel
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-red-500 hover:bg-red-600 text-white"
-                            onClick={() => docToDelete && handleDelete(docToDelete)}
-                        >
-                            Delete
-                        </AlertDialogAction>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-red-500 hover:bg-red-600 text-white" onClick={() => docToDelete && handleDelete(docToDelete)}>Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

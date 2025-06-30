@@ -382,6 +382,7 @@ questionAnswers.push({
                     answers: questionAnswers,
                     name: fileName,
                     recommendation: '',
+                    opportunityInfo: [], 
                 };
 
                 // Save scoring session

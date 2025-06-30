@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useState, useEffect } from "react";
 import bcrypt from "bcryptjs";
+import { Chat } from "../../../../models/chatModel";
 
 export default function ChatPage() {
     const { shareId } = useParams();
@@ -58,7 +59,35 @@ export default function ChatPage() {
             setPasswordError("Incorrect password. Please try again.");
         }
     }
+
+    const [chatDetails, setChatDetails] = useState<Chat | null>(null);
+    const [isChatLoading, setIsChatLoading] = useState(false);
     const chatIdStr = shareSession?.chatId || "";
+
+    const fetchChatDetails = async () => {
+        if (!chatIdStr) return;
+        setIsChatLoading(true);
+        try {
+            const res = await fetch(`/api/chat/${chatIdStr}`);
+            if (!res.ok) throw new Error("Chat not found");
+            const data = await res.json();
+            setChatDetails(data);
+            if (data.podcastFinal) {
+                setPodcastUrl(data.podcastFinal);
+            } else {
+                setPodcastUrl(null);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsChatLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isPasswordVerified) fetchChatDetails();
+    }, [isPasswordVerified, chatIdStr]);
+
     const [isGenerating, setIsGenerating] = useState(false);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
     const [podcastUrl, setPodcastUrl] = useState<string | null>(null);

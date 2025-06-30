@@ -6,12 +6,18 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import { DocumentConfig } from '../../../../../../models/documentModel';
 
 const docClient3 = DynamoDBDocumentClient.from(dynamoClient);
-const s3Client = new S3Client({ region: process.env.NEXT_PUBLIC_AWS_REGION });
+const s3Client = new S3Client({
+    region: process.env.NEXT_PUBLIC_AWS_REGION, 
+    credentials: {
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
+    },
+});
 const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST, port: Number(process.env.QDRANT_PORT) });
 const COLLECTION = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
 
 export async function DELETE(request: NextRequest, { params }: { params: { chatId: string, uploadedAt: string } }) {
-    const { chatId, uploadedAt } = params;
+    const { chatId, uploadedAt } = await params;
     try {
         // DynamoDB delete
         await docClient3.send(new DeleteCommand({
@@ -22,7 +28,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { chatI
 
         // S3 delete
         const { s3Key, docId } = await request.json();
-        await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!, Key: s3Key }));
+        await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME, Key: s3Key }));
 
         // Qdrant delete
         await qdrant.delete(COLLECTION, {

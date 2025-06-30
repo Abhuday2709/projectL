@@ -1,149 +1,101 @@
+
+'use client'
 import { useState } from 'react';
 import Dropzone from 'react-dropzone';
-import { trpc } from '@/app/_trpc/client';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogTrigger,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from '@/components/ui/dialog';
 import { Cloud, File as FileIcon, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { ACCEPTED_MIME_TYPES } from '@/lib/utils';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface UploadButtonProps {
     chatId: string;
-    forReview?: boolean; // <-- add this
+    forReview?: boolean;
     onUploadSuccess?: () => void;
     user_id?: string;
-    createdAt?: string; 
+    createdAt?: string;
 }
 
-const UploadButton = ({ chatId, onUploadSuccess,forReview,user_id,createdAt}: UploadButtonProps) => {
+const UploadButton = ({ chatId, onUploadSuccess, forReview, user_id, createdAt }: UploadButtonProps) => {
     const { toast } = useToast();
-    const queryClient = useQueryClient();
-    const utils = trpc.useUtils();
-
     const [isOpen, setIsOpen] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
     const acceptedFileTypes = ACCEPTED_MIME_TYPES;
-
-    // Mutation for inserting into documents table
-    const createDocument = trpc.documents.createDocument.useMutation({
-        // Add onSuccess callback to the mutation itself
-        onSuccess: async () => {
-            await utils.documents.listByChat.invalidate({ chatId });
-            await utils.documents.getStatus.invalidate({ chatId });
-            await utils.documents.getStatus.refetch({ chatId });
-
-            if (onUploadSuccess) {
-                onUploadSuccess();
-            }
-        },
-        onError: (error) => {
-            toast({
-                title: "Document Creation Failed",
-                description: error.message || "Could not save document details after upload.",
-                variant: "destructive"
-            });
-        }
-    });
 
     const startSimulatedProgress = () => {
         setUploadProgress(0);
         const interval = setInterval(() => {
-            setUploadProgress((prev) => {
-                if (prev >= 95) {
-                    clearInterval(interval);
-                    return prev;
-                }
-                return prev + 5;
-            });
+            setUploadProgress((prev) => (prev >= 95 ? prev : prev + 5));
         }, 500);
         return interval;
     };
 
     const onDrop = async (files: File[]) => {
         if (!files[0]) return;
-        
+
         setSelectedFile(files[0]);
         setIsUploading(true);
-
         const interval = startSimulatedProgress();
 
         try {
-            
-            // Create FormData
+            // Upload to S3 via your API route
             const formData = new FormData();
             formData.append('file', files[0]);
 
-            // Direct fetch to API route
-            const response = await fetch('/api/aws/post_doc_from_chat', {
+            const uploadRes = await fetch('/api/aws/post_doc_from_chat', {
                 method: 'POST',
                 body: formData,
             });
-
-            if (!response.ok) {
-                throw new Error(`Upload failed: ${response.statusText}`);
+            if (!uploadRes.ok) {
+                throw new Error(`Upload failed: ${uploadRes.statusText}`);
             }
+            const { key } = await uploadRes.json();
 
-            const result = await response.json();
-            
-            // Create document entry - onSuccess callback will handle refetch
+            // Create document record
             const documentData = {
                 chatId,
                 docId: uuidv4(),
                 fileName: files[0].name,
-                s3Key: result.key,
+                s3Key: key,
                 fileType: files[0].type,
                 forReview,
-                user_id: user_id ,
+                user_id,
                 createdAt,
             };
-            
-            // This will trigger the onSuccess callback automatically
-            await createDocument.mutateAsync(documentData);
-            
-            // Clear all document-related queries for this chat
-            queryClient.removeQueries({
-                queryKey: ['documents.listByChat', { chatId }]
+
+            const createRes = await fetch('/api/documents/createDocument', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(documentData),
             });
-            
-            // Mark all document queries as stale
-            queryClient.invalidateQueries({
-                queryKey: ['documents'],
-                refetchType: 'all'
-            });
+            if (!createRes.ok) {
+                const err = await createRes.json();
+                throw new Error(err.message || 'Document creation failed');
+            }
 
-            // Force a fresh fetch
-            setTimeout(async () => {
-                try {
-                    await utils.documents.listByChat.refetch({ chatId });
-                } catch (error) {
-                    console.error('Error refetching documents:', error);
-                    toast({
-                        title: 'Refetch failed',
-                        description: 'Could not refresh document list. Please try again later.',
-                        variant: 'destructive'
-                    });
-                }
-            }, 500);
+            // Optionally refetch parent document list/status
+            if (onUploadSuccess) onUploadSuccess();
 
-            toast({ 
-                title: 'Upload successful', 
-                description: 'Your document has been uploaded and processed!' 
-            });
-
-
-        } catch (error) {
-            console.error('❌ Upload error:', error);
+            toast({ title: 'Upload successful', description: 'Your document is being processed.' });
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            toast({ title: 'Upload error', description: error.message, variant: 'destructive' });
         } finally {
             clearInterval(interval);
             setUploadProgress(100);
-            
-            // Small delay to show completion before closing
             setTimeout(() => {
                 setIsUploading(false);
                 setIsOpen(false);
@@ -157,7 +109,7 @@ const UploadButton = ({ chatId, onUploadSuccess,forReview,user_id,createdAt}: Up
         <>
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogTrigger asChild>
-                    <Button>
+                    <Button className=" bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95">
                         <Cloud className="w-4 h-4 mr-2" />
                         Upload Document
                     </Button>
@@ -167,36 +119,30 @@ const UploadButton = ({ chatId, onUploadSuccess,forReview,user_id,createdAt}: Up
                         <DialogTitle className="flex items-center gap-2">
                             <FileIcon className="w-5 h-5" /> Upload Document
                         </DialogTitle>
-                        <DialogDescription>Select or drag & drop a Document to upload.</DialogDescription>
+                        <DialogDescription>Select or drag & drop a document to upload.</DialogDescription>
                     </DialogHeader>
 
                     <Dropzone multiple={false} accept={acceptedFileTypes} onDrop={onDrop}>
-                        {(dropzoneState: import('react-dropzone').DropzoneState) => {
-                            const { getRootProps, getInputProps, isDragActive, acceptedFiles } = dropzoneState;
-                            return (
-                                <div {...getRootProps()} className="border-2 border-dashed rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                                    <input {...getInputProps()} />
-                                    {acceptedFiles && acceptedFiles[0] ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                            <FileIcon className="w-4 h-4 text-blue-500" />
-                                            <span className="truncate max-w-xs">{acceptedFiles[0].name}</span>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-gray-600">
-                                            {isDragActive ? 'Drop the file here...' : 'Click or drag Document here'}
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        }}
+                        {({ getRootProps, getInputProps, isDragActive, acceptedFiles }) => (
+                            <div {...getRootProps()} className="border-2 border-dashed rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                                <input {...getInputProps()} />
+                                {acceptedFiles[0] ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <FileIcon className="w-4 h-4 text-blue-500" />
+                                        <span className="truncate max-w-xs">{acceptedFiles[0].name}</span>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-600">
+                                        {isDragActive ? 'Drop the file here...' : 'Click or drag document here'}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </Dropzone>
 
                     {isUploading && (
                         <div className="mt-4">
-                            <Progress
-                                value={uploadProgress}
-                                className={`h-1 ${uploadProgress === 100 ? 'bg-green-500' : ''}`}
-                            />
+                            <Progress value={uploadProgress} className={`h-1 ${uploadProgress === 100 ? 'bg-green-500' : ''}`} />
                             {uploadProgress === 100 && (
                                 <div className="flex items-center justify-center text-sm text-gray-700 pt-2">
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" /> Processing...

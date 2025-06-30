@@ -1,20 +1,38 @@
 'use client'
-
-import { trpc } from '@/app/_trpc/client'
+import React, { useState, useEffect } from 'react'
 import ChatInput from './ChatInput'
 import Messages from './Messages'
 import { FileX, Upload, Sparkles } from 'lucide-react'
 import { ChatContextProvider } from './ChatContext'
+import { Document } from '../../../models/documentModel'
 
 interface ChatWrapperProps {
     chatId: string
 }
 
-const ChatWrapper = ({
-    chatId,
-}: ChatWrapperProps) => {
-    const { data: documents = [], refetch } = trpc.documents.listByChat.useQuery({ chatId });
-    
+const ChatWrapper = ({ chatId }: ChatWrapperProps) => {
+    const [documents, setDocuments] = useState<Document[]>([])
+    const [loading, setLoading] = useState<boolean>(false)
+
+    const fetchDocuments = () => {
+        setLoading(true)
+        fetch(`/api/documents/getDocuments?chatId=${encodeURIComponent(chatId)}`)
+            .then(async (res) => {
+                if (!res.ok) throw new Error(`Error ${res.status}`)
+                return res.json()
+            })
+            .then((data) => setDocuments(data))
+            .catch((err) => console.error(err.message))
+            .finally(() => setLoading(false))
+    }
+
+    useEffect(() => {
+        if (!chatId) return
+        fetchDocuments()
+    }, [chatId])
+
+    if (loading) return <div>Loading documents...</div>
+
     if (documents.length === 0) {
         return (
             <div className='relative min-h-[calc(100vh-11rem)] max-h-[calc(100vh-11rem)] bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] rounded-2xl flex flex-col justify-between gap-2 shadow-lg border border-[#DBE2EF]/30'>
@@ -27,7 +45,7 @@ const ChatWrapper = ({
                                 <FileX className='h-8 w-8 text-white' />
                             </div>
                         </div>
-                        
+
                         {/* Header */}
                         <div className='space-y-2'>
                             <h3 className='font-bold text-2xl text-[#112D4E]'>
@@ -37,7 +55,7 @@ const ChatWrapper = ({
                                 Upload your documents to start an intelligent conversation with AI
                             </p>
                         </div>
-                                              
+
                         {/* Features */}
                         <div className='grid grid-cols-1 sm:grid-cols-3 gap-3 w-full mt-6'>
                             <div className='bg-white/40 backdrop-blur-sm rounded-lg p-3 text-center border border-[#DBE2EF]/30'>
@@ -58,7 +76,7 @@ const ChatWrapper = ({
 
                 <ChatInput isDisabled />
             </div>
-        ) 
+        )
     }
 
     return (
@@ -84,7 +102,7 @@ const ChatWrapper = ({
 
                 {/* Input Container */}
                 <div className='flex-shrink-0 border-t border-[#DBE2EF]/50 bg-white/30 backdrop-blur-sm'>
-                    <ChatInput isDisabled={false}/>
+                    <ChatInput isDisabled={false} />
                 </div>
             </div>
         </ChatContextProvider>

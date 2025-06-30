@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "
 
 // TRPC and data-related imports
 import { trpc } from "@/app/_trpc/client"
-import { CategoryType, QuestionType, Results } from "@/lib/utils"
+import { CategoryType, DocumentWithStatus, QuestionType, Results } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
@@ -58,15 +58,73 @@ export default function DocumentScoringPage() {
   const [allCategories, setAllCategories] = useState<CategoryType[]>([])
   const [allQuestions, setAllQuestions] = useState<QuestionType[]>([])
   const [reviews, setReviews] = useState<ScoringSession[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [documentsWithStatus, setDocumentsWithStatus] = useState<DocumentWithStatus[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // =================================================================
   // Data Fetching using tRPC
   // =================================================================
-  const { data: documents = [], refetch: refetchDocuments, isLoading: isLoadingDocuments } = trpc.documents.getStatus.useQuery(
-    { chatId: reviewId },
-    { enabled: !!reviewId }
-  )
+  const fetchStatuses = async () => {
+    try {
+      const res = await fetch(`/api/documents/status?chatId=${encodeURIComponent(reviewId)}`)
+      if (!res.ok) throw new Error(`Error ${res.status}`)
+      const data = await res.json() as DocumentWithStatus[]
+      setDocumentsWithStatus(data)
+      return data
+    } catch (err: any) {
+      setError(err.message)
+      return []
+    }
+  }
+  useEffect(() => {
+    const stopPolling = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
 
+    const startPolling = () => {
+      // Ensure no other interval is running
+      stopPolling();
+
+      intervalRef.current = setInterval(async () => {
+        const data = await fetchStatuses();
+        const anyProcessing = data.some(
+          doc =>
+            typeof doc.processingStatus === "string" &&
+            ["QUEUED", "PROCESSING"].includes(doc.processingStatus)
+        );
+
+        // Stop polling if nothing is processing or no documents exist
+        if (!anyProcessing || data.length === 0) {
+          stopPolling();
+        }
+      }, 5000);
+    };
+
+    setLoading(true);
+    fetchStatuses().then((data) => {
+      setLoading(false);
+      const anyProcessing = data.some(
+        doc =>
+          typeof doc.processingStatus === "string" &&
+          ["QUEUED", "PROCESSING"].includes(doc.processingStatus)
+      );
+
+      if (data.length > 0 && anyProcessing) {
+        startPolling();
+      }
+    });
+
+    // This is the cleanup function. It will run when the component
+    // unmounts or when the `chatId` dependency changes.
+    return () => {
+      stopPolling();
+    };
+  }, [reviewId]);
   const fetchCategories = async () => {
     try {
       const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
@@ -98,7 +156,7 @@ export default function DocumentScoringPage() {
   }
 
   const fetchReviews = async () => {
-    setIsLoading(true);
+    setLoading(true);
     try {
       const res = await fetch(`/api/reviews?user_id=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch reviews");
@@ -107,7 +165,7 @@ export default function DocumentScoringPage() {
     } catch (err) {
       toast({ title: 'Error fetching reviews', description: (err as Error).message, variant: 'destructive' });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -160,11 +218,11 @@ export default function DocumentScoringPage() {
 
   // IDs of questions that were not answered by the initial AI processing
   const unansweredByAIQuestionIds = useMemo(() => {
-    if (documents.length > 0) {
-      return documents[0].missingQuestionIds ?? []
+    if (documentsWithStatus.length > 0) {
+      return documentsWithStatus[0].missingQuestionIds ?? []
     }
     return allQuestions.map(q => q.evaluationQuestionId) // Default to all questions if no doc
-  }, [documents, allQuestions])
+  }, [documentsWithStatus, allQuestions])
 
   // Filter questions that need manual scoring
   const questionsForManualScoring = useMemo(() =>
@@ -223,15 +281,21 @@ export default function DocumentScoringPage() {
   // Handlers and Mutations
   // =================================================================
 
-  const { mutateAsync: deleteDocumentMutation } = trpc.documents.delete.useMutation()
-
   /**
    * Handles deleting a document and clearing all associated scoring data.
    */
   const handleDeleteDocument = async (docToDelete: DocumentToDelete) => {
     const { chatId, docId, s3Key, uploadedAt } = docToDelete
     try {
-      await deleteDocumentMutation({ chatId, docId, s3Key, uploadedAt })
+      const res = await fetch(`/api/documents/${encodeURIComponent(chatId)}/${encodeURIComponent(uploadedAt)}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docId, s3Key }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to delete document");
+      }
 
       if (activeScoringSession?.user_id && activeScoringSession?.createdAt) {
         await docClient.send(
@@ -253,7 +317,7 @@ export default function DocumentScoringPage() {
       setHighlightedQuestionIds([])
 
       toast({ title: "Document and scores deleted successfully." })
-      refetchDocuments() // Refetch to show the empty state
+      fetchStatuses() // Refetch to show the empty state
       fetchReviews() // Refetch to clear session data
     } catch (err) {
       toast({
@@ -432,7 +496,7 @@ export default function DocumentScoringPage() {
   // =================================================================
 
   // Combined loading state for the main spinner
-  const showLoader = isPageLoading || isLoadingDocuments || !isLoaded || !userId
+  const showLoader = isPageLoading || !isLoaded || !userId || loading
 
   if (!isLoaded || !userId) {
     return (
@@ -556,22 +620,22 @@ export default function DocumentScoringPage() {
 
                 {/* Document Status and Upload Section */}
                 <div className="mb-6">
-                  {isLoadingDocuments ? (
+                  {loading ? (
                     <div className="text-[#3F72AF] text-sm flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading document...
                     </div>
-                  ) : documents.length === 0 ? (
+                  ) : documentsWithStatus.length === 0 ? (
                     <UploadButton
                       chatId={reviewId}
                       forReview={true}
-                      onUploadSuccess={refetchDocuments}
+                      onUploadSuccess={fetchStatuses}
                       user_id={userId}
                       createdAt={activeScoringSession?.createdAt || new Date().toISOString()}
                     />
                   ) : (
                     <div className="space-y-3">
-                      {documents.map((doc) => (
+                      {documentsWithStatus.map((doc) => (
                         <div key={doc.docId} className="flex items-center justify-between bg-[#F9F7F7] rounded-lg px-4 py-3 border border-[#DBE2EF]">
                           {/* Document Info and Status */}
                           <div className={`flex-1 flex items-center gap-3 min-w-0 ${doc.processingStatus !== 'COMPLETED' ? 'cursor-not-allowed opacity-70' : ''}`}>

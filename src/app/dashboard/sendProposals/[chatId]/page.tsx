@@ -12,6 +12,8 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from "bcryptjs";
 import { Chat } from "../../../../../models/chatModel";
+import { Document } from "../../../../../models/documentModel";
+import { deleteFromS3 } from "@/lib/utils";
 
 export default function ChatPage() {
     const { chatId } = useParams();
@@ -34,10 +36,19 @@ export default function ChatPage() {
             setIsChatLoading(false);
         }
     };
-    const { data: documents, refetch } = trpc.documents.listByChat.useQuery(
-        { chatId: chatIdStr },
-        { enabled: !!chatIdStr }
-    );
+        const [documents, setDocuments] = useState<Document[]>([])
+        const [loading, setLoading] = useState<boolean>(false)
+    const fetchDocuments = () => {
+        setLoading(true)
+        fetch(`/api/documents/getDocuments?chatId=${encodeURIComponent(chatIdStr)}`)
+            .then(async (res) => {
+                if (!res.ok) throw new Error(`Error ${res.status}`)
+                return res.json()
+            })
+            .then((data) => setDocuments(data))
+            .catch((err) => setError(err.message))
+            .finally(() => setLoading(false))
+    }
     const deleteFileMutation = trpc.aws.deleteFile.useMutation();
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -97,15 +108,28 @@ export default function ChatPage() {
         if (chatIdStr) {
             fetchChatDetails();
         fetchShareSession();
+        fetchDocuments();
         }
     }, [chatIdStr]);
+    // Add this useEffect to poll for updates while generating
+    useEffect(() => {
+        let pollInterval: NodeJS.Timeout | null = null;
+        
+        if (isGenerating) {
+            // Poll every 5 seconds while generating
+            pollInterval = setInterval(() => {
+                fetchChatDetails();
+            }, 5000);
+        }
+        
+        return () => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        };
+    }, [isGenerating, chatIdStr]);
     useEffect(() => {
         if (chatDetails?.podcastFinal) {
-            if (podcastUrl) {
-                const urlParts = podcastUrl.split('/');
-                const s3Key = urlParts.slice(3).join('/'); // Remove 'https://bucket.s3.region.amazonaws.com/'
-                deleteFileMutation.mutate({ key: s3Key });
-            }
             setIsGenerating(false);
             setPodcastUrl(chatDetails.podcastFinal);
         }
@@ -113,8 +137,16 @@ export default function ChatPage() {
     const handleGeneratePodcast = async () => {
         setIsGenerating(true);
         setError(null);
+        if (podcastUrl) {
+                const urlParts = podcastUrl.split('/');
+                console.log("urlParts", urlParts);
+                const s3Key = urlParts.slice(3).join('/'); // Remove 'https://bucket.s3.region.amazonaws.com/'
+                //deleteFileMutation.mutate({ key: s3Key });
+                deleteFromS3(s3Key)
+            }
         try {
-            const { data: latestDocuments } = await refetch();
+            await fetchDocuments();
+            const latestDocuments = documents; // Get the last 3 documents
             if (!latestDocuments || latestDocuments.length === 0) {
                 toast({
                     title: "No Documents Found",
@@ -274,7 +306,6 @@ export default function ChatPage() {
                                             )}
                                             {podcastUrl && !isGenerating && (
                                                 <div className="space-y-2">
-
                                                     <div className="mb-2">
                                                         <audio controls className="w-full accent-[#3F72AF]">
                                                             <source src={podcastUrl} />

@@ -1,9 +1,10 @@
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, ArrowRight, Calendar, Trash2 } from "lucide-react";
 import { ScoringSession } from "../../models/scoringReviewModel";
-import { trpc } from "@/app/_trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
+import { Document } from "../../models/documentModel";
 
 export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
     review: ScoringSession,
@@ -11,10 +12,23 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
     setReviewToDelete: (r: ScoringSession) => void
 }) {
     const router = useRouter();
-    const { data: documents = [] } = trpc.documents.getStatus.useQuery(
-        { chatId: review.scoringSessionId },
-        { enabled: !!review.scoringSessionId }
-    );
+    const [documents, setDocuments] = useState<Document[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        if (!review.scoringSessionId) return;
+        setLoading(true);
+        fetch(`/api/documents/status?chatId=${encodeURIComponent(review.scoringSessionId)}`)
+            .then(async (res) => {
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                return res.json();
+            })
+            .then((data) => setDocuments(data))
+            .catch((err) => setError(err))
+            .finally(() => setLoading(false));
+    }, [review.scoringSessionId]);
+
     const isAnyProcessing = documents.some(
         (doc) => doc.processingStatus === "QUEUED" || doc.processingStatus === "PROCESSING"
     );
@@ -25,7 +39,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
             className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-2 bg-white border-[#DBE2EF] hover:border-[#3F72AF]"
             onClick={() => {
                 setIsPageLoading(true);
-                router.push(`/dashboard/temp/${review.scoringSessionId}`)
+                router.push(`/dashboard/temp/${review.scoringSessionId}`);
             }}
         >
             <CardHeader className="pb-3">
@@ -48,7 +62,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
                                 {new Date(review.createdAt).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
-                                    year: 'numeric'
+                                    year: 'numeric',
                                 })}
                             </span>
                         </div>

@@ -1,6 +1,8 @@
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { DocumentSchema } from "../../models/documentModel";
+import { z } from "zod";
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
@@ -33,6 +35,20 @@ export interface CategoryType {
   order: number
   qualificationCutoff: number
 }
+
+// Define the type for the items returned by the query, including the status fields
+export const DocumentWithStatusSchema = DocumentSchema.pick({
+    docId: true,
+    fileName: true,
+    s3Key: true,
+    uploadedAt: true, // Keep uploadedAt if it's part of your primary key or useful for sorting/display
+    fileType: true,
+    processingStatus: true,
+    processingError: true,
+    chatId: true, // Include chatId if useful for client-side cache or context
+    missingQuestionIds: true,
+});
+export type DocumentWithStatus = z.infer<typeof DocumentWithStatusSchema>;
 
 export interface QuestionType {
   user_id: string

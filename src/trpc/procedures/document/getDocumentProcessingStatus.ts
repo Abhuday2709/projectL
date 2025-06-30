@@ -1,24 +1,11 @@
 import { z } from 'zod';
 import { procedure } from '../../trpc';
-import { DocumentConfig, DocumentSchema } from '../../../../models/documentModel'; // Adjusted path
+import { DocumentConfig } from '../../../../models/documentModel'; // Adjusted path
 import { QueryCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
+import { DocumentWithStatus, DocumentWithStatusSchema } from '@/lib/utils';
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
-
-// Define the type for the items returned by the query, including the status fields
-const DocumentWithStatusSchema = DocumentSchema.pick({
-    docId: true,
-    fileName: true,
-    s3Key: true,
-    uploadedAt: true, // Keep uploadedAt if it's part of your primary key or useful for sorting/display
-    fileType: true,
-    processingStatus: true,
-    processingError: true,
-    chatId: true, // Include chatId if useful for client-side cache or context
-    missingQuestionIds: true,
-});
-export type DocumentWithStatus = z.infer<typeof DocumentWithStatusSchema>;
 
 export const getDocumentProcessingStatusProcedure = procedure
     .input(z.object({ chatId: z.string() }))
