@@ -123,7 +123,6 @@ export default function EditQuestionsAndCategories({
     })
 
     try {
-      // Sync Questions via tRPC
       for (const q of addedQs) {
         const res = await fetch(`/api/evaluation-questions`, {
           method: "POST",

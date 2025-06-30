@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/toaster";
 import NavbarWrapper from "@/components/NavbarWrapper";
+import { Providers } from "@/components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,19 +29,19 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <Providers>
-          <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased grainy min-h-screen`}>
-              <div className="flex h-screen">
-                <div className="flex-1 flex flex-col"> {/* Width matches Sidebar width */}
-                  <NavbarWrapper/>
-                  <main className="flex-1 overflow-y-auto">
-                    {children}
-                  </main>
-                </div>
+        <html lang="en">
+          <body className={`${geistSans.variable} ${geistMono.variable} antialiased grainy min-h-screen`}>
+            <div className="flex h-screen">
+              <div className="flex-1 flex flex-col"> {/* Width matches Sidebar width */}
+                <NavbarWrapper />
+                <main className="flex-1 overflow-y-auto">
+                  {children}
+                </main>
               </div>
-              <Toaster />
-            </body>
-          </html>
+            </div>
+            <Toaster />
+          </body>
+        </html>
       </Providers>
     </ClerkProvider>
   );

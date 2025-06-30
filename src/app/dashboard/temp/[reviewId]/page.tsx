@@ -17,8 +17,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 
-// TRPC and data-related imports
-import { trpc } from "@/app/_trpc/client"
 import { CategoryType, DocumentWithStatus, QuestionType, Results } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
@@ -63,9 +61,6 @@ export default function DocumentScoringPage() {
   const [error, setError] = useState<string | null>(null)
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // =================================================================
-  // Data Fetching using tRPC
-  // =================================================================
   const fetchStatuses = async () => {
     try {
       const res = await fetch(`/api/documents/status?chatId=${encodeURIComponent(reviewId)}`)

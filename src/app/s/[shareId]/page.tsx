@@ -8,6 +8,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useState, useEffect } from "react";
 import bcrypt from "bcryptjs";
 import { Chat } from "../../../../models/chatModel";
+import Image from "next/image";
 
 export default function ChatPage() {
     const { shareId } = useParams();
@@ -99,12 +100,12 @@ export default function ChatPage() {
     // If password is set and not verified, show password dialog
     if (shareSession?.password && !isPasswordVerified) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-                    <h2 className="text-lg font-semibold mb-4">Enter password to view this chat</h2>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md border">
+                    <h2 className="text-lg font-semibold mb-4 text-gray-900">Enter password to view this chat</h2>
                     <input
                         type="password"
-                        className="w-full border rounded px-3 py-2 mb-4"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Password"
                         value={passwordInput}
                         onChange={e => {
@@ -116,12 +117,13 @@ export default function ChatPage() {
                         }}
                     />
                     {passwordError && (
-                        <div className="text-red-500 text-sm mb-2">{passwordError}</div>
+                        <div className="text-red-600 text-sm mb-2">{passwordError}</div>
                     )}
                     <div className="flex justify-end gap-2">
                         <Button
                             onClick={handlePasswordCheck}
                             disabled={!passwordInput}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md disabled:bg-gray-300 disabled:cursor-not-allowed"
                         >
                             Submit
                         </Button>
@@ -130,53 +132,59 @@ export default function ChatPage() {
             </div>
         );
     }
+
     return (
-        <div>
+        <div className="bg-gray-50 min-h-screen">
             <div className="flex flex-col flex-1">
-                <div className="flex items-center justify-between py-4 px-4 flex-shrink-0 border-b border-gray-300">
-                    <div
-                        className={`${buttonVariants({ variant: 'ghost', size: 'lg' })} p-2 transition-transform duration-150 ease-in-outhover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-700 active:scale-95`}>
-                        <span className='text-2xl '>Network Science</span>
+                {/* Header */}
+                <div className="flex items-center justify-between py-4 px-4 flex-shrink-0 border-b border-gray-200 bg-white">
+                    <div className="transition-transform duration-150 ease-in-out hover:scale-105">
+                        <Image
+                            src="/NetworkScienceLogo.png"
+                            alt="Logo"
+                            width={120}
+                            height={40}
+                        />
                     </div>
                 </div>
                 <PanelGroup direction="horizontal" className="flex-1 overflow">
                     <Panel defaultSize={55} minSize={42}>
-                        <div className="h-full flex flex-col gap-4 m-5">
-                            <div className={`flex flex-col overflow-y-auto rounded-lg border bg-white shadow-sm p-4 ${isViewingDocument ? "h-[95%]" : "h-[70%]"}`}>
-                                <div className="xl:flex-1">
+                        <div className="h-full flex flex-col gap-4 p-4">
+                            <div className={`bg-white flex flex-col overflow-y-auto rounded-lg border border-gray-200 shadow-sm p-4 ${isViewingDocument ? "h-[95%]" : "h-[70%]"}`}>
+                                <div className="flex-1">
                                     <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} isClient={true} />
                                 </div>
                             </div>
                             {!isViewingDocument && (
-                                <div className="min-h-[30%] flex flex-col rounded-lg border bg-white shadow-sm p-4 mb-10">
-                                    <h2 className="text-lg font-semibold">Podcast</h2>
-                                    <p className="text-sm text-gray-600 mb-2">
+                                <div className="min-h-[30%] flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm p-4">
+                                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Podcast</h2>
+                                    <p className="text-sm text-gray-600 mb-4">
                                         Listen to an audio podcast summary of the uploaded documents.
                                     </p>
                                     {podcastUrl && !isGenerating && (
-                                        <div className="space-y-2 mt-2">
-                                            <div className="mb-2">
-                                                <audio controls className="w-full">
-                                                    <source src={podcastUrl} />
-                                                    Your browser does not support the audio element.
-                                                </audio>
-                                            </div>
+                                        <div className="space-y-2">
+                                            <audio controls className="w-full">
+                                                <source src={podcastUrl} />
+                                                Your browser does not support the audio element.
+                                            </audio>
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
                     </Panel>
-                    <PanelResizeHandle className="w-1 bg-gray-100 hover:bg-zinc-300 transition-colors flex items-center justify-center">
-                        <div className="w-1 h-8 bg-zinc-400 rounded-full" />
+                    <PanelResizeHandle className="w-1 bg-gray-200 hover:bg-blue-500 transition-colors flex items-center justify-center">
+                        <div className="w-1 h-8 bg-blue-500 rounded-full" />
                     </PanelResizeHandle>
                     <Panel defaultSize={45} minSize={45}>
-                        <div className="h-full m-5 flex flex-col">
-                            <ChatWrapper chatId={chatIdStr} />
+                        <div className="h-full p-4 flex flex-col">
+                            <div className="flex-1 rounded-lg border border-gray-200 bg-white shadow-sm p-4">
+                                <ChatWrapper chatId={chatIdStr} />
+                            </div>
                         </div>
                     </Panel>
                 </PanelGroup>
             </div>
         </div>
     );
-}
+} 
