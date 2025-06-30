@@ -14,6 +14,8 @@ import { CategoryType, QuestionType } from "@/lib/utils";
 import { Settings, Loader2, Users, User as UserIcon, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserReviewGroup } from "@/components/AdminReviewCard";
+import { BarChart3 } from "lucide-react";
+import AdminScoresGraph from "@/components/AdminScoresGraph";
 
 interface User {
     user_id: string;
@@ -36,7 +38,7 @@ export default function AdminDashboardReviewPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    
+
     // All hooks must be called unconditionally
     const [showEditModal, setShowEditModal] = useState(false);
     const [categories, setCategories] = useState<CategoryType[]>([]);
@@ -48,6 +50,7 @@ export default function AdminDashboardReviewPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [users, setUsers] = useState<User[]>([]);
     const [userReviewGroups, setUserReviewGroups] = useState<UserReviewGroup[]>([]);
+    const [showScoresGraph, setShowScoresGraph] = useState(false);
 
     const fetchQuestions = async () => {
         const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
@@ -65,7 +68,7 @@ export default function AdminDashboardReviewPage() {
 
     const fetchCategories = async () => {
         try {
-            const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
+            const res = await fetch(`/api/category/getCategories`)
             if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch')
             const data = await res.json()
             setAllCategories(data)
@@ -80,7 +83,7 @@ export default function AdminDashboardReviewPage() {
             if (!res.ok) throw new Error('Failed to fetch users');
             const data: User[] = await res.json();
             console.log("Fetched Users:", data);
-            
+
             setUsers(data);
             return data;
         } catch (err) {
@@ -94,37 +97,37 @@ export default function AdminDashboardReviewPage() {
         try {
             // First fetch all users
             const userData = await fetchAllUsers();
-            
+
             // Then fetch all reviews
             const res = await fetch('/api/admin/getAllReview');
             if (!res.ok) throw new Error('Failed to fetch all reviews');
             const data: ScoringSession[] = await res.json();
-            
+
             // Enhance reviews with user information
             const reviewsWithUserInfo: ReviewWithUser[] = data.map(review => {
                 const user = userData.find(u => u.user_id === review.user_id);
                 return {
                     ...review,
                     userEmail: user?.email,
-                    userName: user?.firstName && user?.lastName 
-                        ? `${user.firstName} ${user.lastName}` 
+                    userName: user?.firstName && user?.lastName
+                        ? `${user.firstName} ${user.lastName}`
                         : user?.firstName || user?.lastName || 'Unknown User'
                 };
             });
             console.log("Fetched Reviews with User Info:", reviewsWithUserInfo);
-            
+
             setReviews(reviewsWithUserInfo);
 
             // Group reviews by user
             const grouped = userData.reduce<UserReviewGroup[]>((acc, user) => {
                 const userReviews = reviewsWithUserInfo.filter(review => review.user_id === user.user_id);
                 console.log(`User ${user.email} has ${userReviews.length} reviews`);
-                
+
                 if (userReviews.length >= 0) {
-                    const displayName = user.firstName && user.lastName 
-                        ? `${user.firstName} ${user.lastName}` 
+                    const displayName = user.firstName && user.lastName
+                        ? `${user.firstName} ${user.lastName}`
                         : user.firstName || user.lastName || user.email || 'Unknown User';
-                    
+
                     acc.push({
                         user,
                         reviews: userReviews,
@@ -141,7 +144,7 @@ export default function AdminDashboardReviewPage() {
                 return a.displayName.localeCompare(b.displayName);
             });
             console.log("Grouped User Reviews:", grouped);
-            
+
 
             setUserReviewGroups(grouped);
         } catch (err) {
@@ -214,6 +217,15 @@ export default function AdminDashboardReviewPage() {
                                     <div className="flex items-center gap-3">
                                         <Button
                                             variant="outline"
+                                            onClick={() => setShowScoresGraph(true)}
+                                            className="hover:bg-[#DBE2EF] border-[#3F72AF] text-[#3F72AF]"
+                                            disabled={reviews.length === 0}
+                                        >
+                                            <BarChart3 className="h-4 w-4 mr-2" />
+                                            View All Scores
+                                        </Button>
+                                        <Button
+                                            variant="outline"
                                             onClick={() => setShowEditModal(true)}
                                             className="hover:bg-[#DBE2EF] border-[#3F72AF] text-[#3F72AF]"
                                         >
@@ -249,7 +261,11 @@ export default function AdminDashboardReviewPage() {
                                     />
                                 </DialogContent>
                             </Dialog>
-
+                            <AdminScoresGraph
+                                reviews={reviews}
+                                isOpen={showScoresGraph}
+                                onClose={() => setShowScoresGraph(false)}
+                            />
                             {/* Loading State */}
                             {isLoading && (
                                 <div className="space-y-6">

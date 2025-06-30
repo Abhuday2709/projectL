@@ -127,7 +127,7 @@ export default function DocumentScoringPage() {
   }, [reviewId]);
   const fetchCategories = async () => {
     try {
-      const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
+      const res = await fetch(`/api/category/getCategories`)
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch')
       const data = await res.json()
       setAllCategories(data)
