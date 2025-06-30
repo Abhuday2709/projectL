@@ -22,8 +22,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
-import { MessageCircle, Plus, Trash2, Calendar, ArrowRight, Loader2, MessageSquare, User, Bot } from "lucide-react";
+import { MessageCircle, Plus, Trash2, Calendar, ArrowRight, Loader2, MessageSquare, User, Bot, Copy, Check, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import ReactMarkdown from 'react-markdown';
 
 export default function DashboardChatPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
@@ -44,6 +46,7 @@ export default function DashboardChatPage() {
     const [qaMessages, setQaMessages] = useState<Message[]>([]);
     const [isLoadingQA, setIsLoadingQA] = useState(false);
     const [selectedChatForQA, setSelectedChatForQA] = useState<Chat | null>(null);
+    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
@@ -83,6 +86,16 @@ export default function DashboardChatPage() {
         setSelectedChatForQA(chat);
         setQaDialogOpen(true);
         await fetchQAMessages(chat.chatId);
+    };
+
+    const handleCopyMessage = async (messageId: string, text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedMessageId(messageId);
+            setTimeout(() => setCopiedMessageId(null), 2000);
+        } catch (error) {
+            console.error('Failed to copy text:', error);
+        }
     };
 
     useEffect(() => {
@@ -150,6 +163,136 @@ export default function DashboardChatPage() {
             year: 'numeric'
         });
     };
+
+    // User Message Component for Q&A Dialog
+    const QAUserMessage = ({ message }: { message: Message }) => (
+        <div className='flex items-start gap-3 justify-end group'>
+            {/* Message Content */}
+            <div className="flex flex-col max-w-[85%] sm:max-w-[70%] md:max-w-[60%] order-1 items-end">
+                {/* Message Bubble */}
+                <div 
+                    className={cn(
+                        'px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm transition-all duration-300 relative overflow-hidden',
+                        'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white',
+                        'hover:shadow-md hover:scale-[1.02] transform'
+                    )}
+                >
+                    {/* Background Pattern */}
+                    <div className='absolute inset-0 bg-white/5 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-[length:20px_20px] opacity-30'></div>
+                    
+                    {/* Message Text */}
+                    <div className='relative z-10'>
+                        <p className='text-sm leading-relaxed break-words whitespace-pre-wrap'>
+                            {message.text}
+                        </p>
+                    </div>
+
+                    {/* Decorative Corner */}
+                    <div className='absolute -bottom-1 -right-1 w-4 h-4 bg-gradient-to-br from-transparent to-white/10 rounded-tl-2xl'></div>
+                </div>
+
+                {/* Message Info */}
+                <div className={cn(
+                    'flex items-center gap-2 text-xs text-[#3F72AF]/70 transition-opacity duration-300',
+                    'opacity-0 group-hover:opacity-100'
+                )}>
+                    <span>{formatTime(message.createdAt)}</span>
+                    <Check className='h-3 w-3' />
+                </div>
+            </div>
+
+            {/* User Avatar */}
+            <div className={cn(
+                'w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full order-2 shadow-sm transition-all duration-300',
+                'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white',
+                'hover:shadow-md hover:scale-110 transform',
+            )}>
+                <User className='w-4 h-4 sm:w-5 sm:h-5' />
+            </div>
+        </div>
+    );
+
+    // AI Message Component for Q&A Dialog
+    const QAAIMessage = ({ message }: { message: Message }) => (
+        <div className='flex items-start gap-3 group'>
+            {/* Avatar */}
+            <div className={cn(
+                'w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full order-1 shadow-sm transition-all duration-300 flex-shrink-0',
+                'bg-gradient-to-r from-[#DBE2EF] to-[#F9F7F7] border-2 border-[#3F72AF]/20',
+                'hover:shadow-md hover:scale-110 transform',
+            )}>
+                <Bot className='w-4 h-4 sm:w-5 sm:h-5 text-[#3F72AF]' />
+            </div>
+        
+            {/* Message Bubble */}
+            <div className="flex flex-col space-y-2 max-w-[85%] sm:max-w-[75%] md:max-w-[70%] order-2 items-start">
+                <div 
+                    className={cn(
+                        'px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm transition-all duration-300 relative overflow-hidden',
+                        'bg-white/80 backdrop-blur-sm border border-[#DBE2EF]/50 text-[#112D4E]',
+                        'hover:shadow-md hover:bg-white/90 transform'
+                    )}
+                >
+                    {/* Background Pattern */}
+                    <div className='absolute inset-0 bg-gradient-to-br from-[#F9F7F7]/50 to-transparent opacity-50'></div>
+                    
+                    {/* Content */}
+                    <div className='relative z-10'>
+                        {typeof(message.text) === 'string' ? (
+                            <div className="prose prose-sm max-w-none">
+                                <ReactMarkdown 
+                                    components={{
+                                        p: ({ children }) => <p className="text-[#112D4E] leading-relaxed mb-2 last:mb-0">{children}</p>,
+                                        strong: ({ children }) => <strong className="text-[#112D4E] font-semibold">{children}</strong>,
+                                        em: ({ children }) => <em className="text-[#3F72AF] italic">{children}</em>,
+                                        code: ({ children }) => (
+                                            <code className="bg-[#DBE2EF] text-[#112D4E] px-1.5 py-0.5 rounded text-xs font-mono">
+                                                {children}
+                                            </code>
+                                        ),
+                                        pre: ({ children }) => (
+                                            <pre className="bg-[#112D4E] text-[#F9F7F7] p-3 rounded-lg overflow-x-auto text-sm font-mono">
+                                                {children}
+                                            </pre>
+                                        ),
+                                    }}
+                                >
+                                    {message.text}
+                                </ReactMarkdown>
+                            </div>
+                        ) : (
+                            message.text
+                        )}
+                    </div>
+
+                    {/* Decorative Corner */}
+                    <div className='absolute -bottom-1 -left-1 w-4 h-4 bg-gradient-to-tr from-transparent to-[#DBE2EF]/20 rounded-br-2xl'></div>
+                </div>
+
+                {/* Meta Info */}
+                <div className={cn(
+                    'flex items-center gap-3 text-xs text-[#3F72AF]/70 transition-opacity duration-300',
+                    'opacity-0 group-hover:opacity-100'
+                )}>
+                    <span>{formatTime(message.createdAt)}</span>
+                    <button
+                        onClick={() => handleCopyMessage(message.messageId, message.text)}
+                        className={cn(
+                            'flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200',
+                            'hover:bg-[#DBE2EF]/30 hover:text-[#3F72AF]',
+                            { 'text-green-600': copiedMessageId === message.messageId, 'text-[#3F72AF]/70': copiedMessageId !== message.messageId }
+                        )}
+                    >
+                        {copiedMessageId === message.messageId ? (
+                            <><Check className='h-3 w-3' /><span>Copied!</span></>
+                        ) : (
+                            <><Copy className='h-3 w-3' /><span>Copy</span></>
+                        )}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 
     useEffect(() => {
         setIsPageLoading(false);
@@ -300,17 +443,17 @@ export default function DashboardChatPage() {
 
                             {/* Q&A Dialog */}
                             <Dialog open={qaDialogOpen} onOpenChange={setQaDialogOpen}>
-                                <DialogContent className="max-w-4xl max-h-[80vh] bg-white border-[#DBE2EF]">
+                                <DialogContent className="max-w-4xl max-h-[80vh] bg-gray-200">
                                     <DialogHeader>
                                         <DialogTitle className="flex items-center gap-2">
-                                            <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
+                                            <div className="p-2 bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] rounded-lg">
                                                 <MessageSquare className="h-4 w-4 text-white" />
                                             </div>
                                             <span className="text-[#112D4E]">Q&A for "{selectedChatForQA?.name}"</span>
                                         </DialogTitle>
                                     </DialogHeader>
                                     
-                                    <div className="flex-1 overflow-y-auto max-h-[60vh] p-4 bg-[#F9F7F7] rounded-lg">
+                                    <div className="flex-1 overflow-y-auto max-h-[60vh] p-4 bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] rounded-lg">
                                         {isLoadingQA ? (
                                             <div className="flex items-center justify-center py-12">
                                                 <div className="flex items-center gap-3 text-[#3F72AF]">
@@ -325,58 +468,18 @@ export default function DashboardChatPage() {
                                                 </div>
                                                 <h3 className="text-lg font-semibold text-[#112D4E] mb-2">No Q&A Available</h3>
                                                 <p className="text-[#3F72AF]">
-                                                    No questions and answers have been shared for this chat yet.
+                                                    Client has not asked any questions yet.
                                                 </p>
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
                                                 {qaMessages.map((message, index) => (
-                                                    <div
-                                                        key={message.messageId}
-                                                        className={`flex items-start gap-3 ${
-                                                            message.isUserMessage ? 'flex-row-reverse' : 'flex-row'
-                                                        }`}
-                                                    >
-                                                        {/* Avatar */}
-                                                        <div className={`
-                                                            w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0 shadow-sm
-                                                            ${message.isUserMessage 
-                                                                ? 'bg-gradient-to-r from-[#3F72AF] to-[#112D4E]' 
-                                                                : 'bg-gradient-to-r from-[#DBE2EF] to-[#F9F7F7] border-2 border-[#3F72AF]/20'
-                                                            }
-                                                        `}>
-                                                            {message.isUserMessage ? (
-                                                                <User className="w-4 h-4 text-white" />
-                                                            ) : (
-                                                                <Bot className="w-4 h-4 text-[#3F72AF]" />
-                                                            )}
-                                                        </div>
-
-                                                        {/* Message Bubble */}
-                                                        <div className={`
-                                                            max-w-[80%] flex flex-col space-y-1
-                                                            ${message.isUserMessage ? 'items-end' : 'items-start'}
-                                                        `}>
-                                                            <div className={`
-                                                                px-4 py-3 rounded-2xl shadow-sm relative overflow-hidden
-                                                                ${message.isUserMessage 
-                                                                    ? 'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white rounded-br-sm' 
-                                                                    : 'bg-white border border-[#DBE2EF]/50 text-[#112D4E] rounded-bl-sm'
-                                                                }
-                                                            `}>
-                                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                                                                    {message.text}
-                                                                </p>
-                                                            </div>
-                                                            
-                                                            {/* Timestamp */}
-                                                            <div className={`
-                                                                text-xs text-[#3F72AF]/70 px-2
-                                                                ${message.isUserMessage ? 'text-right' : 'text-left'}
-                                                            `}>
-                                                                {formatTime(message.createdAt)}
-                                                            </div>
-                                                        </div>
+                                                    <div key={message.messageId}>
+                                                        {message.isUserMessage ? (
+                                                            <QAUserMessage message={message} />
+                                                        ) : (
+                                                            <QAAIMessage message={message} />
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
