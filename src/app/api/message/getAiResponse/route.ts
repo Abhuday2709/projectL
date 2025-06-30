@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!body || !body.chatId || !body.userMessage)
         return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
-    const { chatId, userMessage } = body;
+    const { chatId, userMessage, shareId } = body;
     try {
         // Fetch last 8 recent messages for this chat
         const messagesQuery = new QueryCommand({
@@ -30,10 +30,10 @@ export async function POST(request: NextRequest) {
         });
         const messagesResult = await msgClient.send(messagesQuery);
         const recentMessages = (messagesResult.Items || []) as Message[];
-        
+
         // Reverse the messages to get chronological order (oldest first)
         const chronologicalMessages = recentMessages.reverse();
-        
+
         console.log(`Found ${chronologicalMessages.length} recent messages for chatId ${chatId}`);
         console.log('chronologicalMessages:', chronologicalMessages.map(m => `${m.isUserMessage ? 'User' : 'AI'}: ${m.text}`).join(' | '));
 
@@ -52,9 +52,22 @@ export async function POST(request: NextRequest) {
         // Pass the chronological messages to generateResponse
         const aiText = await generateResponse(userMessage, contexts, chronologicalMessages);
 
+        if (!shareId) {
+            const aiMsg: Message = {
+                messageId: uuidv4(),
+                chatId,
+                text: aiText,
+                isUserMessage: false,
+                createdAt: new Date().toISOString(),
+                isLoading: false,
+            };
+
+            await msgClient.send(new PutCommand({ TableName: MessageConfig.tableName, Item: aiMsg }));
+            return NextResponse.json(aiMsg);
+        }
         const aiMsg: Message = {
             messageId: uuidv4(),
-            chatId,
+            chatId: shareId,
             text: aiText,
             isUserMessage: false,
             createdAt: new Date().toISOString(),

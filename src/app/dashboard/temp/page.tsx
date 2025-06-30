@@ -21,9 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
-import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories";
 import { CategoryType, QuestionType } from "@/lib/utils";
-import { ClipboardList, Plus, Trash2, Calendar, ArrowRight, Settings, FileText, Loader2 } from "lucide-react";
+import { ClipboardList, Plus, Trash2, Loader2 } from "lucide-react";
 import { ReviewCard } from "@/components/ReviewCard";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,7 +31,6 @@ export default function DashboardReviewPage() {
     const router = useRouter();
     const { toast } = useToast();
     // All hooks must be called unconditionally
-    const [showEditModal, setShowEditModal] = useState(false);
     const [categories, setCategories] = useState<CategoryType[]>([]);
     const [questions, setQuestions] = useState<QuestionType[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -186,14 +184,6 @@ export default function DashboardReviewPage() {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <Button
-                                            variant="outline"
-                                            onClick={() => setShowEditModal(true)}
-                                            className="hover:bg-[#DBE2EF] border-[#3F72AF] text-[#3F72AF]"
-                                        >
-                                            <Settings className="h-4 w-4 mr-2" />
-                                            Edit Questions
-                                        </Button>
-                                        <Button
                                             onClick={handleNewReview}
                                             className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32] shadow-lg hover:shadow-xl transition-all duration-200"
                                             size="lg"
@@ -204,33 +194,6 @@ export default function DashboardReviewPage() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Edit Questions Modal */}
-                            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                                <DialogContent className="w-[100vw] max-w-[1200px] h-[90vh] overflow-y-auto bg-[#F9F7F7]">
-                                    <DialogHeader>
-                                        <DialogTitle className="flex items-center gap-2 text-[#112D4E]">
-                                            <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
-                                                <Settings className="h-4 w-4 text-white" />
-                                            </div>
-                                            Edit Categories & Questions
-                                        </DialogTitle>
-                                        <DialogDescription className="text-[#3F72AF]">
-                                            Make changes to your categories and questions here. Click "Review & Confirm" to save your changes.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <EditQuestionsAndCategories
-                                        userId={userId}
-                                        categories={categories}
-                                        questions={questions}
-                                        onClose={async () => {
-                                            setShowEditModal(false);
-                                            await Promise.all([fetchCategories(), fetchQuestions()]);
-                                        }}
-                                    />
-                                </DialogContent>
-                            </Dialog>
-
                             {/* Loading State */}
                             {isLoading && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -264,14 +227,6 @@ export default function DashboardReviewPage() {
                                         Create your first review session to start evaluating and scoring content or submissions.
                                     </p>
                                     <div className="flex flex-col sm:flex-row gap-3">
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setShowEditModal(true)}
-                                            className="hover:bg-[#DBE2EF] border-[#3F72AF] text-[#3F72AF]"
-                                        >
-                                            <Settings className="h-4 w-4 mr-2" />
-                                            Setup Questions First
-                                        </Button>
                                         <Button
                                             onClick={handleNewReview}
                                             className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32]"

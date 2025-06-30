@@ -386,73 +386,168 @@ export default function ChatPage() {
         
         {/* Share Dialog */}
         {showShareDialog && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 w-full max-w-sm sm:max-w-2xl border border-gray-200 max-h-[90vh] overflow-y-auto">
-                    {!shareSessionData?.password ? (
-                        // Create new share session
-                        <>
-                            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">Create Share Link</h2>
-                            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-                                Set a password to allow others to access this chat.
-                            </p>
-                            <input
-                                type="password"
-                                className="w-full border border-gray-300 rounded-md px-3 py-2 mb-3 sm:mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                                placeholder="Enter password"
-                                value={sharePassword}
-                                onChange={(e) => setSharePassword(e.target.value)}
-                            />
-                            <div className="flex flex-col sm:flex-row justify-end gap-2">
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => {
-                                        setShowShareDialog(false);
-                                        setSharePassword("");
-                                    }}
-                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-sm order-2 sm:order-1 rounded-md"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleUpdatePassword}
-                                    disabled={!sharePassword.trim()}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 text-sm order-1 sm:order-2 rounded-md"
-                                >
-                                    Create
-                                </Button>
-                            </div>
-                        </>
-                    ) : (
-                        // Manage existing share session
-                        <>
-                            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">Manage Share Link</h2>
-                            
-                            {/* Share URL */}
-                            <div className="mb-3 sm:mb-4">
-                                <label className="block text-xs sm:text-sm font-medium text-gray-900 mb-2">
-                                    Share URL
-                                </label>
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                    <div className="flex-1 font-mono text-xs sm:text-sm bg-gray-100 text-gray-700 p-2 rounded-md border border-gray-200 break-all overflow-hidden">
-                                        {shareUrl}
-                                    </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#112D4E] bg-opacity-60 p-4">
+                    <div className="bg-[#F9F7F7] rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-2xl border-2 border-[#DBE2EF] max-h-[90vh] overflow-y-auto">
+                        {!shareSessionData?.password ? (
+                            // Create new share session
+                            <>
+                                <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#112D4E]">Create Share Link</h2>
+                                <p className="text-xs sm:text-sm text-[#3F72AF] mb-3 sm:mb-4">
+                                    Set a password to allow others to access this chat.
+                                </p>
+                                <input
+                                    type="password"
+                                    className="w-full border-2 border-[#DBE2EF] rounded-lg px-3 py-2 mb-3 sm:mb-4 focus:border-[#3F72AF] focus:outline-none bg-[#F9F7F7] text-[#112D4E] text-sm sm:text-base"
+                                    placeholder="Enter password"
+                                    value={sharePassword}
+                                    onChange={(e) => setSharePassword(e.target.value)}
+                                />
+                                <div className="flex flex-col sm:flex-row justify-end gap-2">
                                     <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => copyToClipboard(shareUrl)}
-                                        className="border-gray-300 text-gray-700 hover:bg-gray-100 flex-shrink-0 rounded-md"
+                                        variant="secondary"
+                                        onClick={() => {
+                                            setShowShareDialog(false);
+                                            setSharePassword("");
+                                        }}
+                                        className="bg-[#DBE2EF] hover:bg-[#3F72AF] text-[#112D4E] hover:text-white border-none text-sm order-2 sm:order-1"
                                     >
-                                        {copied ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : <Copy className="h-3 w-3 sm:h-4 sm:w-4" />}
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleUpdatePassword}
+                                        disabled={!sharePassword.trim()}
+                                        className="bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF] text-sm order-1 sm:order-2"
+                                    >
+                                        Create
                                     </Button>
                                 </div>
-                            </div>
+                            </>
+                        ) : (
+                            // Manage existing share session
+                            <>
+                                <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#112D4E]">Manage Share Link</h2>
 
-                            {/* Continue with rest of dialog... */}
-                        </>
-                    )}
+                                {/* Share URL */}
+                                <div className="mb-3 sm:mb-4">
+                                    <label className="block text-xs sm:text-sm font-medium text-[#112D4E] mb-2">
+                                        Share URL
+                                    </label>
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                        <div className="flex-1 font-mono text-xs sm:text-sm bg-[#DBE2EF] text-[#112D4E] p-2 rounded-lg border border-[#3F72AF]/20 break-all overflow-hidden">
+                                            {shareUrl}
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => copyToClipboard(shareUrl)}
+                                            className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white flex-shrink-0"
+                                        >
+                                            {copied ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : <Copy className="h-3 w-3 sm:h-4 sm:w-4" />}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Password */}
+                                <div className="mb-3 sm:mb-4">
+                                    <label className="block text-xs sm:text-sm font-medium text-[#112D4E] mb-2">
+                                        Password
+                                    </label>
+                                    {isChangingPassword ? (
+                                        <div className="space-y-2">
+                                            <input
+                                                type="password"
+                                                className="w-full border-2 border-[#DBE2EF] rounded-lg px-3 py-2 focus:border-[#3F72AF] focus:outline-none bg-[#F9F7F7] text-[#112D4E] text-sm sm:text-base"
+                                                placeholder="Enter new password"
+                                                value={sharePassword}
+                                                onChange={(e) => setSharePassword(e.target.value)}
+                                            />
+                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={handleUpdatePassword}
+                                                    disabled={!sharePassword.trim()}
+                                                    className="bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF] text-xs order-1"
+                                                >
+                                                    Update
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        setIsChangingPassword(false);
+                                                        setSharePassword("");
+                                                    }}
+                                                    className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white text-xs order-2"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                            <div className="flex-1 font-mono text-xs sm:text-sm bg-[#DBE2EF] text-[#112D4E] p-2 rounded-lg border border-[#3F72AF]/20">
+                                                {"•".repeat(shareSessionData.password?.length || 0)}
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setIsChangingPassword(true)}
+                                                className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white flex-shrink-0"
+                                            >
+                                                Change
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Active Toggle */}
+                                <div className="mb-4 sm:mb-6">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div className="flex-1">
+                                            <label className="block text-xs sm:text-sm font-medium text-[#112D4E]">
+                                                Share Status
+                                            </label>
+                                            <p className="text-xs text-[#3F72AF]">
+                                                {shareSessionData.isActive
+                                                    ? "Share link is active and accessible"
+                                                    : "Share link is disabled"
+                                                }
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center justify-start sm:justify-end">
+                                            <input
+                                                type="checkbox"
+                                                id="isActive"
+                                                checked={shareSessionData.isActive ?? false}
+                                                onChange={handleToggleActive}
+                                                className="mr-2 accent-[#3F72AF] scale-110"
+                                            />
+                                            <label htmlFor="isActive" className="text-xs sm:text-sm text-[#112D4E]">
+                                                Active
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex justify-end">
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => {
+                                            setShowShareDialog(false);
+                                            setIsChangingPassword(false);
+                                            setSharePassword("");
+                                        }}
+                                        className="bg-[#DBE2EF] hover:bg-[#3F72AF] text-[#112D4E] hover:text-white border-none text-sm w-full sm:w-auto"
+                                    >
+                                        Close
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
-            </div>
-        )}
+            )}
     </div>
 );
 }

@@ -24,7 +24,7 @@ export async function generateResponse(
         
         // Prepare document context
         const documentContextText = documentContext.length > 0
-            ? `\n\nRELEVANT DOCUMENT CONTEXT:\n${documentContext.map((doc, i) => `[Document ${i + 1}]: ${doc}`).join('\n\n')}`
+            ? `\n\nRELEVANT CONTEXT:\n${documentContext.map((doc, i) => ` ${doc}`).join('\n\n')}`
             : '';
         
         // Enhanced prompt with better instructions

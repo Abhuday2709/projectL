@@ -1,14 +1,14 @@
 "use client";
 
 import { notFound, useParams } from "next/navigation";
-import ChatWrapper from "@/components/chat/ChatWrapper";
-import PdfRenderer from "@/components/PdfRenderer";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useState, useEffect } from "react";
 import bcrypt from "bcryptjs";
 import { Chat } from "../../../../models/chatModel";
 import Image from "next/image";
+import ClientPdfRenderer from "./components/clientPdfRenderer";
+import ChatWrapper from "./components/chat/ChatWrapper";
 
 export default function ChatPage() {
     const { shareId } = useParams();
@@ -86,8 +86,11 @@ export default function ChatPage() {
     };
 
     useEffect(() => {
-        if (isPasswordVerified) fetchChatDetails();
-    }, [isPasswordVerified, chatIdStr]);
+        if (isPasswordVerified) {
+            // Clear session storage for a new session - REMOVED
+            fetchChatDetails();
+        }
+    }, [isPasswordVerified, shareIdStr]);
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
@@ -152,7 +155,7 @@ export default function ChatPage() {
                         <div className="h-full flex flex-col gap-4 p-4">
                             <div className={`bg-white flex flex-col overflow-y-auto rounded-lg border border-gray-200 shadow-sm p-4 ${isViewingDocument ? "h-[95%]" : "h-[70%]"}`}>
                                 <div className="flex-1">
-                                    <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} isClient={true} />
+                                    <ClientPdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument}/>
                                 </div>
                             </div>
                             {!isViewingDocument && (
@@ -179,7 +182,7 @@ export default function ChatPage() {
                     <Panel defaultSize={45} minSize={45}>
                         <div className="h-full p-4 flex flex-col">
                             <div className="flex-1 rounded-lg border border-gray-200 bg-white shadow-sm p-4">
-                                <ChatWrapper chatId={chatIdStr} />
+                                <ChatWrapper chatId={chatIdStr} shareId={shareIdStr} />
                             </div>
                         </div>
                     </Panel>
@@ -187,4 +190,4 @@ export default function ChatPage() {
             </div>
         </div>
     );
-} 
+}
