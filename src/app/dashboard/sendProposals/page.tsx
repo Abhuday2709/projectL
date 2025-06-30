@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { Chat } from "../../../../models/chatModel";
+import type { Message } from "../../../../models/messageModel";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
-import { MessageCircle, Plus, Trash2, Calendar, ArrowRight, Loader2 } from "lucide-react";
+import { MessageCircle, Plus, Trash2, Calendar, ArrowRight, Loader2, MessageSquare, User, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardChatPage() {
@@ -37,6 +38,12 @@ export default function DashboardChatPage() {
     const [isPageLoading, setIsPageLoading] = useState(false);
     const [chats, setChats] = useState<Chat[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    
+    // Q&A Dialog states
+    const [qaDialogOpen, setQaDialogOpen] = useState(false);
+    const [qaMessages, setQaMessages] = useState<Message[]>([]);
+    const [isLoadingQA, setIsLoadingQA] = useState(false);
+    const [selectedChatForQA, setSelectedChatForQA] = useState<Chat | null>(null);
 
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
@@ -55,6 +62,27 @@ export default function DashboardChatPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const fetchQAMessages = async (chatId: string) => {
+        setIsLoadingQA(true);
+        try {
+            const res = await fetch(`/api/message/getQAMessages?chatId=${chatId}`);
+            if (!res.ok) throw new Error('Failed to fetch Q&A messages');
+            const data = await res.json();
+            setQaMessages(data.messages || []);
+        } catch (error) {
+            console.error(error);
+            toast({ title: 'Error', description: 'Could not load Q&A messages.', variant: 'destructive' });
+        } finally {
+            setIsLoadingQA(false);
+        }
+    };
+
+    const handleViewQA = async (chat: Chat) => {
+        setSelectedChatForQA(chat);
+        setQaDialogOpen(true);
+        await fetchQAMessages(chat.chatId);
     };
 
     useEffect(() => {
@@ -106,6 +134,21 @@ export default function DashboardChatPage() {
             setIsDeleting(false);
             setChatToDelete(null);
         }
+    };
+
+    const formatTime = (dateString: string) => {
+        return new Date(dateString).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    };
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
     };
 
     useEffect(() => {
@@ -200,8 +243,7 @@ export default function DashboardChatPage() {
                                     {chats.map((chat, idx) => (
                                         <Card
                                             key={chat.chatId}
-                                            className={`group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-2 bg-white border-[#DBE2EF] hover:border-[#3F72AF] hover:shadow-[#3F72AF]/20`}
-                                            onClick={() => { setIsPageLoading(true); router.push(`/dashboard/sendProposals/${chat.chatId}`) }}
+                                            className={`group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-2 bg-white border-[#DBE2EF] hover:border-[#3F72AF] hover:shadow-[#3F72AF]/20`}
                                         >
                                             <CardHeader className="pb-3">
                                                 <CardTitle className="flex items-start justify-between">
@@ -216,20 +258,15 @@ export default function DashboardChatPage() {
                                                     <div className="flex items-center gap-2 text-sm text-[#3F72AF] mb-4">
                                                         <Calendar className="h-4 w-4" />
                                                         <span>
-                                                            {new Date(chat.createdAt).toLocaleDateString('en-US', {
-                                                                month: 'short',
-                                                                day: 'numeric',
-                                                                year: 'numeric'
-                                                            })}
+                                                            {formatDate(chat.createdAt)}
                                                         </span>
                                                     </div>
-                                                    <div className="flex gap-2">
+                                                    <div className="flex gap-2 flex-wrap">
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             className="flex-1 bg-[#DBE2EF] hover:bg-[#3F72AF] border-[#DBE2EF] hover:border-[#3F72AF] text-[#112D4E] hover:text-white transition-colors"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
+                                                            onClick={() => {
                                                                 setIsPageLoading(true);
                                                                 router.push(`/dashboard/sendProposals/${chat.chatId}`);
                                                             }}
@@ -239,11 +276,17 @@ export default function DashboardChatPage() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
+                                                            className="bg-[#F9F7F7] hover:bg-[#3F72AF] border-[#DBE2EF] hover:border-[#3F72AF] text-[#3F72AF] hover:text-white transition-colors"
+                                                            onClick={() => handleViewQA(chat)}
+                                                        >
+                                                            <MessageSquare className="h-4 w-4 mr-1" />
+                                                            Q&A
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
                                                             className="p-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors border-[#DBE2EF] text-[#3F72AF]"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setChatToDelete(chat);
-                                                            }}
+                                                            onClick={() => setChatToDelete(chat)}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -254,6 +297,102 @@ export default function DashboardChatPage() {
                                     ))}
                                 </div>
                             )}
+
+                            {/* Q&A Dialog */}
+                            <Dialog open={qaDialogOpen} onOpenChange={setQaDialogOpen}>
+                                <DialogContent className="max-w-4xl max-h-[80vh] bg-white border-[#DBE2EF]">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2">
+                                            <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
+                                                <MessageSquare className="h-4 w-4 text-white" />
+                                            </div>
+                                            <span className="text-[#112D4E]">Q&A for "{selectedChatForQA?.name}"</span>
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    
+                                    <div className="flex-1 overflow-y-auto max-h-[60vh] p-4 bg-[#F9F7F7] rounded-lg">
+                                        {isLoadingQA ? (
+                                            <div className="flex items-center justify-center py-12">
+                                                <div className="flex items-center gap-3 text-[#3F72AF]">
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    <span className="text-sm">Loading Q&A...</span>
+                                                </div>
+                                            </div>
+                                        ) : qaMessages.length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <div className="p-4 bg-[#DBE2EF] rounded-full mb-4 w-fit mx-auto">
+                                                    <MessageSquare className="h-8 w-8 text-[#3F72AF]" />
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-[#112D4E] mb-2">No Q&A Available</h3>
+                                                <p className="text-[#3F72AF]">
+                                                    No questions and answers have been shared for this chat yet.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {qaMessages.map((message, index) => (
+                                                    <div
+                                                        key={message.messageId}
+                                                        className={`flex items-start gap-3 ${
+                                                            message.isUserMessage ? 'flex-row-reverse' : 'flex-row'
+                                                        }`}
+                                                    >
+                                                        {/* Avatar */}
+                                                        <div className={`
+                                                            w-8 h-8 flex items-center justify-center rounded-full flex-shrink-0 shadow-sm
+                                                            ${message.isUserMessage 
+                                                                ? 'bg-gradient-to-r from-[#3F72AF] to-[#112D4E]' 
+                                                                : 'bg-gradient-to-r from-[#DBE2EF] to-[#F9F7F7] border-2 border-[#3F72AF]/20'
+                                                            }
+                                                        `}>
+                                                            {message.isUserMessage ? (
+                                                                <User className="w-4 h-4 text-white" />
+                                                            ) : (
+                                                                <Bot className="w-4 h-4 text-[#3F72AF]" />
+                                                            )}
+                                                        </div>
+
+                                                        {/* Message Bubble */}
+                                                        <div className={`
+                                                            max-w-[80%] flex flex-col space-y-1
+                                                            ${message.isUserMessage ? 'items-end' : 'items-start'}
+                                                        `}>
+                                                            <div className={`
+                                                                px-4 py-3 rounded-2xl shadow-sm relative overflow-hidden
+                                                                ${message.isUserMessage 
+                                                                    ? 'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white rounded-br-sm' 
+                                                                    : 'bg-white border border-[#DBE2EF]/50 text-[#112D4E] rounded-bl-sm'
+                                                                }
+                                                            `}>
+                                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                                                    {message.text}
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            {/* Timestamp */}
+                                                            <div className={`
+                                                                text-xs text-[#3F72AF]/70 px-2
+                                                                ${message.isUserMessage ? 'text-right' : 'text-left'}
+                                                            `}>
+                                                                {formatTime(message.createdAt)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <DialogFooter>
+                                        <Button
+                                            onClick={() => setQaDialogOpen(false)}
+                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A94] hover:to-[#0D1F35] text-white"
+                                        >
+                                            Close
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
 
                             {/* Create Chat Dialog */}
                             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

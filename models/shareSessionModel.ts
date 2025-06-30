@@ -4,10 +4,6 @@ import { z } from 'zod';
 export const ShareSessionSchema = z.object({
     chatId: z.string(),
     shareId: z.string(),
-    questionsAndAnswers: z.array(z.object({
-        answer: z.string(),
-        question: z.string(),
-    })).optional(),
     password: z.string(),
     isActive: z.boolean().default(true),
 });
