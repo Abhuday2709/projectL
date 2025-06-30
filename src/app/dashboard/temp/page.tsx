@@ -293,6 +293,7 @@ export default function DashboardReviewPage() {
                                             review={review}
                                             setIsPageLoading={setIsPageLoading}
                                             setReviewToDelete={setReviewToDelete}
+                                            isAdmin={false}
                                         />
                                     ))}
                                 </div>

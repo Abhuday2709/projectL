@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Document } from "../../models/documentModel";
 
-export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
+export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmin }: {
     review: ScoringSession,
     setIsPageLoading: (b: boolean) => void,
-    setReviewToDelete: (r: ScoringSession) => void
+    setReviewToDelete: (r: ScoringSession) => void,
+    isAdmin: boolean
 }) {
     const router = useRouter();
     const [documents, setDocuments] = useState<Document[]>([]);
@@ -93,7 +94,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
                         >
                             Open
                         </Button>
-                        <Button
+                        {!isAdmin&& <Button
                             variant="outline"
                             size="sm"
                             className="p-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors border-[#DBE2EF]"
@@ -105,7 +106,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete }: {
                             title={isAnyProcessing ? "Cannot delete while a document is processing" : ""}
                         >
                             <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </Button>}
                     </div>
                 </div>
             </CardContent>

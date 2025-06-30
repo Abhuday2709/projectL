@@ -4,6 +4,8 @@ import { z } from 'zod';
 export const UserSchema = z.object({
     user_id: z.string(),
     email: z.string().email(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
     // passwordHash: z.string(),
     // emailVerified: z.boolean().default(false),
     createdAt: z.string().optional().default(() => new Date().toISOString()),

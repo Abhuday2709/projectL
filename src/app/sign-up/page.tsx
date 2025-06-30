@@ -81,8 +81,11 @@ function Signup() {
                     const newUser: Omit<User, 'createdAt'> = {
                         user_id: completeSignup.createdUserId!,
                         email: emailAddress,
+                        firstName: completeSignup.firstName || "",
+                        lastName: completeSignup.lastName || "",
                     };
-
+                    console.log("New user created:", newUser);
+                    
                     const response = await fetch('/api/user/createuser', {
                         method: 'POST',
                         headers: {

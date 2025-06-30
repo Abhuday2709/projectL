@@ -3,48 +3,52 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ScoringSession } from "../../../../models/scoringReviewModel";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
 import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories";
 import { CategoryType, QuestionType } from "@/lib/utils";
-import { ClipboardList, Plus, Trash2, Calendar, ArrowRight, Settings, FileText, Loader2 } from "lucide-react";
-import { ReviewCard } from "@/components/ReviewCard";
+import { Settings, Loader2, Users, User as UserIcon, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { UserReviewGroup } from "@/components/AdminReviewCard";
 
-export default function DashboardReviewPage() {
+interface User {
+    user_id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+}
+
+interface ReviewWithUser extends ScoringSession {
+    userEmail?: string;
+    userName?: string;
+}
+
+interface UserReviewGroup {
+    user: User;
+    reviews: ReviewWithUser[];
+    displayName: string;
+}
+export default function AdminDashboardReviewPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
+    
     // All hooks must be called unconditionally
     const [showEditModal, setShowEditModal] = useState(false);
     const [categories, setCategories] = useState<CategoryType[]>([]);
     const [questions, setQuestions] = useState<QuestionType[]>([]);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [reviewName, setReviewName] = useState("");
-    const [isCreating, setIsCreating] = useState(false);
-    const [reviewToDelete, setReviewToDelete] = useState<ScoringSession | null>(null);
     const [isPageLoading, setIsPageLoading] = useState(false);
     const [allCategories, setAllCategories] = useState<CategoryType[]>([]);
     const [question, setQuestion] = useState<QuestionType[]>([]);
-    const [reviews, setReviews] = useState<ScoringSession[]>([]);
+    const [reviews, setReviews] = useState<ReviewWithUser[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const user_id = userId || "";
+    const [users, setUsers] = useState<User[]>([]);
+    const [userReviewGroups, setUserReviewGroups] = useState<UserReviewGroup[]>([]);
+
     const fetchQuestions = async () => {
         const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
             method: "GET",
@@ -56,9 +60,9 @@ export default function DashboardReviewPage() {
         }
         const data = await res.json()
         console.log("Fetched Questions:", data);
-
         setQuestion(data)
     }
+
     const fetchCategories = async () => {
         try {
             const res = await fetch(`/api/category/getCategories?user_id=${userId}`)
@@ -69,26 +73,92 @@ export default function DashboardReviewPage() {
             toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
         }
     }
-    const fetchReviews = async () => {
+
+    const fetchAllUsers = async () => {
+        try {
+            const res = await fetch('/api/admin/getAllUsers');
+            if (!res.ok) throw new Error('Failed to fetch users');
+            const data: User[] = await res.json();
+            console.log("Fetched Users:", data);
+            
+            setUsers(data);
+            return data;
+        } catch (err) {
+            toast({ title: 'Error fetching users', description: (err as Error).message, variant: 'destructive' });
+            return [];
+        }
+    };
+
+    const fetchAllReviews = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`/api/reviews?user_id=${user_id}`);
-            if (!res.ok) throw new Error("Failed to fetch reviews");
+            // First fetch all users
+            const userData = await fetchAllUsers();
+            
+            // Then fetch all reviews
+            const res = await fetch('/api/admin/getAllReview');
+            if (!res.ok) throw new Error('Failed to fetch all reviews');
             const data: ScoringSession[] = await res.json();
-            setReviews(data);
+            
+            // Enhance reviews with user information
+            const reviewsWithUserInfo: ReviewWithUser[] = data.map(review => {
+                const user = userData.find(u => u.user_id === review.user_id);
+                return {
+                    ...review,
+                    userEmail: user?.email,
+                    userName: user?.firstName && user?.lastName 
+                        ? `${user.firstName} ${user.lastName}` 
+                        : user?.firstName || user?.lastName || 'Unknown User'
+                };
+            });
+            console.log("Fetched Reviews with User Info:", reviewsWithUserInfo);
+            
+            setReviews(reviewsWithUserInfo);
+
+            // Group reviews by user
+            const grouped = userData.reduce<UserReviewGroup[]>((acc, user) => {
+                const userReviews = reviewsWithUserInfo.filter(review => review.user_id === user.user_id);
+                console.log(`User ${user.email} has ${userReviews.length} reviews`);
+                
+                if (userReviews.length >= 0) {
+                    const displayName = user.firstName && user.lastName 
+                        ? `${user.firstName} ${user.lastName}` 
+                        : user.firstName || user.lastName || user.email || 'Unknown User';
+                    
+                    acc.push({
+                        user,
+                        reviews: userReviews,
+                        displayName
+                    });
+                }
+                return acc;
+            }, []);
+            // Sort by number of reviews (descending) then by display name
+            grouped.sort((a, b) => {
+                if (a.reviews.length !== b.reviews.length) {
+                    return b.reviews.length - a.reviews.length;
+                }
+                return a.displayName.localeCompare(b.displayName);
+            });
+            console.log("Grouped User Reviews:", grouped);
+            
+
+            setUserReviewGroups(grouped);
         } catch (err) {
             toast({ title: 'Error fetching reviews', description: (err as Error).message, variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
     };
+
     useEffect(() => {
         if (userId) {
             fetchCategories()
             fetchQuestions()
-            fetchReviews()
+            fetchAllReviews()
         }
     }, [userId])
+
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
     }, [isLoaded, isSignedIn, router]);
@@ -103,60 +173,17 @@ export default function DashboardReviewPage() {
         }
     }, [question]);
 
-    const handleNewReview = async () => {
-        setIsDialogOpen(true);
-    };
-
-    const handleCreateReview = async () => {
-        if (!reviewName.trim()) return;
-        setIsCreating(true);
-        try {
-            const scoringSessionId = uuidv4();
-            const payload = { user_id, scoringSessionId, name: reviewName.trim(), scores: [], answers: [], recommendation: "" };
-            const res = await fetch(`/api/reviews`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) throw new Error('Failed to create review');
-            const review: ScoringSession = await res.json();
-            setIsDialogOpen(false);
-            setReviewName("");
-            setIsPageLoading(true);
-            router.push(`/dashboard/temp/${review.scoringSessionId}`);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsCreating(false);
-        }
-    };
     useEffect(() => {
         setIsPageLoading(false);
     }, [router]);
-
-    const handleDeleteReview = async (review: ScoringSession) => {
-        setIsPageLoading(true);
-        try {
-            const res = await fetch(`/api/reviews`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: review.user_id, createdAt: review.createdAt }),
-            });
-            if (!res.ok) throw new Error('Failed to delete review');
-            await fetchReviews();
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setReviewToDelete(null);
-            setIsPageLoading(false);
-        }
-    };
 
     // Only render null/loading here, after all hooks
     if (!isLoaded || !isSignedIn || !userId) {
         return null;
     }
 
+    const totalReviews = reviews.length;
+    const totalUsers = userReviewGroups.length;
 
     return (
         <>
@@ -175,12 +202,12 @@ export default function DashboardReviewPage() {
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
-                                            <ClipboardList className="h-6 w-6 text-white" />
+                                            <Users className="h-6 w-6 text-white" />
                                         </div>
                                         <div>
-                                            <h1 className="text-3xl font-bold text-[#112D4E]">Your Reviews</h1>
+                                            <h1 className="text-3xl font-bold text-[#112D4E]">All User Reviews</h1>
                                             <p className="text-[#3F72AF] mt-1">
-                                                {reviews?.length ? `${reviews.length} review session${reviews.length !== 1 ? 's' : ''}` : 'No review sessions yet'}
+                                                {totalUsers > 0 ? `${totalUsers} user${totalUsers !== 1 ? 's' : ''} with ${totalReviews} total review session${totalReviews !== 1 ? 's' : ''}` : 'No review sessions found'}
                                             </p>
                                         </div>
                                     </div>
@@ -192,14 +219,6 @@ export default function DashboardReviewPage() {
                                         >
                                             <Settings className="h-4 w-4 mr-2" />
                                             Edit Questions
-                                        </Button>
-                                        <Button
-                                            onClick={handleNewReview}
-                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32] shadow-lg hover:shadow-xl transition-all duration-200"
-                                            size="lg"
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            New Review
                                         </Button>
                                     </div>
                                 </div>
@@ -233,35 +252,32 @@ export default function DashboardReviewPage() {
 
                             {/* Loading State */}
                             {isLoading && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {[...Array(6)].map((_, i) => (
+                                <div className="space-y-6">
+                                    {[...Array(3)].map((_, i) => (
                                         <Card key={i} className="animate-pulse bg-white border-[#DBE2EF]">
                                             <CardHeader>
-                                                <div className="h-6 bg-[#DBE2EF] rounded w-3/4"></div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-3">
-                                                    <div className="h-4 bg-[#DBE2EF] rounded w-1/2"></div>
-                                                    <div className="flex gap-2 pt-8">
-                                                        <div className="h-8 bg-[#DBE2EF] rounded flex-1"></div>
-                                                        <div className="h-8 bg-[#DBE2EF] rounded w-16"></div>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-9 h-9 bg-[#DBE2EF] rounded-lg"></div>
+                                                    <div className="space-y-2">
+                                                        <div className="h-5 bg-[#DBE2EF] rounded w-32"></div>
+                                                        <div className="h-4 bg-[#DBE2EF] rounded w-24"></div>
                                                     </div>
                                                 </div>
-                                            </CardContent>
+                                            </CardHeader>
                                         </Card>
                                     ))}
                                 </div>
                             )}
 
                             {/* Empty State */}
-                            {!isLoading && reviews?.length === 0 && (
+                            {!isLoading && userReviewGroups.length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-16 px-4">
                                     <div className="p-4 bg-gradient-to-r from-[#DBE2EF] to-[#F9F7F7] rounded-full mb-6">
-                                        <ClipboardList className="h-12 w-12 text-[#3F72AF]" />
+                                        <Users className="h-12 w-12 text-[#3F72AF]" />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-[#112D4E] mb-2">No review sessions yet</h3>
+                                    <h3 className="text-xl font-semibold text-[#112D4E] mb-2">No review sessions found</h3>
                                     <p className="text-[#3F72AF] mb-6 text-center max-w-md">
-                                        Create your first review session to start evaluating and scoring content or submissions.
+                                        There are no review sessions from any users in the system yet.
                                     </p>
                                     <div className="flex flex-col sm:flex-row gap-3">
                                         <Button
@@ -270,115 +286,24 @@ export default function DashboardReviewPage() {
                                             className="hover:bg-[#DBE2EF] border-[#3F72AF] text-[#3F72AF]"
                                         >
                                             <Settings className="h-4 w-4 mr-2" />
-                                            Setup Questions First
-                                        </Button>
-                                        <Button
-                                            onClick={handleNewReview}
-                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32]"
-                                            size="lg"
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Create Your First Review
+                                            Setup Questions
                                         </Button>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Reviews Grid */}
-                            {!isLoading && reviews && reviews.length > 0 && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {reviews.map((review) => (
-                                        <ReviewCard
-                                            key={review.scoringSessionId}
-                                            review={review}
+                            {/* User Review Groups */}
+                            {!isLoading && userReviewGroups.length >= 0 && (
+                                <div className="space-y-6">
+                                    {userReviewGroups.map((userGroup) => (
+                                        <UserReviewGroup
+                                            key={userGroup.user.user_id}
+                                            userGroup={userGroup}
                                             setIsPageLoading={setIsPageLoading}
-                                            setReviewToDelete={setReviewToDelete}
                                         />
                                     ))}
                                 </div>
                             )}
-
-                            {/* Create Review Dialog */}
-                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                <DialogContent className="sm:max-w-md bg-[#F9F7F7]">
-                                    <DialogHeader>
-                                        <DialogTitle className="flex items-center gap-2 text-[#112D4E]">
-                                            <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
-                                                <Plus className="h-4 w-4 text-white" />
-                                            </div>
-                                            Create New Review
-                                        </DialogTitle>
-                                    </DialogHeader>
-                                    <div className="py-4">
-                                        <Input
-                                            placeholder="Enter a descriptive review session name..."
-                                            value={reviewName}
-                                            onChange={(e) => setReviewName(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter" && !isCreating && reviewName.trim()) {
-                                                    handleCreateReview();
-                                                }
-                                            }}
-                                            required
-                                            aria-required="true"
-                                            className="h-12 border-[#DBE2EF] focus:border-[#3F72AF]"
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <DialogFooter className="gap-2">
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setIsDialogOpen(false)}
-                                            disabled={isCreating}
-                                            className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#DBE2EF]"
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            onClick={handleCreateReview}
-                                            disabled={isCreating || !reviewName.trim()}
-                                            className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32]"
-                                        >
-                                            {isCreating ? "Creating..." : "Create Review"}
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-
-                            {/* Delete Confirmation Dialog */}
-                            <AlertDialog open={!!reviewToDelete} onOpenChange={() => setReviewToDelete(null)}>
-                                <AlertDialogContent className="bg-[#F9F7F7]">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="flex items-center gap-2 text-[#112D4E]">
-                                            <div className="p-2 bg-red-100 rounded-lg">
-                                                <Trash2 className="h-4 w-4 text-red-600" />
-                                            </div>
-                                            Delete Review Session?
-                                        </AlertDialogTitle>
-                                        <AlertDialogDescription className="text-base text-[#3F72AF]">
-                                            Are you sure you want to delete <span className="font-semibold text-[#112D4E]">"{reviewToDelete?.name}"</span>?
-                                            This action cannot be undone and will permanently remove all scores, answers, and data associated with this review session.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter className="gap-2">
-                                        <AlertDialogCancel className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#DBE2EF]">Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            className="bg-red-600 hover:bg-red-700"
-                                            onClick={async () => {
-                                                setIsPageLoading(true);
-                                                if (reviewToDelete) {
-                                                    await handleDeleteReview(reviewToDelete);
-                                                    await fetchReviews();
-                                                }
-                                                setIsPageLoading(false);
-                                            }}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete Review
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
                         </div>
                     </MaxWidthWrapper>
                 </div>
