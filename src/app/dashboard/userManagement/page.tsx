@@ -38,7 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { User } from "../../../../models/userModel";
 
 export default function UserManagementPage() {
-    const { isLoaded, isSignedIn } = useAuth();
+    const { isLoaded, isSignedIn,userId } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -57,7 +57,8 @@ export default function UserManagementPage() {
             const response = await fetch('/api/admin/getAllUsers');
             if (!response.ok) throw new Error('Failed to fetch users');
             const data = await response.json();
-            setUsers(data || []);
+            // Remove the current user from the list
+            setUsers((data || []).filter((user: User) => user.user_id !== userId));
         } catch (error) {
             toast({
                 title: 'Error',
@@ -76,9 +77,9 @@ export default function UserManagementPage() {
     }, [isLoaded, isSignedIn]);
 
     const handleDeleteUser = async (user: User) => {
-        setIsDeleting(true);
+        setIsDeleting(true); 
         try {
-            const response = await fetch(`/api/admin/delete/${user.user_id}`, {
+            const response = await fetch(`/api/admin/deleteUser/${user.user_id}`, {
                 method: 'DELETE',
             });
             if (!response.ok) throw new Error('Failed to delete user');
