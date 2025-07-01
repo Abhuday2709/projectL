@@ -1,64 +1,64 @@
-import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import {  UserConfig, UserSchema } from "../../../../../models/userModel";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { NextResponse } from "next/server";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { UserSchema, UserConfig } from "../../../../../models/userModel";
+import { dynamoClient } from "@/lib/AWS/AWS_CLIENT";
 
-// Initialize DynamoDB client with credentials
-const client = new DynamoDBClient({
-    region: process.env.NEXT_PUBLIC_AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
-    }
-});
-const docClient = DynamoDBDocumentClient.from(client);
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function POST(request: Request) {
+
     try {
-        // Validate environment variables
-        if (!process.env.NEXT_PUBLIC_AWS_REGION || !process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || !process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY) {
-            throw new Error('Missing AWS credentials in environment variables');
-        }
-
-        const body = await request.json();
+        console.log("HI");
         
+        const body = await request.json();
+        console.log("Create user request body:", body);
+        
+        // Validate the user data
+        const validatedUser = UserSchema.parse({
+            ...body,
+            createdAt: new Date().toISOString()
+        });
 
-        const user = UserSchema.parse(body);
-
+        // Create user in DynamoDB
         const command = new PutCommand({
             TableName: UserConfig.tableName,
-            Item: {
-                ...user,
-                createdAt: new Date().toISOString() // Ensure createdAt is set
-            },
-            ConditionExpression: "attribute_not_exists(userId)"
+            Item: validatedUser,
+            ConditionExpression: "attribute_not_exists(user_id)", // Prevent overwriting existing users
         });
 
         await docClient.send(command);
-        return NextResponse.json(user, { status: 201 });
-    } catch (error: unknown) {
-        // More detailed error logging
-        if (error instanceof Error) {
-            if (error.name === 'ResourceNotFoundException') {
-                return NextResponse.json(
-                    { 
-                        error: 'Database table not found. Please ensure the table is created.',
-                        details: process.env.NODE_ENV === 'development' 
-                            ? 'Run the createDynamoTable script to create the table.'
-                            : undefined
-                    },
-                    { status: 500 }
-                );
+
+        return NextResponse.json({ 
+            message: "User created successfully",
+            user: {
+                user_id: validatedUser.user_id,
+                email: validatedUser.email,
+                firstName: validatedUser.firstName,
+                lastName: validatedUser.lastName,
+                createdAt: validatedUser.createdAt
             }
+        });
+    } catch (error) {
+        console.error("Create user error:", error);
+        
+        // Handle validation errors
+        if (error instanceof Error && error.name === 'ZodError') {
+            return NextResponse.json(
+                { error: "Invalid user data", details: error.message },
+                { status: 400 }
+            );
+        }
+        
+        // Handle DynamoDB conditional check failure
+        if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
+            return NextResponse.json(
+                { error: "User already exists" },
+                { status: 409 }
+            );
         }
 
         return NextResponse.json(
-            { 
-                error: 'Failed to create user',
-                details: process.env.NODE_ENV === 'development' && error && typeof error === "object" && "message" in error
-                    ? (error as { message?: string }).message
-                    : undefined
-            },
+            { error: "Failed to create user" },
             { status: 500 }
         );
     }

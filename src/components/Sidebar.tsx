@@ -126,6 +126,13 @@ export default function Sidebar() {
                         <Search className={iconClasses("/dashboard/adminDashboard")} />
                         <span className="font-medium">Admin Dashboard</span>
                     </div>
+                    <div
+                        onClick={() => handleRouteChange('/dashboard/userManagement')}
+                        className={linkClasses("/dashboard/userManagement")}
+                    >
+                        <Search className={iconClasses("/dashboard/userManagement")} />
+                        <span className="font-medium">User Management</span>
+                    </div>
                 </nav>
 
                 {/* Sidebar Footer */}

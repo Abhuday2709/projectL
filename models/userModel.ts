@@ -6,8 +6,7 @@ export const UserSchema = z.object({
     email: z.string().email(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
-    // passwordHash: z.string(),
-    // emailVerified: z.boolean().default(false),
+    passwordHash: z.string().optional(), // Uncomment this line
     createdAt: z.string().optional().default(() => new Date().toISOString()),
 });
 

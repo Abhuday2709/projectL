@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import { Message } from '../../models/messageModel';
 
 if (!process.env.GEMINI_API_KEY) {
@@ -14,44 +14,62 @@ export async function generateResponse(
 ): Promise<string> {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        
+
         // Format conversation history
         const conversationHistory = recentMessages.length > 0
-            ? recentMessages.map(msg => 
-                `${msg.isUserMessage ? 'User' : 'Assistant'}: ${msg.text}`
-            ).join('\n')
-            : '';
-        
-        // Prepare document context
+            ? recentMessages.map(msg => ({
+                role: msg.isUserMessage ? 'user' : 'model',
+                parts: [{ text: msg.text }]
+            }))
+            : [];
+
+        // Prepare document context, clearly labeling it for the model
         const documentContextText = documentContext.length > 0
-            ? `\n\nRELEVANT CONTEXT:\n${documentContext.map((doc, i) => ` ${doc}`).join('\n\n')}`
-            : '';
-        
-        // Enhanced prompt with better instructions
-        const prompt = `Use the following pieces of context (or previous conversaton if needed) to answer the users question in markdown format.
+            ? `RELEVANT DOCUMENTS:\n${documentContext.join('\n---\n')}` // Using a separator
+            : 'No documents provided.';
 
-        Use the following pieces of context (or previous conversaton if needed) to answer the users question in markdown format. \nIf you don't know the answer, just say that you don't know, don't try to make up an answer.
+        // --- THE IMPROVED PROMPT ---
+        const systemInstruction = `You are an expert assistant. Your task is to answer the user's question in a clear, concise, and helpful manner, formatted in Markdown.
 
-        ${conversationHistory ? `CONVERSATION HISTORY:\n${conversationHistory}\n` : ''}
-        CURRENT USER QUESTION: ${userMessage}${documentContextText}
-        INSTRUCTIONS:
-    RESPONSE QUALITY:
-    - Be comprehensive but concise
-    - Provide specific examples when helpful
-    - Structure your response logically
-    - Address all parts of the user's question
+RULES:
+1.  **Synthesize Information:** Base your answer on the information provided in the "RELEVANT DOCUMENTS" section and the "CONVERSATION HISTORY".
+2.  **Do Not Reference the Context:** Formulate a direct answer to the user's question. DO NOT say "according to the document," "the context states," or any similar phrases. Act as if you already know the information.
+3.  **Handle Unknowns:** If the answer cannot be found in the provided documents or history, state clearly that you do not have enough information to answer. Do not make up information.
+4.  **Be Conversational:** Maintain a professional and helpful tone. Address the user directly.`;
 
-    TONE: Be professional, helpful, and conversational. Adapt your tone to match the context of the conversation.
+        // Combine history with the new user request
+        const contents = [
+            ...conversationHistory,
+            {
+                role: 'user' as const,
+                parts: [{
+                    text: `
+${documentContextText}
 
-    ACCURACY: If you're uncertain about something, express that uncertainty rather than guessing.
+USER QUESTION: "${userMessage}"
+` }]
+            }
+        ];
 
-    Please provide your response now:`;
+        const result = await model.generateContent({
+            contents: contents,
+            systemInstruction: {
+                role: 'system',
+                parts: [{ text: systemInstruction }],
+            },
+            // Optional: Safety settings can be adjusted if needed
+            safetySettings: [
+                { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+                { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
+            ]
+        });
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        console.log('Gemini API Response:', response.text());
-        
-        return response.text();
+        const response = result.response;
+        const responseText = response.text();
+        console.log('Gemini API Response:', responseText);
+
+        return responseText;
+
     } catch (error) {
         console.error('Gemini API Error:', {
             error,
@@ -60,7 +78,7 @@ export async function generateResponse(
             userMessage,
             contextLength: documentContext.length
         });
-        
+
         if (error instanceof Error) {
             if (error.message.includes('API key')) {
                 throw new Error('Invalid or missing Gemini API key');
@@ -69,33 +87,7 @@ export async function generateResponse(
                 throw new Error('Gemini API quota exceeded');
             }
         }
-        
+
         throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-}
-
-export async function generateEmbeddings(text: string): Promise<number[]> {
-    try {
-        const model = genAI.getGenerativeModel({ model: "embedding-001" });
-        const result = await model.embedContent(text);
-        const embedding = result.embedding;
-        return embedding.values;
-    } catch (error) {
-        console.error('Gemini API Error (Embeddings):', {
-            error,
-            message: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            text
-        });
-
-        if (error instanceof Error) {
-            if (error.message.includes('API key')) {
-                throw new Error('Invalid or missing Gemini API key for embeddings');
-            }
-            if (error.message.includes('quota')) {
-                throw new Error('Gemini API quota exceeded for embeddings');
-            }
-        }
-        throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }

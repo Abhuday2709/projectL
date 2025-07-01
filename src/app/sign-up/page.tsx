@@ -17,6 +17,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User } from "../../../models/userModel";
 import { isNetworkScienceEmail } from '@/lib/utils';
+import bcrypt from "bcryptjs";
 
 
 function Signup() {
@@ -72,28 +73,33 @@ function Signup() {
         try {
             const completeSignup = await signUp.attemptEmailAddressVerification({ code })
             if (completeSignup.status !== "complete") {
-                setError("That code wasn’t correct—please try again.");
+                setError("That code wasn't correct—please try again.");
                 return;
             }
             if (completeSignup.status === "complete") {
                 setError("");
                 try {
+                    // Hash the password
+                    const passwordHash = await bcrypt.hash(password, 10);
+                    
                     const newUser: Omit<User, 'createdAt'> = {
                         user_id: completeSignup.createdUserId!,
                         email: emailAddress,
                         firstName: completeSignup.firstName || "",
                         lastName: completeSignup.lastName || "",
+                        passwordHash: passwordHash, // Add passwordHash
                     };
                     console.log("New user created:", newUser);
                     
-                    const response = await fetch('/api/user/createuser', {
+                    const response = await fetch('/api/user/createUser', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(newUser)
                     });
-
+                    console.log("Response from createUser API:", response);
+                    
                     const result = await response.json();
                     if (!response.ok) {
                         throw new Error(result.error || 'Failed to create user');
@@ -134,7 +140,7 @@ function Signup() {
                                     value={emailAddress}
                                     onChange={(e) => setEmailAddress(e.target.value)}
                                     placeholder="yourname@networkscience.ai"
-                                    pattern=".*@networkscience\.ai$"
+                                    // pattern=".*@networkscience\.ai$"
                                     title="Please enter a valid @networkscience.ai email address"
                                     required
                                 />
@@ -217,4 +223,4 @@ function Signup() {
     );
 }
 
-export default Signup
+export default Signup;

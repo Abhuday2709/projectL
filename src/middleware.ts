@@ -4,7 +4,9 @@ import type { NextRequest } from "next/server";
 import { clerkMiddleware, ClerkMiddlewareAuth } from "@clerk/nextjs/server";
 
 // List all public routes (landing, login, signup, etc.)
-const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up"];
+const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up",
+  "/api/user/createUser"
+];
 
 export default clerkMiddleware(
   // ClerkMiddleware handler takes (auth, req)

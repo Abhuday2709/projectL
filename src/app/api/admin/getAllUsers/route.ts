@@ -10,7 +10,6 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function GET(request: Request) {
     try {
-
         const command = new ScanCommand({
             TableName: UserConfig.tableName,
         });
