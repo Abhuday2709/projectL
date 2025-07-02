@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { DocumentConfig, type Document } from '../../../../../models/documentModel';
+import { DocumentConfig, type Document } from '@/models/documentModel';
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);

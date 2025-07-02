@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { type Document } from '../../models/documentModel'; // Assuming this type is still relevant for job data
+import { type Document } from '@/models/documentModel'; // Assuming this type is still relevant for job data
 import { ProcessDocumentForReviewJobData, ProcessPodcasts } from './utils';
 
 // Configure Redis connection

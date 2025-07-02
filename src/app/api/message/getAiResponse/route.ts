@@ -4,7 +4,7 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { generateEmbeddings, generateResponse } from '@/lib/gemini';
-import { MessageConfig, type Message } from '../../../../../models/messageModel';
+import { MessageConfig, type Message } from '@/models/messageModel';
 import { v4 as uuidv4 } from 'uuid';
 
 const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST!, port: parseInt(process.env.QDRANT_PORT!) });

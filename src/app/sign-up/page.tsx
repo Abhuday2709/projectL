@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { User } from "../../../models/userModel";
+import { User } from "@/models/userModel";
 import { isNetworkScienceEmail } from '@/lib/utils';
 import bcrypt from "bcryptjs";
 

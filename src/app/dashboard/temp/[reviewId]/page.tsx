@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
 // AWS and Database imports
-import { ScoringSession, scoringSessionConfig } from "../../../../../models/scoringReviewModel"
+import { ScoringSession, scoringSessionConfig } from "@/models/scoringReviewModel"
 import { dynamoClient } from "@/lib/AWS/AWS_CLIENT"
 import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb"
 

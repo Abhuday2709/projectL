@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { CategoryConfig, type Category } from '../../../../../models/categoryModel';
+import { CategoryConfig, type Category } from '@/models/categoryModel';
 
 const catClient = DynamoDBDocumentClient.from(dynamoClient);
 

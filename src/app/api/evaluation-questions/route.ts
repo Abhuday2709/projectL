@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, PutCommand, DeleteCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { v4 as uuidv4 } from 'uuid';
-import { EvaluationQuestionConfig, type EvaluationQuestion } from '../../../../models/evaluationQuestionModel';
+import { EvaluationQuestionConfig, type EvaluationQuestion } from '@/models/evaluationQuestionModel';
 
 const evalClient = DynamoDBDocumentClient.from(dynamoClient);
 

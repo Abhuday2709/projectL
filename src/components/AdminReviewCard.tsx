@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import type { ScoringSession } from "../../models/scoringReviewModel";
+import type { ScoringSession } from "@/models/scoringReviewModel";
 import { User as UserIcon, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 
 interface User {

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { QueryCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { Chat, ChatConfig } from '../../../../../models/chatModel';
+import { Chat, ChatConfig } from '@/models/chatModel';
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 

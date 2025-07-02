@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { DocumentConfig } from '../../../../../models/documentModel';
+import { DocumentConfig } from '@/models/documentModel';
 import { z } from 'zod';
 
 const docClient2 = DynamoDBDocumentClient.from(dynamoClient);

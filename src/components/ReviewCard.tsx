@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, ArrowRight, Calendar, Trash2 } from "lucide-react";
-import { ScoringSession } from "../../models/scoringReviewModel";
+import { ScoringSession } from "@/models/scoringReviewModel";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Document } from "../../models/documentModel";
+import { Document } from "@/models/documentModel";
 
 export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmin }: {
     review: ScoringSession,

@@ -5,7 +5,7 @@ import { Worker, Job } from 'bullmq';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import pdf from 'pdf-parse'; // Using 'pdf-parse' for PDF text extraction
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { type Document, DocumentConfig } from '../../models/documentModel'; // Changed to relative path, Added DocumentConfig
+import { type Document, DocumentConfig } from '@/models/documentModel'; // Changed to relative path, Added DocumentConfig
 import { Readable } from 'stream';
 import { generateEmbeddings } from './gemini'; // Added import
 import { QdrantClient } from '@qdrant/js-client-rest'; // Qdrant client
@@ -13,8 +13,8 @@ import { v4 as uuidv4 } from 'uuid'; // UUID generator
 import { DynamoDBDocumentClient, UpdateCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
 import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
 import mammoth from 'mammoth';
-import { EvaluationQuestionConfig, type EvaluationQuestion } from '../../models/evaluationQuestionModel';
-import { scoringSessionConfig, ScoringSessionSchema, type ScoringSession } from '../../models/scoringReviewModel';
+import { EvaluationQuestionConfig, type EvaluationQuestion } from '@/models/evaluationQuestionModel';
+import { scoringSessionConfig, ScoringSessionSchema, type ScoringSession } from '@/models/scoringReviewModel';
 import { ProcessDocumentForReviewJobData } from './utils';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 // Configure S3 client (ensure NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY are set in env)

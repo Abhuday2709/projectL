@@ -12,7 +12,7 @@ import { Upload } from '@aws-sdk/lib-storage';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobePath from 'ffprobe-static';
-import { ChatConfig } from '../../models/chatModel';
+import { ChatConfig } from '@/models/chatModel';
 
 // --- Gemini API Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');

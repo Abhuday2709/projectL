@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useState, useEffect } from "react";
 import bcrypt from "bcryptjs";
-import { Chat } from "../../../../models/chatModel";
+import { Chat } from "@/models/chatModel";
 import Image from "next/image";
 import ClientPdfRenderer from "./components/clientPdfRenderer";
 import ChatWrapper from "./components/chat/ChatWrapper";

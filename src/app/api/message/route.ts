@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { MessageConfig, type Message } from '../../../../models/messageModel';
+import { MessageConfig, type Message } from '@/models/messageModel';
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 export async function GET(request: NextRequest) {

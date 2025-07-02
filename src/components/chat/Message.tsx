@@ -1,4 +1,4 @@
-import { Message as IMessage } from '../../../models/messageModel'
+import { Message as IMessage } from '@/models/messageModel'
 import UserMessage from './UserMessage'
 import AIMessage from './AIMessage'
 

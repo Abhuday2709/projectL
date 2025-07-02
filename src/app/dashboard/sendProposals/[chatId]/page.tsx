@@ -10,8 +10,8 @@ import Sidebar from "@/components/Sidebar";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import bcrypt from "bcryptjs";
-import { Chat } from "../../../../../models/chatModel";
-import { Document } from "../../../../../models/documentModel";
+import { Chat } from "@/models/chatModel";
+import { Document } from "@/models/documentModel";
 import { deleteFromS3 } from "@/lib/utils";
 
 export default function ChatPage() {

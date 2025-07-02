@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { MessageConfig, type Message } from '../../../../../models/messageModel';
+import { MessageConfig, type Message } from '@/models/messageModel';
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 

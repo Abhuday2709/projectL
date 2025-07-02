@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode, useState } from 'react'
-import { Message } from '../../../models/messageModel'
+import { Message } from '@/models/messageModel'
 import { useInfiniteQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 
 export interface MessagesResponse {

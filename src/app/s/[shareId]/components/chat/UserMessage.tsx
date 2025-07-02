@@ -1,13 +1,13 @@
-import { Message as IMessage } from '../../../../../../models/messageModel'
+import { Message as IMessage } from '@/models/messageModel'
 import { cn } from '@/lib/utils'
 import { User, Check, Clock } from 'lucide-react'
 
 interface UserMessageProps {
   message: IMessage
-  isOptimistic?: boolean
+  isNextMessageSamePerson?: boolean
 }
 
-function UserMessage({ message, isOptimistic }: UserMessageProps) {
+function UserMessage({ message, isNextMessageSamePerson }: UserMessageProps) {
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString([], {
       hour: '2-digit',
@@ -26,8 +26,8 @@ function UserMessage({ message, isOptimistic }: UserMessageProps) {
             'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white',
             'hover:shadow-md hover:scale-[1.02] transform',
             {
-              'opacity-70': isOptimistic,
-              'opacity-100': !isOptimistic
+              'opacity-70': isNextMessageSamePerson,
+              'opacity-100': !isNextMessageSamePerson
             }
           )}
         >
@@ -51,7 +51,7 @@ function UserMessage({ message, isOptimistic }: UserMessageProps) {
           'opacity-0 group-hover:opacity-100'
         )}>
           <span>{formatTime(message.createdAt)}</span>
-          {isOptimistic ? (
+          {isNextMessageSamePerson ? (
             <Clock className='h-3 w-3' />
           ) : (
             <Check className='h-3 w-3' />

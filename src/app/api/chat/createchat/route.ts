@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { ChatConfig, ChatSchema, type Chat } from '../../../../../models/chatModel';
-import { shareSessionConfig, ShareSessionSchema } from '../../../../../models/shareSessionModel';
+import { ChatConfig, ChatSchema, type Chat } from '@/models/chatModel';
+import { shareSessionConfig, ShareSessionSchema } from '@/models/shareSessionModel';
 import { v4 as uuidv4 } from "uuid";
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);

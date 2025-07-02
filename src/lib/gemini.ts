@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
-import { Message } from '../../models/messageModel';
+import { Message } from '@/models/messageModel';
 
 if (!process.env.GEMINI_API_KEY) {
     throw new Error('Missing GEMINI_API_KEY environment variable');
@@ -14,7 +14,8 @@ export async function generateResponse(
 ): Promise<string> {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
+        console.log("gemini key", process.env.GEMINI_API_KEY);
+        
         // Format conversation history
         const conversationHistory = recentMessages.length > 0
             ? recentMessages.map(msg => ({
@@ -89,5 +90,31 @@ USER QUESTION: "${userMessage}"
         }
 
         throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+}
+
+export async function generateEmbeddings(text: string): Promise<number[]> {
+    try {
+        const model = genAI.getGenerativeModel({ model: "embedding-001" });
+        const result = await model.embedContent(text);
+        const embedding = result.embedding;
+        return embedding.values;
+    } catch (error) {
+        console.error('Gemini API Error (Embeddings):', {
+            error,
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            text
+        });
+
+        if (error instanceof Error) {
+            if (error.message.includes('API key')) {
+                throw new Error('Invalid or missing Gemini API key for embeddings');
+            }
+            if (error.message.includes('quota')) {
+                throw new Error('Gemini API quota exceeded for embeddings');
+            }
+        }
+        throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }

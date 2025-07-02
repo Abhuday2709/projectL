@@ -1,4 +1,4 @@
-import { Message as IMessage } from '../../../../../../models/messageModel'
+import { Message as IMessage } from '@/models/messageModel'
 import { cn } from '@/lib/utils'
 import { Bot, Copy, Check } from 'lucide-react'
 import { useState } from 'react'

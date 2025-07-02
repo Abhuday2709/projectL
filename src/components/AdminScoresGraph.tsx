@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, ScatterChart, ReferenceArea, CartesianGrid, ReferenceLine, XAxis, YAxis, Tooltip, Scatter, Cell, ReferenceDot } from "recharts";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, X } from "lucide-react";
-import { ScoringSession } from '../../models/scoringReviewModel';
-import { Category } from '../../models/categoryModel';
+import { ScoringSession } from '@/models/scoringReviewModel';
+import { Category } from '@/models/categoryModel';
 
 interface ReviewScore {
     id: string;

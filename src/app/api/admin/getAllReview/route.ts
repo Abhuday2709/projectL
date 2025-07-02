@@ -3,7 +3,7 @@ import {
     ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { NextResponse } from "next/server";
-import { scoringSessionConfig } from "../../../../../models/scoringReviewModel";
+import { scoringSessionConfig } from "@/models/scoringReviewModel";
 import { dynamoClient } from "@/lib/AWS/AWS_CLIENT";
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);

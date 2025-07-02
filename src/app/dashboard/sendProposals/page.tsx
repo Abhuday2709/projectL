@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { Chat } from "../../../../models/chatModel";
-import type { Message } from "../../../../models/messageModel";
+import type { Chat } from "@/models/chatModel";
+import type { Message } from "@/models/messageModel";
 import {
     AlertDialog,
     AlertDialogAction,

@@ -4,7 +4,7 @@ import ChatInput from './ChatInput'
 import Messages from './Messages'
 import { FileX, Upload, Sparkles } from 'lucide-react'
 import { ChatContextProvider } from './ChatContext'
-import { Document } from '../../../../../../models/documentModel'
+import { Document } from '@/models/documentModel'
 
 interface ChatWrapperProps {
     chatId: string

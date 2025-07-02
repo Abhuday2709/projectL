@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
-import { DocumentConfig, type Document } from '../../../../../models/documentModel';
+import { DocumentConfig, type Document } from '@/models/documentModel';
 import { myQueue, myReviewQueue } from '@/lib/queue';
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);

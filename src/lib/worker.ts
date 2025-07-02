@@ -5,7 +5,7 @@ import { Worker, Job } from 'bullmq';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import pdf from 'pdf-parse'; // Using 'pdf-parse' for PDF text extraction
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { type Document, DocumentConfig } from '../../models/documentModel'; // Changed to relative path, Added DocumentConfig
+import { type Document, DocumentConfig } from '@/models/documentModel'; // Changed to relative path, Added DocumentConfig
 import { Readable } from 'stream';
 import { generateEmbeddings } from './gemini'; // Added import
 import { QdrantClient } from '@qdrant/js-client-rest'; // Qdrant client

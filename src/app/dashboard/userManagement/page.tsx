@@ -35,7 +35,7 @@ import {
     RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "../../../../models/userModel";
+import { User } from "@/models/userModel";
 
 export default function UserManagementPage() {
     const { isLoaded, isSignedIn,userId } = useAuth();

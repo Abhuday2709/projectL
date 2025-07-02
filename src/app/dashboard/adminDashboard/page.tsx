@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { ScoringSession } from "../../../../models/scoringReviewModel";
+import type { ScoringSession } from "@/models/scoringReviewModel";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
 import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories";

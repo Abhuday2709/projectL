@@ -3,7 +3,7 @@ import { DynamoDBDocumentClient, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { DocumentConfig } from '../../../../../../models/documentModel';
+import { DocumentConfig } from '@/models/documentModel';
 
 const docClient3 = DynamoDBDocumentClient.from(dynamoClient);
 const s3Client = new S3Client({
