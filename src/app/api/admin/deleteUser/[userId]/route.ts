@@ -54,10 +54,10 @@ async function deleteDocuments(chatId: string) {
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
     try {
-        const { userId } =await params;
+        const { userId } = await params;
         console.log("Deleting user with ID:", userId);
 
         if (!userId) {

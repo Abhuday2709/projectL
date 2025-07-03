@@ -1,20 +1,13 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { ChatContext } from './ChatContext'
 import Message from './Message'
-import { useIntersection } from '@mantine/hooks'
-import { Loader2, ArrowDown } from 'lucide-react'
+import { ArrowDown, Loader2 } from 'lucide-react'
 
 function Messages() {
-  const { messages, isLoading, hasMore, loadMoreMessages } = useContext(ChatContext)
+  const { messages, isLoading } = useContext(ChatContext)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [isNearBottom, setIsNearBottom] = useState(true)
-
-  const { ref: loadMoreRef, entry } = useIntersection({
-    root: containerRef.current,
-    threshold: 0.1,
-    rootMargin: '100px'
-  })
 
   // Auto-scroll to bottom for new messages
   const scrollToBottom = () => {
@@ -22,13 +15,6 @@ function Messages() {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }
-
-  // Handle infinite scroll loading
-  useEffect(() => {
-    if (entry?.isIntersecting && hasMore && !isLoading) {
-      loadMoreMessages()
-    }
-  }, [entry, hasMore, isLoading, loadMoreMessages])
 
   // Monitor scroll position
   useEffect(() => {
@@ -86,30 +72,16 @@ function Messages() {
         )}
 
         {/* Messages */}
-        {messages.filter(msg => msg && msg.messageId).map((message, i) => (
-          <div
-            key={message.messageId}
-            ref={i === 0 ? loadMoreRef : undefined}
-            className='transform transition-all duration-300 ease-out animate-in slide-in-from-bottom-2'
-          >
+        {messages.map((message, i) => {
+          const isNextMessageSamePerson = (messages[i - 1]?.isUserMessage === messages[i]?.isUserMessage)
+          return (
             <Message
+              key={message.messageId}
               message={message}
-              isOptimistic={i === 0 && isLoading}
+              isNextMessageSamePerson={isNextMessageSamePerson}
             />
-          </div>
-        ))}
-
-        {/* Load More Indicator */}
-        {hasMore && (
-          <div className='flex justify-center py-4'>
-            <div className='bg-white/60 backdrop-blur-sm rounded-full px-4 py-2 border border-[#DBE2EF]/50 shadow-sm'>
-              <div className='flex items-center gap-2 text-[#3F72AF]'>
-                <Loader2 className='h-4 w-4 animate-spin' />
-                <span className='text-sm font-medium'>Loading more messages...</span>
-              </div>
-            </div>
-          </div>
-        )}
+          )
+        })}
       </div>
 
       {/* Scroll to Bottom Button */}

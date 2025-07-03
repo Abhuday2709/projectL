@@ -4,15 +4,15 @@ import AIMessage from './AIMessage'
 
 interface MessageProps {
   message: IMessage
-  isOptimistic?: boolean
+  isNextMessageSamePerson?: boolean
 }
 
-function Message({ message, isOptimistic }: MessageProps) {
+function Message({ message, isNextMessageSamePerson }: MessageProps) {
   if (message.isUserMessage) {
-    return <UserMessage message={message} isOptimistic={isOptimistic} />
+    return <UserMessage message={message} isNextMessageSamePerson={isNextMessageSamePerson} />
   }
 
-  return <AIMessage message={message} isOptimistic={isOptimistic} />
+  return <AIMessage message={message} isNextMessageSamePerson={isNextMessageSamePerson} />
 }
 
-export default Message
+export default Message 

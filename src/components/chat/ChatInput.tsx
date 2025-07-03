@@ -1,6 +1,6 @@
 import React, { useContext, useRef, useEffect } from 'react'
 import { ChatContext } from './ChatContext'
-import { Send, Paperclip, Mic, Square } from 'lucide-react'
+import { Send,Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ChatInputProps {
@@ -13,7 +13,6 @@ function ChatInput({ isDisabled }: ChatInputProps) {
         handleInputChange,
         addMessage,
         isLoading,
-        isGeneratingResponse
     } = useContext(ChatContext)
 
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -45,18 +44,6 @@ function ChatInput({ isDisabled }: ChatInputProps) {
 
     return (
         <div className='p-4 space-y-3'>
-            {/* Typing Indicator */}
-            {isGeneratingResponse && (
-                <div className='flex items-center gap-2 text-sm text-[#3F72AF] animate-fade-in'>
-                    <div className='flex space-x-1'>
-                        <div className='w-2 h-2 bg-[#3F72AF] rounded-full animate-bounce' style={{ animationDelay: '0ms' }} />
-                        <div className='w-2 h-2 bg-[#3F72AF] rounded-full animate-bounce' style={{ animationDelay: '150ms' }} />
-                        <div className='w-2 h-2 bg-[#3F72AF] rounded-full animate-bounce' style={{ animationDelay: '300ms' }} />
-                    </div>
-                    <span className='font-medium'>AI is generating response...</span>
-                </div>
-            )}
-
             {/* Input Container */}
             <form onSubmit={handleSubmit} className='relative'>
                 <div className={cn(
@@ -113,7 +100,7 @@ function ChatInput({ isDisabled }: ChatInputProps) {
                         )}
                     >
                         {isLoading ? (
-                            <Square className='w-4 h-4' />
+                            <Square className='w-4 h-4 animate-pulse' />
                         ) : (
                             <Send className='w-4 h-4' />
                         )}

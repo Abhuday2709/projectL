@@ -2,10 +2,11 @@ import * as dotenv from 'dotenv';
 dotenv.config(); // Load environment variables from .env file
 
 import { Worker, Job } from 'bullmq';
+import IORedis from 'ioredis';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import pdf from 'pdf-parse'; // Using 'pdf-parse' for PDF text extraction
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { type Document, DocumentConfig } from '@/models/documentModel'; // Changed to relative path, Added DocumentConfig
+import { type Document, DocumentConfig } from '../models/documentModel'; // Changed to relative path, Added DocumentConfig
 import { Readable } from 'stream';
 import { generateEmbeddings } from './gemini'; // Added import
 import { QdrantClient } from '@qdrant/js-client-rest'; // Qdrant client
@@ -13,6 +14,7 @@ import { v4 as uuidv4 } from 'uuid'; // UUID generator
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
 import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
 import mammoth from 'mammoth';
+
 // Configure S3 client (ensure NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY are set in env)
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
@@ -68,11 +70,10 @@ async function ensureCollection() {
     }
 })();
 
-// It's good practice to configure your Redis connection
-const connection = {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
-};
+// Create a single Redis connection instance matching the queue configuration
+const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
+    maxRetriesPerRequest: null
+});
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
     return new Promise((resolve, reject) => {

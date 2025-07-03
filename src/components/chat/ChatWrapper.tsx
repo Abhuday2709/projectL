@@ -8,7 +8,7 @@ import { Document } from '@/models/documentModel'
 
 interface ChatWrapperProps {
     chatId: string
-}
+} 
 
 const ChatWrapper = ({ chatId }: ChatWrapperProps) => {
     const [documents, setDocuments] = useState<Document[]>([])
