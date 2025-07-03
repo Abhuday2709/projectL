@@ -22,10 +22,10 @@ const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" })
 
 // --- Qdrant Setup ---
 const qdrantClient = new QdrantClient({
-    host: process.env.QDRANT_HOST || 'localhost',
-    port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT) : 6333,
+    host: process.env.QDRANT_HOST!,
+    port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT!) : 6333,
 });
-const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
+const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME!;
 
 // --- AWS Setup ---
 const s3Client = new S3Client({

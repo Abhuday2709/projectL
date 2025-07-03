@@ -33,14 +33,14 @@ export async function streamToBuffer(stream: Readable): Promise<Buffer> {
 // Initialize Qdrant client
 export function initQdrantClient(): QdrantClient {
     return new QdrantClient({
-        host: process.env.QDRANT_HOST || 'localhost',
+        host: process.env.QDRANT_HOST!,
         port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT) : 6333,
     });
 }
 
 // Ensure Qdrant collection exists
 export async function ensureQdrantCollection(qdrantClient: QdrantClient, collectionName?: string, vectorSize?: number, distanceMetric?: string): Promise<void> {
-    const name = collectionName || process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
+    const name = collectionName || process.env.QDRANT_COLLECTION_NAME!;
     const VecSize = 768;
     const distance = 'Cosine';
     try {

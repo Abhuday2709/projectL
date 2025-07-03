@@ -24,10 +24,10 @@ const s3Client = new S3Client({
 
 // Qdrant Client Initialization
 const qdrantClient = new QdrantClient({
-    host: process.env.QDRANT_HOST || 'localhost',
-    port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT) : 6333,
+    host: process.env.QDRANT_HOST!,
+    port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT!) : 6333,
 });
-const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
+const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME!;
 
 export async function DELETE(request: NextRequest) {
     try {

@@ -13,8 +13,8 @@ const s3Client = new S3Client({
         secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
     },
 });
-const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST, port: Number(process.env.QDRANT_PORT) });
-const COLLECTION = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
+const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST, port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT) : 6333 });
+const COLLECTION = process.env.QDRANT_COLLECTION_NAME!;
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ chatId: string, uploadedAt: string }> }) {
     const { chatId, uploadedAt } = await params;

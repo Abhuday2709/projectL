@@ -8,8 +8,8 @@ import { DocumentConfig } from '@/models/documentModel';
 
 const reviewClient = DynamoDBDocumentClient.from(dynamoClient);
 const s3Client = new S3Client({ region: process.env.NEXT_PUBLIC_AWS_REGION });
-const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST, port: Number(process.env.QDRANT_PORT) });
-const COLLECTION = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
+const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST!, port: Number(process.env.QDRANT_PORT!) });
+const COLLECTION = process.env.QDRANT_COLLECTION_NAME!;
 
 // Create review
 export async function POST(request: NextRequest) {
