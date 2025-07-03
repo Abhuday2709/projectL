@@ -9,7 +9,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { chatId: string } }
+    { params }: { params: Promise<{ chatId: string }> }
 ) {
     try {
         const { userId } = await auth();

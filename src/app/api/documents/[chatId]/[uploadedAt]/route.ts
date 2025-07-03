@@ -16,7 +16,7 @@ const s3Client = new S3Client({
 const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST, port: Number(process.env.QDRANT_PORT) });
 const COLLECTION = process.env.QDRANT_COLLECTION_NAME || 'document_embeddings';
 
-export async function DELETE(request: NextRequest, { params }: { params: { chatId: string, uploadedAt: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ chatId: string, uploadedAt: string }> }) {
     const { chatId, uploadedAt } = await params;
     try {
         // DynamoDB delete
