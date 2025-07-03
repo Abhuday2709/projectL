@@ -24,7 +24,7 @@ const s3Client = new S3Client({
 const qdrantClient = new QdrantClient({
     host: process.env.QDRANT_HOST!,
     port: parseInt(process.env.QDRANT_PORT!),
-});
+}); 
 
 const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME!;
 
