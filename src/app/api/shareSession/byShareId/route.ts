@@ -7,11 +7,8 @@ import { shareSessionConfig, type ShareSession } from '@/models/shareSessionMode
 const docClient2 = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function GET(request: NextRequest) {
-    const { userId } = await auth();
-    if (!userId) {
-        return NextResponse.json({ error: 'User is not authenticated.' }, { status: 401 });
-    }
-
+    console.log(' nouiwfboeuGET /api/shareSession/byShareId called');
+    
     const shareId = request.nextUrl.searchParams.get('shareId');
     if (!shareId) {
         return NextResponse.json({ error: 'Missing `shareId` parameter.' }, { status: 400 });

@@ -30,7 +30,7 @@ export default function ChatPage() {
             if (!res.ok) throw new Error("Share session not found");
             const data = await res.json();
             setShareSession(data);
-        } catch (err: any) {
+        } catch (err: any) { 
             setShareSessionError(err.message);
         } finally {
             setIsShareSessionLoading(false);
@@ -46,9 +46,9 @@ export default function ChatPage() {
     const [isPasswordVerified, setIsPasswordVerified] = useState(false);
 
     // If not found, show 404
-    if (!shareSession && !isShareSessionLoading) {
-        notFound();
-    }
+    // if (!shareSession && !isShareSessionLoading) {
+    //     notFound();
+    // }
 
     // Password check handler
     async function handlePasswordCheck() {

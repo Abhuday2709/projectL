@@ -28,7 +28,7 @@ const Navbar = () => {
             <nav className="sticky h-14 inset-x-0 top-0 z-30 w-full border-b border-[#DBE2EF] bg-[#F9F7F7]/95 backdrop-blur-lg transition-all px-4 sm:px-6 lg:px-8">
                 <div className="flex h-14 items-center justify-between">
                     <Button
-                        className={`bg-[#DBE2EF]/0 ml-4 lg:ml-0 p-2 text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3F72AF] active:scale-95`}
+                        className={`bg-[#DBE2EF]/0 ml-10 lg:ml-0 p-2 text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3F72AF] active:scale-95`}
                         onClick={() => {
                             setIsNavLoading(true);
                             router.push("/");

@@ -75,7 +75,7 @@ export function UserReviewGroup({ userGroup, setIsPageLoading }: {
                                 className="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-[#DBE2EF] hover:border-[#3F72AF] bg-[#F9F7F7] flex flex-col h-full"
                                 onClick={() => {
                                     setIsPageLoading(true);
-                                    router.push(`/dashboard/temp/${review.scoringSessionId}`);
+                                    router.push(`/dashboard/bid-nobid/${review.scoringSessionId}`);
                                 }}
                             >
                                 <CardHeader className="pb-3">
@@ -118,7 +118,7 @@ export function UserReviewGroup({ userGroup, setIsPageLoading }: {
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setIsPageLoading(true);
-                                                router.push(`/dashboard/temp/${review.scoringSessionId}`);
+                                                router.push(`/dashboard/bid-nobid/${review.scoringSessionId}`);
                                             }}
                                         >
                                             View Review

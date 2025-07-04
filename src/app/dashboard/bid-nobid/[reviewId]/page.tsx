@@ -533,7 +533,7 @@ export default function DocumentScoringPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => { setIsPageLoading(true); router.push('/dashboard/temp') }}
+                  onClick={() => { setIsPageLoading(true); router.push('/dashboard/bid-nobid') }}
                   className="w-full sm:w-auto border-[#3F72AF] text-[#3F72AF] hover:bg-[#DBE2EF] text-sm sm:text-base"
                 >
                   Close Chat
@@ -721,8 +721,24 @@ export default function DocumentScoringPage() {
                             <div className="space-y-4">
                               {categoryAnsweredQuestions.map((q) => {
                                 const answer = activeScoringSession?.answers?.find(ans => ans.questionId === q.evaluationQuestionId);
-                                const answerText = answer?.answer === 0 ? "No" : answer?.answer === 1 ? "Maybe" : answer?.answer === 2 ? "Yes" : "Not found";
-                                const reasoning = answer?.reasoning || "No reasoning available";
+                                
+                                // Show error state if answer is expected but not found
+                                if (!answer) {
+                                  return (
+                                    <div key={q.evaluationQuestionId} className="bg-red-50 p-4 rounded-lg border border-red-400">
+                                      <div className="mb-3 flex items-center gap-2">
+                                        <span className="text-sm font-medium text-[#112D4E] leading-relaxed">{q.text}</span>
+                                        <span className="ml-2 px-2 py-0.5 text-xs rounded bg-red-100 text-red-800">AI Answer Missing</span>
+                                      </div>
+                                      <div className="mt-2 text-sm text-red-600">
+                                        AI answer not found. Please try re-uploading the document.
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                
+                                const answerText = answer.answer === 0 ? "No" : answer.answer === 1 ? "Maybe" : answer.answer === 2 ? "Yes" : "Not found";
+                                const reasoning = answer.reasoning || "No reasoning available";
 
                                 return (
                                   <div key={q.evaluationQuestionId} className="bg-[#F9F7F7] p-4 rounded-lg border border-green-400">

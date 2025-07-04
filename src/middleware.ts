@@ -4,33 +4,66 @@ import type { NextRequest } from "next/server";
 import { clerkMiddleware, ClerkMiddlewareAuth } from "@clerk/nextjs/server";
 
 // List all public routes (landing, login, signup, etc.)
-const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up",
-  "/api/user/createUser"
-];
+const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/api/user/createUser"];
+
+// Admin-only paths
+const ADMIN_PATHS = ["/dashboard/adminDashboard", "/dashboard/userManagement"];
 
 export default clerkMiddleware(
   // ClerkMiddleware handler takes (auth, req)
   async (auth: ClerkMiddlewareAuth, req: NextRequest) => {
     const { pathname } = req.nextUrl;
 
-    // 1. If path is public, let it through
+    // 1. Check if path is a share page (/s/[shareId]) - these are public
+    if (pathname.startsWith("/s/")) {
+      return NextResponse.next();
+    }
+
+    // 2. If path is public, let it through
     if (PUBLIC_PATHS.includes(pathname)) {
       return NextResponse.next();
     }
 
-    // 2. Check if the user is signed in using the auth parameter
-    //    The auth function returns a Promise, so we need to await it
+    // 3. Check if the user is signed in using the auth parameter
     const { userId } = await auth();
 
-    // 3. If userId exists, they're signed in → continue
-    if (userId) {
-      return NextResponse.next();
+    // 4. If not signed in and not on a public page → redirect to sign-up
+    if (!userId) {
+      const redirectUrl = new URL("/sign-up", req.url);
+      redirectUrl.searchParams.set("redirect_url", pathname);
+      return NextResponse.redirect(redirectUrl);
     }
 
-    // 4. Not signed in and not on a public page → redirect to /login
-    const redirectUrl = new URL("/sign-up", req.url);
-    redirectUrl.searchParams.set("redirect_url", pathname);
-    return NextResponse.redirect(redirectUrl);
+    // 5. Check if this is an admin-only path
+    if (ADMIN_PATHS.some(path => pathname.startsWith(path))) {
+      try {
+        // Get the user's role from Clerk
+        const { sessionClaims } = await auth();
+        const userRole =
+          (sessionClaims?.metadata && typeof sessionClaims.metadata === "object" && "role" in sessionClaims.metadata
+            ? (sessionClaims.metadata as { role?: string }).role
+            : undefined) ||
+          (sessionClaims?.publicMetadata && typeof sessionClaims.publicMetadata === "object" && "role" in sessionClaims.publicMetadata
+            ? (sessionClaims.publicMetadata as { role?: string }).role
+            : undefined);
+
+        // If user is not admin, redirect to dashboard with error
+        if (userRole !== "admin") {
+          const redirectUrl = new URL("/dashboard", req.url);
+          // redirectUrl.searchParams.set("error", "unauthorized");
+          return NextResponse.redirect(redirectUrl);
+        }
+      } catch (error) {
+        console.error("Error checking user role:", error);
+        // On error, redirect to dashboard
+        const redirectUrl = new URL("/dashboard", req.url);
+        redirectUrl.searchParams.set("error", "auth_error");
+        return NextResponse.redirect(redirectUrl);
+      }
+    }
+
+    // 6. User is signed in and authorized → continue
+    return NextResponse.next();
   }
 );
 

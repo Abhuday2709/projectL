@@ -121,7 +121,7 @@ export default function DashboardReviewPage() {
             setIsDialogOpen(false);
             setReviewName("");
             setIsPageLoading(true);
-            router.push(`/dashboard/temp/${review.scoringSessionId}`);
+            router.push(`/dashboard/bid-nobid/${review.scoringSessionId}`);
         } catch (err) {
             console.error(err);
         } finally {

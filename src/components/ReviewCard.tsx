@@ -40,7 +40,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
             className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-2 bg-white border-[#DBE2EF] hover:border-[#3F72AF]"
             onClick={() => {
                 setIsPageLoading(true);
-                router.push(`/dashboard/temp/${review.scoringSessionId}`);
+                router.push(`/dashboard/bid-nobid/${review.scoringSessionId}`);
             }}
         >
             <CardHeader className="pb-3">
@@ -89,7 +89,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setIsPageLoading(true);
-                                router.push(`/dashboard/temp/${review.scoringSessionId}`);
+                                router.push(`/dashboard/bid-nobid/${review.scoringSessionId}`);
                             }}
                         >
                             Open

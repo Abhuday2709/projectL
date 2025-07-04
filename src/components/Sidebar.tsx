@@ -32,8 +32,8 @@ export default function Sidebar() {
             return pathname === path || pathname.startsWith(`${path}/`);
         }
 
-        // For temp page and its dynamic routes
-        if (path === '/dashboard/temp') {
+        // For bid-nobid page and its dynamic routes
+        if (path === '/dashboard/bid-nobid') {
             return pathname === path || pathname.startsWith(`${path}/`);
         }
 
@@ -113,10 +113,10 @@ export default function Sidebar() {
                     </div>
 
                     <div
-                        onClick={() => handleRouteChange('/dashboard/temp')}
-                        className={linkClasses("/dashboard/temp")}
+                        onClick={() => handleRouteChange('/dashboard/bid-nobid')}
+                        className={linkClasses("/dashboard/bid-nobid")}
                     >
-                        <Search className={iconClasses("/dashboard/temp")} />
+                        <Search className={iconClasses("/dashboard/bid-nobid")} />
                         <span className="font-medium">Bid/No Bid</span>
                     </div>
                     <div

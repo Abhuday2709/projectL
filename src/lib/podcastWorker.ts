@@ -12,7 +12,8 @@ import { Upload } from '@aws-sdk/lib-storage';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobePath from 'ffprobe-static';
-import { ChatConfig } from '@/models/chatModel';
+import { ChatConfig } from '../models/chatModel';
+import IORedis from 'ioredis';
 
 // --- Gemini API Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -464,10 +465,9 @@ async function processAndStorePodcastAudio(script: string, chatId: string, user_
 
 // --- Main Podcast Worker ---
 // The connection options can be defined based on your environment
-const connectionOptions = {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
-};
+const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
+    maxRetriesPerRequest: null
+});
 
 const podcastWorker = new Worker<ProcessPodcasts>(
     'processPodcast',
@@ -541,7 +541,7 @@ const podcastWorker = new Worker<ProcessPodcasts>(
         // TODO: Save the finalPodcastScript to your database, associate it with the chatId,
         // and notify the user that their podcast is ready.
     },
-    { connection: connectionOptions }
+    { connection }
 );
 
 podcastWorker.on('completed', (job) => {
