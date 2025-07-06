@@ -1,7 +1,7 @@
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { DocumentSchema } from "@/models/documentModel";
+import { DocumentSchema } from "../models/documentModel";
 import { z } from "zod";
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,

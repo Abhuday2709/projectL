@@ -27,7 +27,7 @@ import { dynamoClient } from "@/lib/AWS/AWS_CLIENT"
 import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb"
 
 // Icon imports
-import { CheckCircle2, Clock, Loader2, XCircle } from "lucide-react"
+import { CheckCircle2, Clock, Loader2, RefreshCw, XCircle } from "lucide-react"
 
 // Initialize the DynamoDB Document Client
 const docClient = DynamoDBDocumentClient.from(dynamoClient)
@@ -137,7 +137,7 @@ export default function DocumentScoringPage() {
     if (allCategories.length > 0) {
       const sorted = [...allCategories].sort((a, b) => a.order - b.order)
       console.log("Sorted Categories:", sorted);
-      
+
       setSortedCategories(sorted)
     }
   }, [allCategories])
@@ -285,6 +285,31 @@ export default function DocumentScoringPage() {
   /**
    * Handles deleting a document and clearing all associated scoring data.
    */
+  const handleRefresh = async () => {
+  setLoading(true);
+  try {
+    // Refresh all data in parallel
+    await Promise.all([
+      fetchStatuses(),
+      fetchCategories(),
+      fetchQuestions(),
+      fetchReviews()
+    ]);
+    
+    toast({ 
+      title: "Page refreshed successfully",
+      description: "All data has been updated"
+    });
+  } catch (error) {
+    toast({
+      title: "Error refreshing page",
+      description: "Some data may not have updated properly",
+      variant: "destructive"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   const handleDeleteDocument = async (docToDelete: DocumentToDelete) => {
     const { chatId, docId, s3Key, uploadedAt } = docToDelete
     try {
@@ -532,6 +557,15 @@ export default function DocumentScoringPage() {
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <Button
+                  onClick={handleRefresh}
+                  variant="outline"
+                  className="w-full sm:w-auto border-[#3F72AF] text-[#3F72AF] hover:bg-[#DBE2EF] text-sm sm:text-base"
+                  disabled={loading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                <Button
                   onClick={handleSubmitScores}
                   className="w-full sm:w-auto sm:max-w-xs bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A8B] hover:to-[#0B1E32] text-sm sm:text-base"
                 >
@@ -726,7 +760,7 @@ export default function DocumentScoringPage() {
                             <div className="space-y-4">
                               {categoryAnsweredQuestions.map((q) => {
                                 const answer = activeScoringSession?.answers?.find(ans => ans.questionId === q.evaluationQuestionId);
-                                
+
                                 // Show error state if answer is expected but not found
                                 if (!answer) {
                                   return (
@@ -741,7 +775,7 @@ export default function DocumentScoringPage() {
                                     </div>
                                   );
                                 }
-                                
+
                                 const answerText = answer.answer === 0 ? "No" : answer.answer === 1 ? "Maybe" : answer.answer === 2 ? "Yes" : "Not found";
                                 const reasoning = answer.reasoning || "No reasoning available";
 

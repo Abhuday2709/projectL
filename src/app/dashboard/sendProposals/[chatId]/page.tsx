@@ -20,6 +20,7 @@ export default function ChatPage() {
     const { toast } = useToast(); // Ensure useToast is called inside the component
     const [chatDetails, setChatDetails] = useState<Chat | null>(null);
     const [isChatLoading, setIsChatLoading] = useState(false);
+    const [chatName, setChatName] = useState("Chat");
     const chatIdStr = typeof chatId === "string" ? chatId : Array.isArray(chatId) ? chatId[0] ?? "" : "";
     const fetchChatDetails = async () => {
         if (!chatIdStr) return;
@@ -37,18 +38,21 @@ export default function ChatPage() {
     };
     const [documents, setDocuments] = useState<Document[]>([])
     const [loading, setLoading] = useState<boolean>(false)
-    const fetchDocuments = () => {
+    const fetchDocuments = async (): Promise<Document[]> => {
         setLoading(true)
-        fetch(`/api/documents/getDocuments?chatId=${encodeURIComponent(chatIdStr)}`)
-            .then(async (res) => {
-                if (!res.ok) throw new Error(`Error ${res.status}`)
-                return res.json()
-            })
-            .then((data) => setDocuments(data))
-            .catch((err) => setError(err.message))
-            .finally(() => setLoading(false))
+        try {
+            const res = await fetch(`/api/documents/getDocuments?chatId=${encodeURIComponent(chatIdStr)}`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const data = await res.json();
+            setDocuments(data);
+            return data;
+        } catch (err: any) {
+            setError(err.message);
+            return []; // Return empty on error
+        } finally {
+            setLoading(false);
+        }
     }
-    const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
     const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
@@ -109,6 +113,10 @@ export default function ChatPage() {
             fetchDocuments();
         }
     }, [chatIdStr]);
+
+    // Derived state for podcast generation
+    const isGenerating = chatDetails?.podcastProcessingStatus === 'QUEUED' || chatDetails?.podcastProcessingStatus === 'PROCESSING';
+
     // Add this useEffect to poll for updates while generating
     useEffect(() => {
         let pollInterval: NodeJS.Timeout | null = null;
@@ -126,31 +134,34 @@ export default function ChatPage() {
             }
         };
     }, [isGenerating, chatIdStr]);
+
     useEffect(() => {
-        if (chatDetails?.podcastFinal) {
-            setIsGenerating(false);
+        if (chatDetails?.podcastFinal && chatDetails.podcastProcessingStatus === 'COMPLETED') {
             setPodcastUrl(chatDetails.podcastFinal);
         }
-    }, [chatDetails?.podcastFinal]);
+    }, [chatDetails?.podcastFinal, chatDetails?.podcastProcessingStatus]);
+
     const handleGeneratePodcast = async () => {
-        setIsGenerating(true);
         setError(null);
+
+        // Optimistically update the UI to show the loading state immediately
+        setChatDetails(prev => prev ? { ...prev, podcastProcessingStatus: 'QUEUED' } : null);
+
         if (podcastUrl) {
             const urlParts = podcastUrl.split('/');
             console.log("urlParts", urlParts);
             const s3Key = urlParts.slice(3).join('/'); // Remove 'https://bucket.s3.region.amazonaws.com/'
-            //deleteFileMutation.mutate({ key: s3Key });
             deleteFromS3(s3Key)
         }
         try {
-            await fetchDocuments();
-            const latestDocuments = documents; // Get the last 3 documents
+            const latestDocuments = await fetchDocuments();
             if (!latestDocuments || latestDocuments.length === 0) {
                 toast({
                     title: "No Documents Found",
                     description: "Please upload a document to generate a podcast.",
                     variant: "destructive",
                 });
+                fetchChatDetails(); // Revert optimistic update
                 return;
             }
 
@@ -162,19 +173,23 @@ export default function ChatPage() {
             });
             if (!result.ok) {
                 toast({
-                    title: "Failed to generate podcast. Please try again.",
+                    title: "Failed to start podcast generation.",
                     variant: "destructive",
                 });
-                throw new Error("Failed to generate podcast. Please try again.");
+                throw new Error("Failed to start podcast generation.");
             } else {
                 toast({
                     title: "Podcast generation started",
                     description: "Your podcast is being generated. You will be notified when it's ready.",
                     variant: "default",
                 });
+                // The optimistic update is now confirmed by the backend.
+                // A final fetch ensures we have the latest DB state for polling.
+                fetchChatDetails();
             }
         } catch (err: any) {
-            // handle error
+            // Revert the optimistic update if any error occurs
+            fetchChatDetails();
         }
     };
     const handleUpdatePassword = async () => {
@@ -226,6 +241,19 @@ export default function ChatPage() {
 
     const shareUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/s/${shareSessionData?.shareId}`;
 
+    const getButtonText = () => {
+        switch (chatDetails?.podcastProcessingStatus) {
+            case 'QUEUED':
+            case 'PROCESSING':
+                return 'Generating...';
+            case 'COMPLETED':
+                return 'Regenerate Podcast';
+            case 'FAILED':
+                return 'Retry Generation';
+            default:
+                return 'Generate Podcast';
+        }
+    };
     return (
     <div className="flex bg-gray-50 min-h-[170vh] lg:min-h-0">
         <Sidebar />
@@ -237,7 +265,7 @@ export default function ChatPage() {
                         <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-blue-600" />
                     ) : (
                         <h1 className="text-base sm:text-xl font-semibold truncate bg-gray-100 text-gray-900 px-3 sm:px-4 py-2 rounded-lg border border-gray-200 max-w-full">
-                            {chatDetails?.name || "Chat"}
+                            {chatName}
                         </h1>
                     )}
                 </div>
@@ -282,7 +310,7 @@ export default function ChatPage() {
                                             <Button
                                                 onClick={handleGeneratePodcast}
                                                 disabled={isGenerating || (documents?.length || 0) === 0}
-                                                className="w-40 bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 rounded-md"
+                                                className="w-44 bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 rounded-md"
                                             >
                                                 {isGenerating ? (
                                                     <>
@@ -290,16 +318,16 @@ export default function ChatPage() {
                                                         Generating...
                                                     </>
                                                 ) : (
-                                                    "Generate Podcast"
+                                                    getButtonText()
                                                 )}
                                             </Button>
                                         </div>
-                                        {!isGenerating && <p className="text-sm text-gray-600 mb-4">
-                                            Listen to an audio podcast summary of the uploaded documents.
-                                        </p>}
-                                        {isGenerating && (
-                                            <p className="text-sm text-gray-600">Generating your podcast, till then chat with the documents.</p>
-                                        )}
+                                        <p className="text-sm text-gray-600 mb-4">
+                                            {isGenerating 
+                                                ? "Generating your podcast, this may take a few minutes. Feel free to chat with the documents in the meantime."
+                                                : "Listen to an audio podcast summary of the uploaded documents."
+                                            }
+                                        </p>
                                         {podcastUrl && !isGenerating && (
                                             <div className="space-y-2">
                                                 <audio controls className="w-full">
@@ -342,7 +370,7 @@ export default function ChatPage() {
                                         <Button
                                             onClick={handleGeneratePodcast}
                                             disabled={isGenerating || (documents?.length || 0) === 0}
-                                            className="mb-2 w-full sm:w-40 bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 text-xs sm:text-sm rounded-md"
+                                            className="mb-2 w-full sm:w-44 bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 text-xs sm:text-sm rounded-md"
                                         >
                                             {isGenerating ? (
                                                 <>
@@ -350,12 +378,15 @@ export default function ChatPage() {
                                                     Generating...
                                                 </>
                                             ) : (
-                                                "Generate Podcast"
+                                                getButtonText()
                                             )}
                                         </Button>
-                                        {isGenerating && (
-                                            <p className="text-xs sm:text-sm text-gray-600">Generating your podcast, till then chat with the documents.</p>
-                                        )}
+                                        <p className="text-xs sm:text-sm text-gray-600">
+                                            {isGenerating
+                                                ? "Generating your podcast, till then chat with the documents."
+                                                : "Generate an audio podcast summary of the uploaded documents."
+                                            }
+                                        </p>
                                         {podcastUrl && !isGenerating && (
                                             <div className="space-y-2 mt-2">
                                                 <h3 className="font-semibold text-sm sm:text-base text-gray-900">Podcast Audio</h3>

@@ -15,6 +15,7 @@ export const ChatSchema = z.object({
     name: z.string().optional().default("untitled folder"), // Optional chat name
     podcast: z.array(PodcastDialogueSchema).optional(), // Podcast field as array of dialogues
     podcastFinal:z.string().optional(), // Final podcast URL
+    podcastProcessingStatus: z.enum(['IDLE', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED']).optional().default('IDLE'), // Podcast generation status
 });
 
 // Chat Type

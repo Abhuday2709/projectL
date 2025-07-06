@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
             chatId,
             name,
             createdAt: new Date().toISOString(),
+            podcastProcessingStatus: "IDLE",
         });
 
         // Create share session
