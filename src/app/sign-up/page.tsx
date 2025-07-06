@@ -1,6 +1,6 @@
 "use client"
-import React, { useState } from "react";
-import { useSignUp } from "@clerk/nextjs";
+import React, { useState, useEffect } from "react";
+import { useSignUp, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,8 @@ import bcrypt from "bcryptjs";
 
 function Signup() {
     const { isLoaded, setActive, signUp } = useSignUp()
+    const { isSignedIn } = useAuth();
+    const router = useRouter();
 
     const [emailAddress, setEmailAddress] = useState("")
     const [password, setPassword] = useState("")
@@ -31,9 +33,15 @@ function Signup() {
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
-    const router = useRouter()
+    // Redirect if user is already signed in
+    useEffect(() => {
+        if (isSignedIn) {
+            router.push('/dashboard');
+        }
+    }, [isSignedIn, router]);
 
-    if (!isLoaded) {
+
+    if (!isLoaded || isSignedIn) { // Also check isSignedIn here
         return (
             <div className="flex items-center justify-center min-h-screen bg-[#F9F7F7]">
                 <Loader2 className="h-12 w-12 animate-spin text-[#3F72AF]" />
@@ -76,48 +84,42 @@ function Signup() {
         setError("");
         try {
             const completeSignup = await signUp.attemptEmailAddressVerification({ code })
-            if (completeSignup.status !== "complete") {
-                setError("Verification failed. Please check the code and try again.");
-                return;
+            if (completeSignup.status === "complete") {
+                await setActive({ session: completeSignup.createdSessionId })
+                const tempFirstName = emailAddress.split('@')[0];
+                const passwordHash = await bcrypt.hash(password, 10);
+                const newUser: Omit<User, 'createdAt'> = {
+                    user_id: completeSignup.createdUserId!,
+                    email: emailAddress,
+                    firstName: completeSignup.firstName || tempFirstName,
+                    lastName: completeSignup.lastName || "",
+                    passwordHash: passwordHash,
+                    role: 'user'
+                };
+                const response = await fetch('/api/user/createUser', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newUser)
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to create user profile.');
+                }
+                router.push("/dashboard")
+            } else {
+                // This can happen if the sign-up process is in an unexpected state
+                console.error("Sign up status is not complete:", completeSignup);
+                setError("An unexpected error occurred. Please try signing in.");
             }
-            // first name should be anything before @ in email
-            const tempFirstName = emailAddress.split('@')[0]; 
-
-
-            const passwordHash = await bcrypt.hash(password, 10);
-            
-            const newUser: Omit<User, 'createdAt'> = {
-                user_id: completeSignup.createdUserId!,
-                email: emailAddress,
-                firstName: completeSignup.firstName || tempFirstName,
-                lastName: completeSignup.lastName || "",
-                passwordHash: passwordHash,
-                role: 'user' 
-            };
-            
-            const response = await fetch('/api/user/createUser', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newUser)
-            });
-            
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || 'Failed to create user profile.');
-            }
-
-            await setActive({ session: completeSignup.createdSessionId })
-            router.push("/dashboard")
-
         } catch (err: any) {
-            const dbError = err.message?.includes('user profile');
-            setError(dbError ? err.message : (err.errors?.[0]?.message || "Verification failed. Please try again."));
+            const errorMessage = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || "Verification failed. Please check the code and try again.";
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     }
 
-    return ( 
+    return (
         <div className="h-[calc(100vh-3.5rem)] bg-[#F9F7F7] flex items-center justify-center px-4 py-12">
             {/* Left Side - Information */}
             <div className="hidden lg:block w-full max-w-md">
@@ -242,9 +244,9 @@ function Signup() {
                                     </Alert>
                                 )}
 
-                                <Button 
-                                    type="submit" 
-                                    className="w-full bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95" 
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
                                     disabled={isLoading}
                                 >
                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -282,9 +284,9 @@ function Signup() {
                                         </Alert>
                                     )}
 
-                                    <Button 
-                                        type="submit" 
-                                        className="w-full bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95" 
+                                    <Button
+                                        type="submit"
+                                        className="w-full bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
                                         disabled={isLoading}
                                     >
                                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}

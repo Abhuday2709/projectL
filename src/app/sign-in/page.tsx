@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useSignIn } from "@clerk/nextjs";
+import React, { useState, useEffect } from "react";
+import { useSignIn, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ type ViewState = 'signin' | 'forgot-password' | 'reset-code';
 
 export default function SignIn() {
     const { isLoaded, signIn, setActive } = useSignIn();
+    const { isSignedIn } = useAuth();
     const [emailAddress, setEmailAddress] = useState("");
     const [password, setPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
@@ -37,7 +38,13 @@ export default function SignIn() {
     const [currentView, setCurrentView] = useState<ViewState>('signin');
     const router = useRouter();
 
-    if (!isLoaded || !signIn) {
+    useEffect(() => {
+        if (isSignedIn) {
+            router.push('/dashboard');
+        }
+    }, [isSignedIn, router]);
+
+    if (!isLoaded || !signIn  || isSignedIn) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-[#F9F7F7]">
                 <Loader2 className="h-12 w-12 animate-spin text-[#3F72AF]" />

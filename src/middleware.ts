@@ -27,8 +27,14 @@ export default clerkMiddleware(
     // 3. Check if the user is signed in using the auth parameter
     const { userId } = await auth();
 
+    // If user is signed in, redirect them from sign-in/sign-up pages to the dashboard
+    if (userId && (pathname === "/sign-in" || pathname === "/sign-up")) {
+      const dashboardUrl = new URL("/dashboard", req.url);
+      return NextResponse.redirect(dashboardUrl);
+    }
+
     // 4. If not signed in and not on a public page → redirect to sign-up
-    if (!userId) {
+    if (!userId && !PUBLIC_PATHS.includes(pathname) && !pathname.startsWith("/s/")) {
       const redirectUrl = new URL("/sign-up", req.url);
       redirectUrl.searchParams.set("redirect_url", pathname);
       return NextResponse.redirect(redirectUrl);
@@ -38,6 +44,12 @@ export default clerkMiddleware(
     if (ADMIN_PATHS.some(path => pathname.startsWith(path))) {
       try {
         const client = await clerkClient();
+        if (!userId) {
+          // If userId is null, redirect to sign-up (should not happen here, but for safety)
+          const redirectUrl = new URL("/sign-up", req.url);
+          redirectUrl.searchParams.set("redirect_url", pathname);
+          return NextResponse.redirect(redirectUrl);
+        }
         const user = await client.users.getUser(userId);
         const role = user.publicMetadata.role as string | undefined;
         // Get the user's role from Clerk
