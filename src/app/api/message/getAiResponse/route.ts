@@ -11,8 +11,8 @@ const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST!, port: parseInt
 const msgClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function POST(request: NextRequest) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+    // const { userId } = await auth();
+    // if (!userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
 
     const body = await request.json().catch(() => null);
     if (!body || !body.chatId || !body.userMessage)

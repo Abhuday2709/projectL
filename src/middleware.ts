@@ -4,21 +4,44 @@ import type { NextRequest } from "next/server";
 import { clerkClient, clerkMiddleware, ClerkMiddlewareAuth } from "@clerk/nextjs/server";
 
 // List all public routes (landing, login, signup, etc.)
-const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/api/user/createUser"];
+const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/api/user/createUser", "/api/shareSession/byShareId", "/api/documents/status", "/api/documents/getDocuments","/api/message/saveUserMessage","/api/message/getAiResponse"];
 
 // Admin-only paths
 const ADMIN_PATHS = ["/dashboard/adminDashboard", "/dashboard/userManagement"];
+
+const PROTECTED_CHAT_ROUTES = [
+  "/api/chat/createChat",
+  "/api/chat/deleteChat",
+  "/api/chat/getChat"
+];
 
 export default clerkMiddleware(
   // ClerkMiddleware handler takes (auth, req)
   async (auth: ClerkMiddlewareAuth, req: NextRequest) => {
     const { pathname } = req.nextUrl;
+    console.log("Middleware triggered for path:", pathname);
 
     // 1. Check if path is a share page (/s/[shareId]) - these are public
     if (pathname.startsWith("/s/")) {
       return NextResponse.next();
     }
 
+    if (PROTECTED_CHAT_ROUTES.some(route => pathname === route || pathname.startsWith(route + "/"))) {
+      const { userId } = await auth();
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Unauthorized - Authentication required" },
+          { status: 401 }
+        );
+      }
+      // User is authenticated, continue to the protected chat route
+      return NextResponse.next();
+    }
+
+    // 3. Check if it's a public chat API route (all other /api/chat routes)
+    if (pathname.startsWith("/api/chat/")) {
+      return NextResponse.next();
+    }
     // 2. If path is public, let it through
     if (PUBLIC_PATHS.includes(pathname)) {
       return NextResponse.next();

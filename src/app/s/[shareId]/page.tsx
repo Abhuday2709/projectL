@@ -14,6 +14,8 @@ export default function ChatPage() {
     const { shareId } = useParams();
 
     const shareIdStr = typeof shareId === "string" ? shareId : Array.isArray(shareId) ? shareId[0] ?? "" : "";
+    console.log("Share ID:", shareIdStr);
+    
     const [shareSession, setShareSession] = useState<{
         shareId: string;
         chatId: string;
@@ -26,11 +28,17 @@ export default function ChatPage() {
     const fetchShareSession = async () => {
         if (!shareIdStr) return;
         try {
+            console.log("Fetching share session for ID:", shareIdStr);
+            
             const res = await fetch(`/api/shareSession/byShareId?shareId=${shareIdStr}`);
+            console.log("Response status:", res.ok);
             if (!res.ok) throw new Error("Share session not found");
             const data = await res.json();
+            console.log("Fetched share session:", data);
             setShareSession(data);
         } catch (err: any) { 
+            console.log("Error fetching share session:", err);
+            
             setShareSessionError(err.message);
         } finally {
             setIsShareSessionLoading(false);
@@ -38,6 +46,7 @@ export default function ChatPage() {
     };
     useEffect(() => {
         fetchShareSession();
+        
     }, [shareIdStr]);
 
     // Password dialog state
@@ -72,6 +81,8 @@ export default function ChatPage() {
             const res = await fetch(`/api/chat/${chatIdStr}`);
             if (!res.ok) throw new Error("Chat not found");
             const data = await res.json();
+            console.log("Fetched chat details:", data);
+            
             setChatDetails(data);
             if (data.podcastFinal) {
                 setPodcastUrl(data.podcastFinal);
