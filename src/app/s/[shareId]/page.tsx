@@ -54,10 +54,15 @@ export default function ChatPage() {
     const [passwordError, setPasswordError] = useState("");
     const [isPasswordVerified, setIsPasswordVerified] = useState(false);
 
-    // If not found, show 404
-    // if (!shareSession && !isShareSessionLoading) {
-    //     notFound();
-    // }
+    // If not found or inactive, show 404
+    if (!shareSession && !isShareSessionLoading) {
+        notFound();
+    }
+
+    // If share session is inactive, show 404
+    if (shareSession && shareSession.isActive === false) {
+        notFound();
+    }
 
     // Password check handler
     async function handlePasswordCheck() {
