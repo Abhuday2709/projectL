@@ -37,9 +37,14 @@ export default function Sidebar() {
     // Listen for route changes to hide loader
     useEffect(() => {
         setIsLoading(false);
-    }, [router]);
+    }, [pathname]);
 
     const handleRouteChange = (path: string) => {
+        // If already on the target path or a sub-path, don't show loading
+        if (pathname === path || pathname.startsWith(`${path}/`)) {
+            return;
+        }
+        
         setIsLoading(true);
         router.push(path);
         setIsOpen(false);
@@ -74,11 +79,16 @@ export default function Sidebar() {
         return pathname === path;
     };
 
-    const linkClasses = (path: string) =>
-        `group flex items-center py-3 px-4 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02] ${isActiveRoute(path)
-            ? "bg-[#3F72AF] text-white shadow-md hover:bg-[#112D4E] hover:shadow-lg"
-            : "text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30"
+    const linkClasses = (path: string) => {
+        const isActive = isActiveRoute(path);
+        const isCurrentPath = pathname === path || pathname.startsWith(`${path}/`);
+        
+        return `group flex items-center py-3 px-4 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02] ${
+            isActive
+                ? "bg-[#3F72AF] text-white shadow-md hover:bg-[#112D4E] hover:shadow-lg"
+                : "text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30"
         }`;
+    };
 
     const iconClasses = (path: string) =>
         `w-5 h-5 mr-3 transition-all duration-200 ${isActiveRoute(path)
@@ -165,7 +175,13 @@ export default function Sidebar() {
 
                             {/* Admin-only sections */}
                             {isAdmin && (
-                                <>                                    
+                                <>
+                                    <div className="pt-4 border-t border-[#DBE2EF]/50">
+                                        <p className="text-xs text-[#112D4E]/50 px-4 mb-2 font-medium uppercase tracking-wider">
+                                            Admin Tools
+                                        </p>
+                                    </div>
+                                    
                                     <div
                                         onClick={() => handleRouteChange('/dashboard/adminDashboard')}
                                         className={linkClasses("/dashboard/adminDashboard")}

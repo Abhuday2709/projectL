@@ -1,8 +1,7 @@
 "use client"
-import Link from 'next/link'
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, buttonVariants } from './ui/button'
+import { Button } from './ui/button'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { Loader2 } from "lucide-react";
 
@@ -15,6 +14,17 @@ const Navbar = () => {
     useEffect(() => {
         setIsNavLoading(false);
     }, [pathname]);
+
+    // Helper function to handle navigation
+    const handleNavigation = (targetPath: string) => {
+        // If already on the target path, don't show loading
+        if (pathname === targetPath) {
+            return;
+        }
+        
+        setIsNavLoading(true);
+        router.push(targetPath);
+    };
 
     if (!isLoaded) return null
 
@@ -29,10 +39,7 @@ const Navbar = () => {
                 <div className="flex h-14 items-center justify-between">
                     <Button
                         className={`bg-[#DBE2EF]/0 ml-10 lg:ml-0 p-2 text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3F72AF] active:scale-95`}
-                        onClick={() => {
-                            setIsNavLoading(true);
-                            router.push("/");
-                        }}
+                        onClick={() => handleNavigation("/")}
                     >
                         <span className='text-xl font-bold'>PROJECT-L</span>
                     </Button>
@@ -42,19 +49,13 @@ const Navbar = () => {
                             <>
                                 <Button
                                     className={`bg-[#DBE2EF]/0 text-[#3F72AF] hover:text-[#112D4E] hover:bg-[#DBE2EF]/50 hover:shadow-md border border-[#DBE2EF] hover:border-[#3F72AF] transition-all duration-200 hover:scale-105 active:scale-95`}
-                                    onClick={() => {
-                                        setIsNavLoading(true);
-                                        router.push("/sign-in");
-                                    }}
+                                    onClick={() => handleNavigation("/sign-in")}
                                 >
                                     Sign in
                                 </Button>
                                 <Button
                                     className={` bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95`}
-                                    onClick={() => {
-                                        setIsNavLoading(true);
-                                        router.push("/sign-up");
-                                    }}
+                                    onClick={() => handleNavigation("/sign-up")}
                                 >
                                     Register
                                 </Button>
@@ -63,10 +64,7 @@ const Navbar = () => {
                             <>
                                 <Button
                                     className={` bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95`}
-                                    onClick={() => {
-                                        setIsNavLoading(true);
-                                        router.push("/dashboard");
-                                    }}
+                                    onClick={() => handleNavigation("/dashboard")}
                                 >
                                     Dashboard
                                 </Button>
