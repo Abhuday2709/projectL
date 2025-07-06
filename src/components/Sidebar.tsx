@@ -2,13 +2,37 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Menu, X, FileText, Search, Loader2 } from "lucide-react"; // Add Loader2
+import { Menu, X, FileText, Search, Loader2, Settings, Users } from "lucide-react"; 
 
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [userRole, setUserRole] = useState<string | null>(null);
+    const [roleLoading, setRoleLoading] = useState(true);
+
+    // Fetch user role from database
+    useEffect(() => {
+        const fetchUserRole = async () => {
+            try {
+                setRoleLoading(true);
+                const response = await fetch('/api/user/role');
+                if (response.ok) {
+                    const data = await response.json();
+                    setUserRole(data.role);
+                } else {
+                    setUserRole(null);
+                }
+            } catch (error) {
+                    setUserRole(null);
+            } finally {
+                setRoleLoading(false);
+            }
+        };
+
+        fetchUserRole();
+    }, []);
 
     // Listen for route changes to hide loader
     useEffect(() => {
@@ -37,6 +61,15 @@ export default function Sidebar() {
             return pathname === path || pathname.startsWith(`${path}/`);
         }
 
+        // For admin routes
+        if (path === '/dashboard/adminDashboard') {
+            return pathname === path || pathname.startsWith(`${path}/`);
+        }
+
+        if (path === '/dashboard/userManagement') {
+            return pathname === path || pathname.startsWith(`${path}/`);
+        }
+
         // For other routes, match exactly
         return pathname === path;
     };
@@ -52,6 +85,8 @@ export default function Sidebar() {
             ? "text-white"
             : "text-[#3F72AF] group-hover:text-[#3F72AF]"
         }`;
+
+    const isAdmin = userRole === 'admin';
 
     return (
         <>
@@ -104,35 +139,52 @@ export default function Sidebar() {
 
                 {/* Navigation */}
                 <nav className="space-y-2 mt-6 pb-6">
-                    <div
-                        onClick={() => handleRouteChange('/dashboard/sendProposals')}
-                        className={linkClasses("/dashboard/sendProposals")}
-                    >
-                        <FileText className={iconClasses("/dashboard/sendProposals")} />
-                        <span className="font-medium">Send Proposals</span>
-                    </div>
+                    {/* Show loading indicator while fetching role */}
+                    {roleLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 text-[#3F72AF] animate-spin" />
+                        </div>
+                    ) : (
+                        <>
+                            {/* Regular user sections */}
+                            <div
+                                onClick={() => handleRouteChange('/dashboard/sendProposals')}
+                                className={linkClasses("/dashboard/sendProposals")}
+                            >
+                                <FileText className={iconClasses("/dashboard/sendProposals")} />
+                                <span className="font-medium">Send Proposals</span>
+                            </div>
 
-                    <div
-                        onClick={() => handleRouteChange('/dashboard/bid-nobid')}
-                        className={linkClasses("/dashboard/bid-nobid")}
-                    >
-                        <Search className={iconClasses("/dashboard/bid-nobid")} />
-                        <span className="font-medium">Bid/No Bid</span>
-                    </div>
-                    <div
-                        onClick={() => handleRouteChange('/dashboard/adminDashboard')}
-                        className={linkClasses("/dashboard/adminDashboard")}
-                    >
-                        <Search className={iconClasses("/dashboard/adminDashboard")} />
-                        <span className="font-medium">Admin Dashboard</span>
-                    </div>
-                    <div
-                        onClick={() => handleRouteChange('/dashboard/userManagement')}
-                        className={linkClasses("/dashboard/userManagement")}
-                    >
-                        <Search className={iconClasses("/dashboard/userManagement")} />
-                        <span className="font-medium">User Management</span>
-                    </div>
+                            <div
+                                onClick={() => handleRouteChange('/dashboard/bid-nobid')}
+                                className={linkClasses("/dashboard/bid-nobid")}
+                            >
+                                <Search className={iconClasses("/dashboard/bid-nobid")} />
+                                <span className="font-medium">Bid/No Bid</span>
+                            </div>
+
+                            {/* Admin-only sections */}
+                            {isAdmin && (
+                                <>                                    
+                                    <div
+                                        onClick={() => handleRouteChange('/dashboard/adminDashboard')}
+                                        className={linkClasses("/dashboard/adminDashboard")}
+                                    >
+                                        <Settings className={iconClasses("/dashboard/adminDashboard")} />
+                                        <span className="font-medium">Admin Dashboard</span>
+                                    </div>
+                                    
+                                    <div
+                                        onClick={() => handleRouteChange('/dashboard/userManagement')}
+                                        className={linkClasses("/dashboard/userManagement")}
+                                    >
+                                        <Users className={iconClasses("/dashboard/userManagement")} />
+                                        <span className="font-medium">User Management</span>
+                                    </div>
+                                </>
+                            )}
+                        </>
+                    )}
                 </nav>
 
                 {/* Sidebar Footer */}

@@ -10,7 +10,7 @@ import { Readable } from 'stream';
 import { generateEmbeddings } from './gemini'; // Added import
 import { QdrantClient } from '@qdrant/js-client-rest'; // Qdrant client
 import { v4 as uuidv4 } from 'uuid'; // UUID generator
-import { DynamoDBDocumentClient, UpdateCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
+import { DynamoDBDocumentClient, UpdateCommand, QueryCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
 import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
 import mammoth from 'mammoth';
 import { EvaluationQuestionConfig, type EvaluationQuestion } from '../models/evaluationQuestionModel';
@@ -114,10 +114,8 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
     }
 
     // Fetch all questions for the user
-    const questionsCommand = new QueryCommand({
-        TableName: EvaluationQuestionConfig.tableName,
-        KeyConditionExpression: 'user_id = :uid',
-        ExpressionAttributeValues: { ':uid': "user_2xfz39DJXAXQC4weCgt0W4eJqqq" }, // Using chatId as user_id
+    const questionsCommand = new ScanCommand({
+        TableName: EvaluationQuestionConfig.tableName
     });
 
     let questions: EvaluationQuestion[] = [];

@@ -120,11 +120,13 @@ export default function DocumentScoringPage() {
       stopPolling();
     };
   }, [reviewId]);
+
   const fetchCategories = async () => {
     try {
       const res = await fetch(`/api/category/getCategories`)
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch')
       const data = await res.json()
+      console.log("Fetched Categories:", data);
       setAllCategories(data)
     } catch (err) {
       toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
@@ -134,11 +136,13 @@ export default function DocumentScoringPage() {
   useEffect(() => {
     if (allCategories.length > 0) {
       const sorted = [...allCategories].sort((a, b) => a.order - b.order)
+      console.log("Sorted Categories:", sorted);
+      
       setSortedCategories(sorted)
     }
   }, [allCategories])
   const fetchQuestions = async () => {
-    const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
+    const res = await fetch(`/api/evaluation-questions`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     })
@@ -147,6 +151,7 @@ export default function DocumentScoringPage() {
       throw new Error(err.error || "adding questions failed")
     }
     const data = await res.json()
+    console.log("Fetched Questions:", data);
     setAllQuestions(data)
   }
 
@@ -156,6 +161,7 @@ export default function DocumentScoringPage() {
       const res = await fetch(`/api/reviews?user_id=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch reviews");
       const data: ScoringSession[] = await res.json();
+      console.log("Fetched Reviews:", data);
       setReviews(data);
     } catch (err) {
       toast({ title: 'Error fetching reviews', description: (err as Error).message, variant: 'destructive' });
@@ -656,7 +662,6 @@ export default function DocumentScoringPage() {
                     </div>
                   )}
                 </div>
-
                 {/* Unanswered Questions Section */}
                 <div className="mb-8">
                   <h2 className="text-lg font-semibold text-[#112D4E] mb-2">Unanswered Questions</h2>

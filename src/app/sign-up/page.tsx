@@ -80,15 +80,19 @@ function Signup() {
                 setError("Verification failed. Please check the code and try again.");
                 return;
             }
-            
+            // first name should be anything before @ in email
+            const tempFirstName = emailAddress.split('@')[0]; 
+
+
             const passwordHash = await bcrypt.hash(password, 10);
             
             const newUser: Omit<User, 'createdAt'> = {
                 user_id: completeSignup.createdUserId!,
                 email: emailAddress,
-                firstName: completeSignup.firstName || "",
+                firstName: completeSignup.firstName || tempFirstName,
                 lastName: completeSignup.lastName || "",
                 passwordHash: passwordHash,
+                role: 'user' 
             };
             
             const response = await fetch('/api/user/createUser', {

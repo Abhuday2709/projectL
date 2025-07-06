@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DynamoDBDocumentClient, PutCommand, DeleteCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, DeleteCommand, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { v4 as uuidv4 } from 'uuid';
 import { EvaluationQuestionConfig, type EvaluationQuestion } from '@/models/evaluationQuestionModel';
@@ -20,11 +20,8 @@ export async function POST(request: NextRequest) {
 
 // List questions
 export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    if (!userId) return NextResponse.json({ message: 'userId required' }, { status: 400 });
     try {
-        const result = await evalClient.send(new QueryCommand({ TableName: EvaluationQuestionConfig.tableName, KeyConditionExpression: 'user_id = :uid', ExpressionAttributeValues: { ':uid': userId }, ScanIndexForward: false }));
+        const result = await evalClient.send(new ScanCommand({ TableName: EvaluationQuestionConfig.tableName}));        
         return NextResponse.json(result.Items as EvaluationQuestion[]);
     } catch (err) {
         console.error(err);

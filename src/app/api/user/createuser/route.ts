@@ -11,19 +11,21 @@ export async function POST(request: Request) {
         console.log("HI");
         
         const body = await request.json();
-        console.log("Create user request body:", body);
         
-        // Validate the user data
-        const validatedUser = UserSchema.parse({
-            ...body,
-            createdAt: new Date().toISOString()
-        });
 
         // Create user in DynamoDB
         const command = new PutCommand({
             TableName: UserConfig.tableName,
-            Item: validatedUser,
-            ConditionExpression: "attribute_not_exists(user_id)", // Prevent overwriting existing users
+            Item: {
+                user_id: body.user_id,
+                email: body.email,
+                firstName: body.firstName, 
+                lastName: body.lastName,
+                passwordHash: body.passwordHash, 
+                role: body.role || "user", 
+                createdAt: new Date().toISOString(),
+            },
+            ConditionExpression: "attribute_not_exists(user_id)", 
         });
 
         await docClient.send(command);
@@ -31,11 +33,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ 
             message: "User created successfully",
             user: {
-                user_id: validatedUser.user_id,
-                email: validatedUser.email,
-                firstName: validatedUser.firstName,
-                lastName: validatedUser.lastName,
-                createdAt: validatedUser.createdAt
+                user_id: body.user_id,
+                email: body.email,
+                firstName: body.firstName,
+                lastName: body.lastName,
+                passwordHash: body.passwordHash,
+                createdAt: body.createdAt
             }
         });
     } catch (error) {

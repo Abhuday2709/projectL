@@ -8,6 +8,7 @@ export const UserSchema = z.object({
     lastName: z.string().optional(),
     passwordHash: z.string().optional(), // Uncomment this line
     createdAt: z.string().optional().default(() => new Date().toISOString()),
+    role: z.string().default('user') // Default role is 'user'
 });
 
 // User Type
@@ -16,7 +17,7 @@ export type User = z.infer<typeof UserSchema>;
 // Table Configuration
 export const UserConfig = {
     tableName: 'users',
-    indexes: {
-        email: 'EmailIndex'
+    keys: {
+        partition: 'user_id',
     }
 } as const;

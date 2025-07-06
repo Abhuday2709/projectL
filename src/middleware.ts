@@ -1,7 +1,7 @@
 // src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { clerkMiddleware, ClerkMiddlewareAuth } from "@clerk/nextjs/server";
+import { clerkClient, clerkMiddleware, ClerkMiddlewareAuth } from "@clerk/nextjs/server";
 
 // List all public routes (landing, login, signup, etc.)
 const PUBLIC_PATHS = ["/", "/sign-in", "/sign-up", "/api/user/createUser"];
@@ -37,18 +37,13 @@ export default clerkMiddleware(
     // 5. Check if this is an admin-only path
     if (ADMIN_PATHS.some(path => pathname.startsWith(path))) {
       try {
+        const client = await clerkClient();
+        const user = await client.users.getUser(userId);
+        const role = user.publicMetadata.role as string | undefined;
         // Get the user's role from Clerk
         const { sessionClaims } = await auth();
-        const userRole =
-          (sessionClaims?.metadata && typeof sessionClaims.metadata === "object" && "role" in sessionClaims.metadata
-            ? (sessionClaims.metadata as { role?: string }).role
-            : undefined) ||
-          (sessionClaims?.publicMetadata && typeof sessionClaims.publicMetadata === "object" && "role" in sessionClaims.publicMetadata
-            ? (sessionClaims.publicMetadata as { role?: string }).role
-            : undefined);
-
         // If user is not admin, redirect to dashboard with error
-        if (userRole !== "admin") {
+        if (role !== "admin") {
           const redirectUrl = new URL("/dashboard", req.url);
           // redirectUrl.searchParams.set("error", "unauthorized");
           return NextResponse.redirect(redirectUrl);
