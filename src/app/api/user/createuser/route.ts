@@ -11,7 +11,12 @@ export async function POST(request: Request) {
         console.log("HI");
         
         const body = await request.json();
-        
+        if(body.user_id === undefined || body.email === undefined) {
+            return NextResponse.json(
+                { error: "Missing required user fields" },
+                { status: 400 }
+            );
+        }
 
         // Create user in DynamoDB
         const command = new PutCommand({
