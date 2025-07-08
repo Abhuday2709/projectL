@@ -485,76 +485,76 @@ const podcastWorker = new Worker<ProcessPodcasts>(
         const { DocIdList, chatId, user_id, createdAt } = job.data;
 
         try {
-            // // Set status to PROCESSING
-            // await docClient.send(new UpdateCommand({
-            //     TableName: ChatConfig.tableName,
-            //     Key: { user_id, createdAt },
-            //     UpdateExpression: "SET podcastProcessingStatus = :status",
-            //     ExpressionAttributeValues: { ":status": "PROCESSING" },
-            // }));
+            // Set status to PROCESSING
+            await docClient.send(new UpdateCommand({
+                TableName: ChatConfig.tableName,
+                Key: { user_id, createdAt },
+                UpdateExpression: "SET podcastProcessingStatus = :status",
+                ExpressionAttributeValues: { ":status": "PROCESSING" },
+            }));
 
-            // const tone = "conversational and informative"
-            // // --- PHASE 1: PREPARATION ---
-            // // Step 1 is assumed to be completed before this worker is called.
-            // // Chunks are already in Qdrant. We just need to fetch them.
-            // const allChunks = await getChunksByDocIds(DocIdList); // You need to implement or use your existing getChunksByDocIds
-            // console.log(`Fetched ${allChunks.length} chunks from Qdrant for document(s) [${DocIdList.join(', ')}].`);
-            // if (allChunks.length === 0) {
-            //     console.error("No chunks found for the given documents. Aborting job.");
-            //     // Optionally update the chat with an error message
-            //     return;
-            // }
+            const tone = "conversational and informative"
+            // --- PHASE 1: PREPARATION ---
+            // Step 1 is assumed to be completed before this worker is called.
+            // Chunks are already in Qdrant. We just need to fetch them.
+            const allChunks = await getChunksByDocIds(DocIdList); // You need to implement or use your existing getChunksByDocIds
+            console.log(`Fetched ${allChunks.length} chunks from Qdrant for document(s) [${DocIdList.join(', ')}].`);
+            if (allChunks.length === 0) {
+                console.error("No chunks found for the given documents. Aborting job.");
+                // Optionally update the chat with an error message
+                return;
+            }
 
-            // // --- PHASE 2: OUTLINING ---
-            // // Step 2.1: Summarize main points from each batch of 10 chunks
-            // const batchSize = 10;
-            // const mainPointsBatches: string[] = [];
-            // for (let i = 0; i < allChunks.length; i += batchSize) {
-            //     const batch = allChunks.slice(i, i + batchSize);
-            //     const mainPoints = await summarizeChunkBatch(batch);
-            //     mainPointsBatches.push(mainPoints);
-            // }
+            // --- PHASE 2: OUTLINING ---
+            // Step 2.1: Summarize main points from each batch of 10 chunks
+            const batchSize = 10;
+            const mainPointsBatches: string[] = [];
+            for (let i = 0; i < allChunks.length; i += batchSize) {
+                const batch = allChunks.slice(i, i + batchSize);
+                const mainPoints = await summarizeChunkBatch(batch);
+                mainPointsBatches.push(mainPoints);
+            }
 
-            // // Step 2.2: Generate a comprehensive summary from all main points
-            // const summary = await generateComprehensiveSummaryFromMainPoints(mainPointsBatches);
+            // Step 2.2: Generate a comprehensive summary from all main points
+            const summary = await generateComprehensiveSummaryFromMainPoints(mainPointsBatches);
 
-            // // Step 3: Generate a Structured Podcast Outline
-            // const outline = await generatePodcastOutline(summary, tone);
-            // if (outline.length < 3) {
-            //     throw new Error("Failed to generate a valid outline from the document summary.");
-            // }
-            // console.log("Successfully generated podcast outline:", outline);
+            // Step 3: Generate a Structured Podcast Outline
+            const outline = await generatePodcastOutline(summary, tone);
+            if (outline.length < 3) {
+                throw new Error("Failed to generate a valid outline from the document summary.");
+            }
+            console.log("Successfully generated podcast outline:", outline);
 
-            // // --- PHASE 3: WRITING THE SCRIPT ---
-            // // Step 4: Generate the Script for Each Outline Point
-            // const scriptSections: string[] = [];
-            // for (const point of outline) {
-            //     // 4a: Retrieve relevant chunks for this outline point
-            //     const relevantChunks = await searchRelevantChunks(point, DocIdList);
+            // --- PHASE 3: WRITING THE SCRIPT ---
+            // Step 4: Generate the Script for Each Outline Point
+            const scriptSections: string[] = [];
+            for (const point of outline) {
+                // 4a: Retrieve relevant chunks for this outline point
+                const relevantChunks = await searchRelevantChunks(point, DocIdList);
 
-            //     // 4b: Generate the script for this section
-            //     if (relevantChunks.length > 0) {
-            //         const sectionScript = await generateScriptSection(point, relevantChunks);
-            //         scriptSections.push(sectionScript);
-            //         console.log(`-> Script generated for section: "${point}"`);
-            //     } else {
-            //         console.log(`-> No relevant chunks found for section: "${point}". Skipping.`);
-            //     }
-            // }
+                // 4b: Generate the script for this section
+                if (relevantChunks.length > 0) {
+                    const sectionScript = await generateScriptSection(point, relevantChunks);
+                    scriptSections.push(sectionScript);
+                    console.log(`-> Script generated for section: "${point}"`);
+                } else {
+                    console.log(`-> No relevant chunks found for section: "${point}". Skipping.`);
+                }
+            }
 
-            // // --- PHASE 4: FINAL ASSEMBLY ---
-            // // Step 5: Assemble and Polish the Final Script
-            // const draftScript = scriptSections.join('\n\n---\n\n');
-            // const finalPodcastScript = await polishFinalScript(draftScript);
+            // --- PHASE 4: FINAL ASSEMBLY ---
+            // Step 5: Assemble and Polish the Final Script
+            const draftScript = scriptSections.join('\n\n---\n\n');
+            const finalPodcastScript = await polishFinalScript(draftScript);
 
-            // console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
-            // console.log(finalPodcastScript);
-        const temp = `Charles: So, Abhuday biggest takeaway: OLX Poland's AI journey showcases how strategic AI can dramatically improve efficiency, customer experiences, and scalability.
-Natalie: It's really a blueprint for businesses looking to revolutionize their own customer service strategies.`
+            console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
+            console.log(finalPodcastScript);
+//         const temp = `Charles: So, Abhuday biggest takeaway: OLX Poland's AI journey showcases how strategic AI can dramatically improve efficiency, customer experiences, and scalability.
+// Natalie: It's really a blueprint for businesses looking to revolutionize their own customer service strategies.`
 //         console.log("temp");
 
             // Step 6: Extract dialogues for further processing or storage
-            await processAndStorePodcastAudio(temp, chatId, user_id, createdAt);
+            await processAndStorePodcastAudio(finalPodcastScript, chatId, user_id, createdAt);
 
             // The status is set to COMPLETED inside processAndStorePodcastAudio
         } catch (error) {
