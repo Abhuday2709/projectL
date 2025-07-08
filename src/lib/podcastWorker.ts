@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 import { Worker } from 'bullmq';
-import { deleteFromS3, ProcessPodcasts } from './utils'; // Assuming this interface is defined elsewhere
+import { deleteFromS3, ProcessPodcasts } from './utils'; 
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import axios from 'axios';
@@ -9,17 +9,20 @@ import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
-import ffmpeg from 'fluent-ffmpeg';
-import ffmpegPath from 'ffmpeg-static';
-import ffprobePath from 'ffprobe-static';
 import { ChatConfig } from '../models/chatModel';
 import IORedis from 'ioredis';
+import ffmpegStatic from 'ffmpeg-static';
+import path from 'path';
+import  fs  from 'fs';
+import os from 'os';
+import { exec } from 'child_process';
 
 // --- Gemini API Setup ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const generativeModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
+console.log("⤷ Connecting to Redis at:", process.env.REDIS_URL);
 
 // --- Qdrant Setup ---
 const qdrantClient = new QdrantClient({
@@ -294,14 +297,14 @@ async function generateMurfAudio(text: string, speaker: string) {
 
 // --- FFmpeg S3 Integration ---
 
-ffmpeg.setFfmpegPath(ffmpegPath!);
-ffmpeg.setFfprobePath(ffprobePath.path);
+// ffmpeg.setFfmpegPath(ffmpegPath!);
+// ffmpeg.setFfprobePath(ffprobePath.path);
 async function concatenateAudioWithRetry(audioUrls: string[], chatId: string, maxRetries = 3): Promise<string> {
     let attempt = 0;
     let lastError: any = null;
     while (attempt < maxRetries) {
         try {
-            return await concatenateAudioFromS3(audioUrls, chatId);
+            return await concatenateAudioFromS3_concatDemuxer(audioUrls, chatId);
         } catch (err) {
             lastError = err;
             attempt++;
@@ -313,64 +316,69 @@ async function concatenateAudioWithRetry(audioUrls: string[], chatId: string, ma
     }
     throw lastError;
 }
-async function concatenateAudioFromS3(audioUrls: string[], chatId: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        try {
-            // Temporary output path for merged file
-            const tempDir = `/tmp/chat_${chatId}`;
-            const outputFile = `${tempDir}/final_combined.wav`;
 
-            // Ensure temp directory exists
-            const fsSync = require('fs');
-            if (!fsSync.existsSync(tempDir)) {
-                fsSync.mkdirSync(tempDir, { recursive: true });
-            }
+async function concatenateAudioFromS3_concatDemuxer(
+  audioUrls: string[],
+  chatId: string
+): Promise<string> {
+  // 1. Use the OS temp dir
+  const tmpDir = path.join(os.tmpdir(), `chat_${chatId}`);
+  fs.mkdirSync(tmpDir, { recursive: true });
 
-            // Build ffmpeg command with URL inputs
-            const command = ffmpeg();
-            audioUrls.forEach(url => command.input(url));
+  // 2. Download each piece
+  const localFiles: string[] = [];
+  for (let i = 0; i < audioUrls.length; i++) {
+    const url = audioUrls[i];
+    const localPath = path.join(tmpDir, `part_${i}.wav`);
+    const resp = await axios.get(url, { responseType: 'arraybuffer' });
+    fs.writeFileSync(localPath, Buffer.from(resp.data));
+    localFiles.push(localPath);
+  }
 
-            command
-                .on('error', (err) => {
-                    console.error('Error concatenating audio:', err);
-                    // Cleanup
-                    if (fsSync.existsSync(outputFile)) fsSync.unlinkSync(outputFile);
-                    if (fsSync.existsSync(tempDir)) fsSync.rmdirSync(tempDir);
-                    reject(err);
-                })
-                .on('end', async () => {
-                    try {
-                        // Read merged file and upload
-                        const buffer = fsSync.readFileSync(outputFile);
-                        const s3Key = `podcast-audio/chat_${chatId}_final_${Date.now()}.wav`;
-                        const upload = new Upload({
-                            client: s3Client,
-                            params: {
-                                Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
-                                Key: s3Key,
-                                Body: buffer,
-                                ContentType: 'audio/wav',
-                                ContentDisposition: 'inline',
-                            },
-                        });
-                        await upload.done();
-                        const s3Url = `https://${process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${s3Key}`;
+  // 3. Build concat.txt with forward‑slash paths
+  const listFile = path.join(tmpDir, 'concat.txt');
+  const lines = localFiles.map((abs) => {
+    // turn "C:\Users\..." into "C:/Users/..."
+    const posix = abs.replace(/\\/g, '/');
+    return `file '${posix}'`;
+  });
+  fs.writeFileSync(listFile, lines.join('\n'));
 
-                        // Cleanup
-                        fsSync.unlinkSync(outputFile);
-                        fsSync.rmdirSync(tempDir);
-
-                        resolve(s3Url);
-                    } catch (uploadErr) {
-                        reject(uploadErr);
-                    }
-                })
-                .mergeToFile(outputFile, tempDir);
-        } catch (error) {
-            reject(error);
-        }
+  // 4. Run ffmpeg‑static concat demuxer
+  await new Promise<void>((resolve, reject) => {
+    const ffmpegBin = `"${ffmpegStatic}"`;
+    // forward‑slash for the listFile too:
+    const listPosix = listFile.replace(/\\/g, '/');
+    const outputFile = path.join(tmpDir, 'final_combined.wav');
+    const cmd = `${ffmpegBin} -y -f concat -safe 0 -i "${listPosix}" -c copy "${outputFile}"`;
+    exec(cmd, (err, _stdout, stderr) => {
+      if (err) return reject(new Error(stderr || err.message));
+      resolve();
     });
+  });
+
+  // 5. Upload to S3
+  const outputPath = path.join(tmpDir, 'final_combined.wav');
+  const buffer = fs.readFileSync(outputPath);
+  const s3Key = `podcast-audio/chat_${chatId}_final_${Date.now()}.wav`;
+  await new Upload({
+    client: s3Client,
+    params: {
+      Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
+      Key: s3Key,
+      Body: buffer,
+      ContentType: 'audio/wav',
+      ContentDisposition: 'inline',
+    },
+  }).done();
+
+  // 6. Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+
+  return `https://${process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${s3Key}`;
 }
+
+
 
 // --- Main Processing Function ---
 
@@ -477,76 +485,76 @@ const podcastWorker = new Worker<ProcessPodcasts>(
         const { DocIdList, chatId, user_id, createdAt } = job.data;
 
         try {
-            // Set status to PROCESSING
-            await docClient.send(new UpdateCommand({
-                TableName: ChatConfig.tableName,
-                Key: { user_id, createdAt },
-                UpdateExpression: "SET podcastProcessingStatus = :status",
-                ExpressionAttributeValues: { ":status": "PROCESSING" },
-            }));
+            // // Set status to PROCESSING
+            // await docClient.send(new UpdateCommand({
+            //     TableName: ChatConfig.tableName,
+            //     Key: { user_id, createdAt },
+            //     UpdateExpression: "SET podcastProcessingStatus = :status",
+            //     ExpressionAttributeValues: { ":status": "PROCESSING" },
+            // }));
 
-            const tone = "conversational and informative"
-            // --- PHASE 1: PREPARATION ---
-            // Step 1 is assumed to be completed before this worker is called.
-            // Chunks are already in Qdrant. We just need to fetch them.
-            const allChunks = await getChunksByDocIds(DocIdList); // You need to implement or use your existing getChunksByDocIds
-            console.log(`Fetched ${allChunks.length} chunks from Qdrant for document(s) [${DocIdList.join(', ')}].`);
-            if (allChunks.length === 0) {
-                console.error("No chunks found for the given documents. Aborting job.");
-                // Optionally update the chat with an error message
-                return;
-            }
+            // const tone = "conversational and informative"
+            // // --- PHASE 1: PREPARATION ---
+            // // Step 1 is assumed to be completed before this worker is called.
+            // // Chunks are already in Qdrant. We just need to fetch them.
+            // const allChunks = await getChunksByDocIds(DocIdList); // You need to implement or use your existing getChunksByDocIds
+            // console.log(`Fetched ${allChunks.length} chunks from Qdrant for document(s) [${DocIdList.join(', ')}].`);
+            // if (allChunks.length === 0) {
+            //     console.error("No chunks found for the given documents. Aborting job.");
+            //     // Optionally update the chat with an error message
+            //     return;
+            // }
 
-            // --- PHASE 2: OUTLINING ---
-            // Step 2.1: Summarize main points from each batch of 10 chunks
-            const batchSize = 10;
-            const mainPointsBatches: string[] = [];
-            for (let i = 0; i < allChunks.length; i += batchSize) {
-                const batch = allChunks.slice(i, i + batchSize);
-                const mainPoints = await summarizeChunkBatch(batch);
-                mainPointsBatches.push(mainPoints);
-            }
+            // // --- PHASE 2: OUTLINING ---
+            // // Step 2.1: Summarize main points from each batch of 10 chunks
+            // const batchSize = 10;
+            // const mainPointsBatches: string[] = [];
+            // for (let i = 0; i < allChunks.length; i += batchSize) {
+            //     const batch = allChunks.slice(i, i + batchSize);
+            //     const mainPoints = await summarizeChunkBatch(batch);
+            //     mainPointsBatches.push(mainPoints);
+            // }
 
-            // Step 2.2: Generate a comprehensive summary from all main points
-            const summary = await generateComprehensiveSummaryFromMainPoints(mainPointsBatches);
+            // // Step 2.2: Generate a comprehensive summary from all main points
+            // const summary = await generateComprehensiveSummaryFromMainPoints(mainPointsBatches);
 
-            // Step 3: Generate a Structured Podcast Outline
-            const outline = await generatePodcastOutline(summary, tone);
-            if (outline.length < 3) {
-                throw new Error("Failed to generate a valid outline from the document summary.");
-            }
-            console.log("Successfully generated podcast outline:", outline);
+            // // Step 3: Generate a Structured Podcast Outline
+            // const outline = await generatePodcastOutline(summary, tone);
+            // if (outline.length < 3) {
+            //     throw new Error("Failed to generate a valid outline from the document summary.");
+            // }
+            // console.log("Successfully generated podcast outline:", outline);
 
-            // --- PHASE 3: WRITING THE SCRIPT ---
-            // Step 4: Generate the Script for Each Outline Point
-            const scriptSections: string[] = [];
-            for (const point of outline) {
-                // 4a: Retrieve relevant chunks for this outline point
-                const relevantChunks = await searchRelevantChunks(point, DocIdList);
+            // // --- PHASE 3: WRITING THE SCRIPT ---
+            // // Step 4: Generate the Script for Each Outline Point
+            // const scriptSections: string[] = [];
+            // for (const point of outline) {
+            //     // 4a: Retrieve relevant chunks for this outline point
+            //     const relevantChunks = await searchRelevantChunks(point, DocIdList);
 
-                // 4b: Generate the script for this section
-                if (relevantChunks.length > 0) {
-                    const sectionScript = await generateScriptSection(point, relevantChunks);
-                    scriptSections.push(sectionScript);
-                    console.log(`-> Script generated for section: "${point}"`);
-                } else {
-                    console.log(`-> No relevant chunks found for section: "${point}". Skipping.`);
-                }
-            }
+            //     // 4b: Generate the script for this section
+            //     if (relevantChunks.length > 0) {
+            //         const sectionScript = await generateScriptSection(point, relevantChunks);
+            //         scriptSections.push(sectionScript);
+            //         console.log(`-> Script generated for section: "${point}"`);
+            //     } else {
+            //         console.log(`-> No relevant chunks found for section: "${point}". Skipping.`);
+            //     }
+            // }
 
-            // --- PHASE 4: FINAL ASSEMBLY ---
-            // Step 5: Assemble and Polish the Final Script
-            const draftScript = scriptSections.join('\n\n---\n\n');
-            const finalPodcastScript = await polishFinalScript(draftScript);
+            // // --- PHASE 4: FINAL ASSEMBLY ---
+            // // Step 5: Assemble and Polish the Final Script
+            // const draftScript = scriptSections.join('\n\n---\n\n');
+            // const finalPodcastScript = await polishFinalScript(draftScript);
 
-            console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
-            console.log(finalPodcastScript);
-//         const temp = `Charles: So, Abhuday biggest takeaway: OLX Poland's AI journey showcases how strategic AI can dramatically improve efficiency, customer experiences, and scalability.
-// Natalie: It's really a blueprint for businesses looking to revolutionize their own customer service strategies.`
+            // console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
+            // console.log(finalPodcastScript);
+        const temp = `Charles: So, Abhuday biggest takeaway: OLX Poland's AI journey showcases how strategic AI can dramatically improve efficiency, customer experiences, and scalability.
+Natalie: It's really a blueprint for businesses looking to revolutionize their own customer service strategies.`
 //         console.log("temp");
 
             // Step 6: Extract dialogues for further processing or storage
-            await processAndStorePodcastAudio(finalPodcastScript, chatId, user_id, createdAt);
+            await processAndStorePodcastAudio(temp, chatId, user_id, createdAt);
 
             // The status is set to COMPLETED inside processAndStorePodcastAudio
         } catch (error) {
