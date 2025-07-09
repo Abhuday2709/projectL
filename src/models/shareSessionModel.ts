@@ -1,3 +1,4 @@
+// models/shareSessionModel.ts
 import { z } from 'zod';
 
 // scoringSession Schema Validation
@@ -6,6 +7,8 @@ export const ShareSessionSchema = z.object({
     shareId: z.string(),
     password: z.string(),
     isActive: z.boolean().default(true),
+    passwordCreatedAt: z.string().optional(), // ISO 8601 string
+    expiresAt: z.number().optional(),  // epoch seconds for DynamoDB TTL
 });
 
 // scoringSession Type
@@ -17,7 +20,7 @@ export const shareSessionConfig = {
     keys: {
         partition: 'chatId',
     },
-    indexes:{
-        shareId: 'shareId-index', // Assuming you have a GSI on shareId
-    }
-} as const; 
+    indexes: {
+        shareId: 'shareId-index',
+    },
+} as const;

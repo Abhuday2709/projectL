@@ -12,8 +12,8 @@ const CustomTooltip = ({ active, payload }: any) => {
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
                 <p className="font-semibold text-sm">Your Score:</p>
-                <p className="text-sm text-blue-600">Attractiveness: {data.x.toFixed(1)}%</p>
-                <p className="text-sm text-green-600">Ability to Win: {data.y.toFixed(1)}%</p>
+                <p className="text-sm text-blue-600">Attractiveness: {data.y.toFixed(1)}%</p>
+                <p className="text-sm text-green-600">Ability to Win: {data.x.toFixed(1)}%</p>
             </div>
         );
     }
@@ -37,8 +37,7 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
         );
     }
 
-    // Swap: cat1Pct = Ability to Win (Y), cat2Pct = Attractiveness (X)
-
+    // Swap: cat1Pct = Ability to Win (X), cat2Pct = Attractiveness (Y)
     const abilityPct = (results[0].categoryName === "OUR ABILITY TO WIN") ? Math.round((results[0]?.score * 100) / (results[0]?.total * 2)) : Math.round((results[1]?.score * 100) / (results[1]?.total * 2));
     const attractPct = (results[1].categoryName === "OPPORTUNITY ATTRACTIVENESS") ? Math.round((results[1]?.score * 100) / (results[1]?.total * 2)) : Math.round((results[0]?.score * 100) / (results[0]?.total * 2));
 
@@ -79,23 +78,23 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
                     <ResponsiveContainer width="100%" height={300}>
                         <ScatterChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
                             {/* Quadrant backgrounds */}
-                            <ReferenceArea x1={0} x2={results[1]?.qualificationCutoff} y1={0} y2={results[0]?.qualificationCutoff} fill="yellow" fillOpacity={0.3} />
-                            <ReferenceArea x1={results[1]?.qualificationCutoff} x2={100} y1={0} y2={results[0]?.qualificationCutoff} fill="#fbbf24" fillOpacity={0.3} />
-                            <ReferenceArea x1={0} x2={results[1]?.qualificationCutoff} y1={results[0]?.qualificationCutoff} y2={100} fill="#60a5fa" fillOpacity={0.3} />
-                            <ReferenceArea x1={results[1]?.qualificationCutoff} x2={100} y1={results[0]?.qualificationCutoff} y2={100} fill="#34d399" fillOpacity={0.3} />
+                            <ReferenceArea x1={0} x2={results[0]?.qualificationCutoff} y1={0} y2={results[1]?.qualificationCutoff} fill="yellow" fillOpacity={0.3} />
+                            <ReferenceArea x1={results[0]?.qualificationCutoff} x2={100} y1={0} y2={results[1]?.qualificationCutoff} fill="#fbbf24" fillOpacity={0.3} />
+                            <ReferenceArea x1={0} x2={results[0]?.qualificationCutoff} y1={results[1]?.qualificationCutoff} y2={100} fill="#60a5fa" fillOpacity={0.3} />
+                            <ReferenceArea x1={results[0]?.qualificationCutoff} x2={100} y1={results[1]?.qualificationCutoff} y2={100} fill="#34d399" fillOpacity={0.3} />
                             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <ReferenceLine x={results[1]?.qualificationCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
-                            <ReferenceLine y={results[0]?.qualificationCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
+                            <ReferenceLine x={results[0]?.qualificationCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
+                            <ReferenceLine y={results[1]?.qualificationCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
                             <XAxis
                                 type="number"
                                 dataKey="x"
-                                name="Opp Attractiveness"
+                                name="Ability to Win"
                                 domain={[0, 100]}
                                 tick={{ fontSize: 12, fill: '#374151' }}
                                 tickLine={{ stroke: '#9ca3af' }}
                                 axisLine={{ stroke: '#9ca3af' }}
                                 label={{
-                                    value: "Opp Attractiveness %",
+                                    value: "Ability to Win %",
                                     position: "insideBottom",
                                     offset: -10,
                                     style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px', fontWeight: 'bold' }
@@ -104,13 +103,13 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
                             <YAxis
                                 type="number"
                                 dataKey="y"
-                                name="Ability to Win"
+                                name="Opp Attractiveness"
                                 domain={[0, 100]}
                                 tick={{ fontSize: 12, fill: '#374151' }}
                                 tickLine={{ stroke: '#9ca3af' }}
                                 axisLine={{ stroke: '#9ca3af' }}
                                 label={{
-                                    value: "Ability to Win %",
+                                    value: "Opp Attractiveness %",
                                     angle: -90,
                                     position: "insideLeft",
                                     style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px', fontWeight: 'bold' }
@@ -119,19 +118,19 @@ export default function ResultDisplay({ results, recommendation }: ResultDisplay
                             <Tooltip content={<CustomTooltip />} />
                             <Scatter
                                 name="Your Score"
-                                data={[{ x: attractPct, y: abilityPct }]}
+                                data={[{ x: abilityPct, y: attractPct }]}
                                 fill="#8b5cf6"
                             >
                                 <Cell fill="#8b5cf6" stroke="#ffffff" strokeWidth={3} />
                             </Scatter>
                             {/* Quadrant labels updated */}
-                            <ReferenceDot x={results[1]?.qualificationCutoff/2} y={results[0]?.qualificationCutoff/2} r={0} isFront={true}
+                            <ReferenceDot x={results[0]?.qualificationCutoff/2} y={results[1]?.qualificationCutoff/2} r={0} isFront={true}
                                 label={{ value: "❌ No Bid", position: "center", fill: "#dc2626", fontWeight: "bold", fontSize: 11 }} />
-                            <ReferenceDot x={(results[1]?.qualificationCutoff + 100)/2} y={results[0]?.qualificationCutoff/2} r={0} isFront={true}
+                            <ReferenceDot x={(results[0]?.qualificationCutoff + 100)/2} y={results[1]?.qualificationCutoff/2} r={0} isFront={true}
                                 label={{ value: "⏳ Faster Closure", position: "center", fill: "#2563eb", fontWeight: "bold", fontSize: 10 }} />
-                            <ReferenceDot x={results[1]?.qualificationCutoff/2} y={(results[0]?.qualificationCutoff + 100)/2} r={0} isFront={true}
+                            <ReferenceDot x={results[0]?.qualificationCutoff/2} y={(results[1]?.qualificationCutoff + 100)/2} r={0} isFront={true}
                                 label={{ value: "🔧 Build Capability", position: "center", fill: "#d97706", fontWeight: "bold", fontSize: 11 }} />
-                            <ReferenceDot x={(results[1]?.qualificationCutoff + 100)/2} y={(results[0]?.qualificationCutoff + 100)/2} r={0} isFront={true}
+                            <ReferenceDot x={(results[0]?.qualificationCutoff + 100)/2} y={(results[1]?.qualificationCutoff + 100)/2} r={0} isFront={true}
                                 label={{ value: "✅ Bid to Win", position: "center", fill: "#059669", fontWeight: "bold", fontSize: 11 }} />
                         </ScatterChart>
                     </ResponsiveContainer>

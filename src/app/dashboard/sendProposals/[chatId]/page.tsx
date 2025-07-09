@@ -4,20 +4,20 @@ import { useParams, useRouter } from "next/navigation";
 import ChatWrapper from "@/components/chat/ChatWrapper";
 import PdfRenderer from "@/components/PdfRenderer";
 import { Button } from "@/components/ui/button";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Sidebar from "@/components/Sidebar";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import bcrypt from "bcryptjs";
 import { Chat } from "@/models/chatModel";
 import { Document } from "@/models/documentModel";
 import { deleteFromS3 } from "@/lib/utils";
+import ShareChatDialog from "@/components/ShareChatDialog";
 
 export default function ChatPage() {
     const { chatId } = useParams();
     const router = useRouter();
-    const { toast } = useToast(); // Ensure useToast is called inside the component
+    const { toast } = useToast();
     const [chatDetails, setChatDetails] = useState<Chat | null>(null);
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [chatName, setChatName] = useState("Chat");
@@ -56,60 +56,10 @@ export default function ChatPage() {
     const [error, setError] = useState<string | null>(null);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
     const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
-    const [showShareDialog, setShowShareDialog] = useState(false);
-    const [sharePassword, setSharePassword] = useState("");
-    const [isChangingPassword, setIsChangingPassword] = useState(false);
-    const [copied, setCopied] = useState(false);
-    const [shareSessionData, setShareSessionData] = useState<{
-        shareId: string;
-        chatId: string;
-        password: string;
-        isActive: boolean;
-    } | null>(null);
-    const updateShareSession = async (payload: { chatId: string; password: string; isActive: boolean }) => {
-        try {
-            const res = await fetch("/api/shareSession/update", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) throw new Error("Failed to update shareSession");
-            const data = await res.json();
-            toast({
-                title: "Share settings updated!",
-                description: "Your share settings have been updated successfully.",
-            });
-            setShareSessionData((prev) => ({
-                shareId: prev?.shareId ?? "",
-                chatId: payload.chatId,
-                password: payload.password,
-                isActive: payload.isActive,
-            }));
-        } catch (error: any) {
-            toast({
-                title: "Error updating share settings",
-                description: error.message,
-                variant: "destructive",
-            });
-        }
-    };
-    const fetchShareSession = async () => {
-        if (!chatIdStr) return;
-        try {
-            const res = await fetch(`/api/shareSession/byChatId?chatId=${chatIdStr}`);
-            if (!res.ok) throw new Error('Share session not found');
-            const data = await res.json();
-            setShareSessionData(data);
-        } catch (err) {
-            console.error("Failed to fetch shareSessionData", err);
-        }
-    };
+    
     useEffect(() => {
         if (chatIdStr) {
             fetchChatDetails();
-            fetchShareSession();
             fetchDocuments();
         }
     }, [chatIdStr]);
@@ -192,55 +142,7 @@ export default function ChatPage() {
             fetchChatDetails();
         }
     };
-    const handleUpdatePassword = async () => {
-        if (!sharePassword.trim()) {
-            toast({
-                title: "Password required",
-                description: "Please enter a new password.",
-                variant: "destructive",
-            });
-            return;
-        }
-        const hashedPassword = await bcrypt.hash(sharePassword.trim(), 10);
-        console.log("hashedPassword", hashedPassword);
-
-        await updateShareSession({
-            chatId: chatIdStr,
-            password: hashedPassword,
-            isActive: shareSessionData?.isActive ?? true,
-        });
-        setIsChangingPassword(false);
-        setSharePassword("");
-    };
-    const handleToggleActive = async () => {
-        const newActiveState = !shareSessionData?.isActive;
-
-        await updateShareSession({
-            chatId: chatIdStr,
-            password: shareSessionData?.password || "",
-            isActive: newActiveState,
-        });
-    };
-    const copyToClipboard = async (text: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopied(true);
-            toast({
-                title: "Copied to clipboard!",
-                description: "Share link has been copied to your clipboard.",
-            });
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            toast({
-                title: "Failed to copy",
-                description: "Please copy the link manually.",
-                variant: "destructive",
-            });
-        }
-    };
-
-    const shareUrl = `${process.env.NEXT_PUBLIC_WEBSITE_URL}/s/${shareSessionData?.shareId}`;
-
+    
     const getButtonText = () => {
         switch (chatDetails?.podcastProcessingStatus) {
             case 'QUEUED':
@@ -270,17 +172,7 @@ export default function ChatPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button
-                        onClick={() => setShowShareDialog(true)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-none text-xs sm:text-sm px-3 sm:px-4 flex-1 sm:flex-none rounded-md"
-                    >
-                        <span className="hidden sm:inline">
-                            {shareSessionData?.password && shareSessionData?.isActive ? "Manage Share" : "Share Chat"}
-                        </span>
-                        <span className="sm:hidden">
-                            {shareSessionData?.password && shareSessionData?.isActive ? "Manage" : "Share"}
-                        </span>
-                    </Button>
+                    <ShareChatDialog chatId={chatIdStr} />
                     <Button
                         variant="outline"
                         onClick={() => router.push('/dashboard/sendProposals')}
@@ -414,171 +306,6 @@ export default function ChatPage() {
                 </div>
             </div>
         </div>
-        
-        {/* Share Dialog */}
-        {showShareDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#112D4E] bg-opacity-60 p-4">
-                    <div className="bg-[#F9F7F7] rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-sm sm:max-w-2xl border-2 border-[#DBE2EF] max-h-[90vh] overflow-y-auto">
-                        {!shareSessionData?.password ? (
-                            // Create new share session
-                            <>
-                                <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#112D4E]">Create Share Link</h2>
-                                <p className="text-xs sm:text-sm text-[#3F72AF] mb-3 sm:mb-4">
-                                    Set a password to allow others to access this chat.
-                                </p>
-                                <input
-                                    type="password"
-                                    className="w-full border-2 border-[#DBE2EF] rounded-lg px-3 py-2 mb-3 sm:mb-4 focus:border-[#3F72AF] focus:outline-none bg-[#F9F7F7] text-[#112D4E] text-sm sm:text-base"
-                                    placeholder="Enter password"
-                                    value={sharePassword}
-                                    onChange={(e) => setSharePassword(e.target.value)}
-                                />
-                                <div className="flex flex-col sm:flex-row justify-end gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => {
-                                            setShowShareDialog(false);
-                                            setSharePassword("");
-                                        }}
-                                        className="bg-[#DBE2EF] hover:bg-[#3F72AF] text-[#112D4E] hover:text-white border-none text-sm order-2 sm:order-1"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={handleUpdatePassword}
-                                        disabled={!sharePassword.trim()}
-                                        className="bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF] text-sm order-1 sm:order-2"
-                                    >
-                                        Create
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
-                            // Manage existing share session
-                            <>
-                                <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-[#112D4E]">Manage Share Link</h2>
-
-                                {/* Share URL */}
-                                <div className="mb-3 sm:mb-4">
-                                    <label className="block text-xs sm:text-sm font-medium text-[#112D4E] mb-2">
-                                        Share URL
-                                    </label>
-                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                        <div className="flex-1 font-mono text-xs sm:text-sm bg-[#DBE2EF] text-[#112D4E] p-2 rounded-lg border border-[#3F72AF]/20 break-all overflow-hidden">
-                                            {shareUrl}
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => copyToClipboard(shareUrl)}
-                                            className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white flex-shrink-0"
-                                        >
-                                            {copied ? <Check className="h-3 w-3 sm:h-4 sm:w-4" /> : <Copy className="h-3 w-3 sm:h-4 sm:w-4" />}
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Password */}
-                                <div className="mb-3 sm:mb-4">
-                                    <label className="block text-xs sm:text-sm font-medium text-[#112D4E] mb-2">
-                                        Password
-                                    </label>
-                                    {isChangingPassword ? (
-                                        <div className="space-y-2">
-                                            <input
-                                                type="password"
-                                                className="w-full border-2 border-[#DBE2EF] rounded-lg px-3 py-2 focus:border-[#3F72AF] focus:outline-none bg-[#F9F7F7] text-[#112D4E] text-sm sm:text-base"
-                                                placeholder="Enter new password"
-                                                value={sharePassword}
-                                                onChange={(e) => setSharePassword(e.target.value)}
-                                            />
-                                            <div className="flex flex-col sm:flex-row gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={handleUpdatePassword}
-                                                    disabled={!sharePassword.trim()}
-                                                    className="bg-[#3F72AF] hover:bg-[#112D4E] text-white border-none disabled:bg-[#DBE2EF] disabled:text-[#3F72AF] text-xs order-1"
-                                                >
-                                                    Update
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        setIsChangingPassword(false);
-                                                        setSharePassword("");
-                                                    }}
-                                                    className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white text-xs order-2"
-                                                >
-                                                    Cancel
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                            <div className="flex-1 font-mono text-xs sm:text-sm bg-[#DBE2EF] text-[#112D4E] p-2 rounded-lg border border-[#3F72AF]/20">
-                                                {"•".repeat(shareSessionData.password?.length || 0)}
-                                            </div>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setIsChangingPassword(true)}
-                                                className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover:text-white flex-shrink-0"
-                                            >
-                                                Change
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Active Toggle */}
-                                <div className="mb-4 sm:mb-6">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div className="flex-1">
-                                            <label className="block text-xs sm:text-sm font-medium text-[#112D4E]">
-                                                Share Status
-                                            </label>
-                                            <p className="text-xs text-[#3F72AF]">
-                                                {shareSessionData.isActive
-                                                    ? "Share link is active and accessible"
-                                                    : "Share link is disabled"
-                                                }
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center justify-start sm:justify-end">
-                                            <input
-                                                type="checkbox"
-                                                id="isActive"
-                                                checked={shareSessionData.isActive ?? false}
-                                                onChange={handleToggleActive}
-                                                className="mr-2 accent-[#3F72AF] scale-110"
-                                            />
-                                            <label htmlFor="isActive" className="text-xs sm:text-sm text-[#112D4E]">
-                                                Active
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex justify-end">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => {
-                                            setShowShareDialog(false);
-                                            setIsChangingPassword(false);
-                                            setSharePassword("");
-                                        }}
-                                        className="bg-[#DBE2EF] hover:bg-[#3F72AF] text-[#112D4E] hover:text-white border-none text-sm w-full sm:w-auto"
-                                    >
-                                        Close
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
     </div>
-);
+    );
 }

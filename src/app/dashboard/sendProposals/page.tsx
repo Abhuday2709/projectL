@@ -320,7 +320,7 @@ export default function DashboardChatPage() {
                                             <MessageCircle className="h-6 w-6 text-white" />
                                         </div>
                                         <div>
-                                            <h1 className="text-3xl font-bold text-[#112D4E]">Your Chats</h1>
+                                            <h1 className="text-3xl font-bold text-[#112D4E]">Your Proposals</h1>
                                             <p className="text-[#3F72AF] mt-1">
                                                 {chats?.length ? `${chats.length} conversation${chats.length !== 1 ? 's' : ''}` : 'No conversations yet'}
                                             </p>
@@ -332,7 +332,7 @@ export default function DashboardChatPage() {
                                         size="lg"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
-                                        New Chat
+                                        New Proposal
                                     </Button>
                                 </div>
                             </div>
@@ -365,9 +365,9 @@ export default function DashboardChatPage() {
                                     <div className="p-4 bg-[#DBE2EF] rounded-full mb-6">
                                         <MessageCircle className="h-12 w-12 text-[#3F72AF]" />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-[#112D4E] mb-2">No conversations yet</h3>
+                                    <h3 className="text-xl font-semibold text-[#112D4E] mb-2">No Proposals yet</h3>
                                     <p className="text-[#3F72AF] mb-6 text-center max-w-md">
-                                        Start your first conversation to begin collaborating and sharing ideas.
+                                        Start your first proposal to begin collaborating and sharing ideas.
                                     </p>
                                     <Button
                                         onClick={handleNewChat}
@@ -375,7 +375,7 @@ export default function DashboardChatPage() {
                                         size="lg"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
-                                        Create Your First Chat
+                                        Create Your First Proposal
                                     </Button>
                                 </div>
                             )}
@@ -505,12 +505,12 @@ export default function DashboardChatPage() {
                                             <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
                                                 <Plus className="h-4 w-4 text-white" />
                                             </div>
-                                            <span className="text-[#112D4E]">Create New Chat</span>
+                                            <span className="text-[#112D4E]">Create New Proposal</span>
                                         </DialogTitle>
                                     </DialogHeader>
                                     <div className="py-4">
                                         <Input
-                                            placeholder="Enter a descriptive chat name..."
+                                            placeholder="Enter a descriptive proposal name..."
                                             value={chatName}
                                             onChange={(e) => setChatName(e.target.value)}
                                             onKeyDown={(e) => {
@@ -539,7 +539,7 @@ export default function DashboardChatPage() {
                                             className="bg-gradient-to-r from-[#3F72AF] to-[#112D4E] hover:from-[#2A5A94] hover:to-[#0D1F35] text-white flex items-center"
                                         >
                                             {isCreating && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
-                                            {isCreating ? "Creating..." : "Create Chat"}
+                                            {isCreating ? "Creating..." : "Create Proposal"}
                                         </Button>
                                     </DialogFooter>
                                 </DialogContent>
@@ -553,7 +553,7 @@ export default function DashboardChatPage() {
                                             <div className="p-2 bg-red-100 rounded-lg">
                                                 <Trash2 className="h-4 w-4 text-red-600" />
                                             </div>
-                                            <span className="text-[#112D4E]">Delete Chat?</span>
+                                            <span className="text-[#112D4E]">Delete Proposal?</span>
                                         </AlertDialogTitle>
                                         <AlertDialogDescription className="text-base text-[#3F72AF]">
                                             Are you sure you want to delete <span className="font-semibold text-[#112D4E]">"{chatToDelete?.name}"</span>?
@@ -574,7 +574,7 @@ export default function DashboardChatPage() {
                                         >
                                             {isDeleting && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
                                             <Trash2 className="h-4 w-4 mr-2" />
-                                            {isDeleting ? "Deleting..." : "Delete Chat"}
+                                            {isDeleting ? "Deleting..." : "Delete Proposal"}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>

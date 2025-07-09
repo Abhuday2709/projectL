@@ -176,9 +176,9 @@ export default function DashboardReviewPage() {
                                             <ClipboardList className="h-6 w-6 text-white" />
                                         </div>
                                         <div>
-                                            <h1 className="text-3xl font-bold text-[#112D4E]">Your Reviews</h1>
+                                            <h1 className="text-3xl font-bold text-[#112D4E]">Your Bids</h1>
                                             <p className="text-[#3F72AF] mt-1">
-                                                {reviews?.length ? `${reviews.length} review session${reviews.length !== 1 ? 's' : ''}` : 'No review sessions yet'}
+                                                {reviews?.length ? `${reviews.length} Bid${reviews.length !== 1 ? 's' : ''}` : 'No Bids yet'}
                                             </p>
                                         </div>
                                     </div>
@@ -189,7 +189,7 @@ export default function DashboardReviewPage() {
                                             size="lg"
                                         >
                                             <Plus className="h-4 w-4 mr-2" />
-                                            New Review
+                                            New Bid
                                         </Button>
                                     </div>
                                 </div>
@@ -222,9 +222,9 @@ export default function DashboardReviewPage() {
                                     <div className="p-4 bg-gradient-to-r from-[#DBE2EF] to-[#F9F7F7] rounded-full mb-6">
                                         <ClipboardList className="h-12 w-12 text-[#3F72AF]" />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-[#112D4E] mb-2">No review sessions yet</h3>
+                                    <h3 className="text-xl font-semibold text-[#112D4E] mb-2">No Bids yet</h3>
                                     <p className="text-[#3F72AF] mb-6 text-center max-w-md">
-                                        Create your first review session to start evaluating and scoring content or submissions.
+                                        Create your first bid to start evaluating and scoring content or submissions.
                                     </p>
                                     <div className="flex flex-col sm:flex-row gap-3">
                                         <Button
@@ -233,7 +233,7 @@ export default function DashboardReviewPage() {
                                             size="lg"
                                         >
                                             <Plus className="h-4 w-4 mr-2" />
-                                            Create Your First Review
+                                            Create Your First Bid
                                         </Button>
                                     </div>
                                 </div>
@@ -262,7 +262,7 @@ export default function DashboardReviewPage() {
                                             <div className="p-2 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] rounded-lg">
                                                 <Plus className="h-4 w-4 text-white" />
                                             </div>
-                                            Create New Review
+                                            Create New Bid
                                         </DialogTitle>
                                     </DialogHeader>
                                     <div className="py-4">
@@ -309,11 +309,11 @@ export default function DashboardReviewPage() {
                                             <div className="p-2 bg-red-100 rounded-lg">
                                                 <Trash2 className="h-4 w-4 text-red-600" />
                                             </div>
-                                            Delete Review Session?
+                                            Delete Bid?
                                         </AlertDialogTitle>
                                         <AlertDialogDescription className="text-base text-[#3F72AF]">
                                             Are you sure you want to delete <span className="font-semibold text-[#112D4E]">"{reviewToDelete?.name}"</span>?
-                                            This action cannot be undone and will permanently remove all scores, answers, and data associated with this review session.
+                                            This action cannot be undone and will permanently remove all scores, answers, and data associated with this Bid.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter className="gap-2">
@@ -330,7 +330,7 @@ export default function DashboardReviewPage() {
                                             }}
                                         >
                                             <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete Review
+                                            Delete Bid
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
