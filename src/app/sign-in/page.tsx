@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -55,6 +56,11 @@ export default function SignIn() {
     const resetState = (view: ViewState = 'signin') => {
         setError("");
         setSuccess("");
+        // Resetting form fields when view changes for better UX
+        setPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setResetCode("");
         setCurrentView(view);
     }
 
@@ -68,7 +74,8 @@ export default function SignIn() {
         }
 
         setIsLoading(true);
-        resetState();
+        setError("");
+        setSuccess("");
         try {
             const result = await signIn.create({
                 identifier: emailAddress,
@@ -95,7 +102,8 @@ export default function SignIn() {
         }
 
         setIsLoading(true);
-        resetState('forgot-password');
+        setError("");
+        setSuccess("");
         try {
             await signIn.create({
                 identifier: emailAddress,
@@ -124,7 +132,8 @@ export default function SignIn() {
         }
 
         setIsLoading(true);
-        resetState('reset-code');
+        setError("");
+        setSuccess("");
         try {
             const result = await signIn.attemptFirstFactor({
                 strategy: "reset_password_email_code",
@@ -191,7 +200,7 @@ export default function SignIn() {
                         type="button" 
                         variant="link" 
                         className="h-auto p-0 text-sm text-[#3F72AF] hover:text-[#112D4E] hover:bg-[#DBE2EF]/30" 
-                        onClick={() => setCurrentView('forgot-password')}
+                        onClick={() => resetState('forgot-password')}
                     >
                         Forgot password?
                     </Button>
@@ -312,7 +321,6 @@ export default function SignIn() {
                 </div>
             </div>
             {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            {success && <Alert className="border-[#DBE2EF]"><AlertDescription className="text-[#112D4E]">{success}</AlertDescription></Alert>}
             <Button 
                 type="submit" 
                 className="w-full bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95" 
@@ -325,105 +333,88 @@ export default function SignIn() {
     );
 
     const viewConfig = {
-        signin: { title: "Welcome Back", description: "Sign in to your PROJECT-L account", icon: <Shield className="h-10 w-10 text-[#3F72AF]" />, content: renderSignInView() },
-        'forgot-password': { title: "Reset Password", description: "Enter your email to receive a reset code", icon: <KeyRound className="h-10 w-10 text-[#3F72AF]" />, content: renderForgotPasswordView() },
-        'reset-code': { title: "Enter Reset Code", description: "Create a new secure password", icon: <Mail className="h-10 w-10 text-[#3F72AF]" />, content: renderResetCodeView() },
+        signin: { title: "Welcome Back", description: "Sign in to your PROJECT-L account", content: renderSignInView() },
+        'forgot-password': { title: "Reset Password", description: "Enter your email to receive a reset code", content: renderForgotPasswordView() },
+        'reset-code': { title: "Create a new secure password", description: "", content: renderResetCodeView() },
     }[currentView];
 
     return (
         <div className="h-[calc(100vh-3.5rem)] bg-[#F9F7F7] flex items-center justify-center px-4 py-12">
-            {/* Left Side - Information */}
-            <div className="hidden lg:block w-full max-w-md">
-                <Card className="h-full bg-gradient-to-br from-[#112D4E] to-[#3F72AF] text-white border-none shadow-lg rounded-r-none">
-                    <CardHeader className="text-center">
-                        <CardTitle className="text-2xl font-bold">Why PROJECT-L?</CardTitle>
-                        <CardDescription className="text-blue-100">
-                            Enterprise-ready document intelligence
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                <Clock className="w-4 h-4" />
+            <div className="w-full max-w-4xl lg:flex rounded-lg shadow-xl overflow-hidden bg-white">
+                
+                {/* Left Side - Information Panel */}
+                <div className="hidden lg:block lg:w-1/2">
+                    <Card className="h-full flex flex-col bg-gradient-to-br from-[#112D4E] to-[#3F72AF] text-white border-none rounded-none">
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-2xl font-bold">Why PROJECT-L?</CardTitle>
+                            <CardDescription className="text-blue-100">
+                                Enterprise-ready document intelligence
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-full space-y-4 flex-col">
+                            <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Clock className="w-4 h-4" /></div>
+                                <div>
+                                    <h4 className="font-semibold text-sm">Quick Setup</h4>
+                                    <p className="text-xs text-blue-100">Get started in minutes, not hours</p>
+                                </div>
                             </div>
-                            <div>
-                                <h4 className="font-semibold text-sm">Quick Setup</h4>
-                                <p className="text-xs text-blue-100">Get started in minutes, not hours</p>
+                            <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Users className="w-4 h-4" /></div>
+                                <div>
+                                    <h4 className="font-semibold text-sm">Team Ready</h4>
+                                    <p className="text-xs text-blue-100">Built for collaboration and sharing</p>
+                                </div>
                             </div>
-                        </div>
+                            <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Zap className="w-4 h-4" /></div>
+                                <div>
+                                    <h4 className="font-semibold text-sm">AI Powered</h4>
+                                    <p className="text-xs text-blue-100">Advanced document processing</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><Award className="w-4 h-4" /></div>
+                                <div>
+                                    <h4 className="font-semibold text-sm">Enterprise</h4>
+                                    <p className="text-xs text-blue-100">Professional grade security</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <div className="w-full p-3 bg-white/10 rounded-lg border border-white/20 text-center">
+                                <div className="text-lg font-bold mb-1">4 Core Features</div>
+                                <div className="text-xs text-blue-100">Chat • Podcasts • Sharing • Document Qualification</div>
+                            </div>
+                        </CardFooter>
+                    </Card>
+                </div>
 
-                        <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                <Users className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-sm">Team Ready</h4>
-                                <p className="text-xs text-blue-100">Built for collaboration and sharing</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                <Zap className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-sm">AI Powered</h4>
-                                <p className="text-xs text-blue-100">Advanced document processing</p>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                <Award className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-sm">Enterprise</h4>
-                                <p className="text-xs text-blue-100">Professional grade security</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <div className="w-full p-3 bg-white/10 rounded-lg border border-white/20 text-center">
-                            <div className="text-lg font-bold mb-1">4 Core Features</div>
-                            <div className="text-xs text-blue-100">Chat • Podcasts • Sharing • Reviews</div>
-                        </div>
-                    </CardFooter>
-                </Card>
-            </div>
-
-            {/* Right Side - Sign In Form */}
-            <div className="w-full max-w-md">
-                <Card className="shadow-lg border-[#DBE2EF] rounded-l-none">
-                    <CardHeader className="text-center">
-                        {/* <div className="mx-auto mb-2">{viewConfig.icon}</div> */}
-                        <CardTitle className="text-2xl font-bold text-[#112D4E]">{viewConfig.title}</CardTitle>
-                        <CardDescription className="text-[#112D4E]/70">{viewConfig.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {currentView !== 'signin' && (
-                            <Button 
-                                variant="ghost" 
-                                onClick={() => setCurrentView('signin')} 
-                                className="mb-4 text-[#3F72AF] hover:text-[#112D4E] hover:bg-[#DBE2EF]/30"
-                            >
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Sign In
-                            </Button>
-                        )}
-                        {viewConfig.content}
-                    </CardContent>
-                    <CardFooter className="justify-center">
-                        <p className="text-sm text-[#112D4E]/70">
-                            {currentView === 'signin' ? "Don't have an account?" : "Remember your password?"}{' '}
-                            <Link 
-                                href={currentView === 'signin' ? "/sign-up" : "/sign-in"} 
-                                onClick={() => resetState()} 
-                                className="font-semibold text-[#3F72AF] hover:text-[#112D4E] hover:underline transition-colors"
-                            >
-                                {currentView === 'signin' ? "Sign up" : "Sign in"}
-                            </Link>
-                        </p>
-                    </CardFooter>
-                </Card>
+                {/* Right Side - Authentication Form Panel */}
+                <div className="w-full lg:w-1/2">
+                    <Card className="h-full flex flex-col border-none rounded-none">
+                        <CardHeader className="text-center">
+                            <CardTitle className="text-2xl font-bold text-[#112D4E]">{viewConfig.title}</CardTitle>
+                            <CardDescription className="text-[#112D4E]/70">{viewConfig.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-grow flex flex-col justify-center">
+                            {viewConfig.content}
+                        </CardContent>
+                        <CardFooter className="justify-center">
+                            <p className="text-sm text-[#112D4E]/70">
+                                {currentView === 'signin' ? "Don't have an account?" : "Remember your password?"}{' '}
+                                <Button 
+                                    asChild={currentView === 'signin'} 
+                                    variant="link"
+                                    onClick={() => currentView !== 'signin' && resetState('signin')}
+                                    className="font-semibold text-[#3F72AF] hover:text-[#112D4E] p-0 h-auto"
+                                >
+                                    {currentView === 'signin' ? <Link href="/sign-up">Sign up</Link> : "Sign in"}
+                                </Button>
+                            </p>
+                        </CardFooter>
+                    </Card>
+                </div>
             </div>
         </div>
     );

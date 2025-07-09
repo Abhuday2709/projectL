@@ -79,8 +79,6 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [docToDelete, setDocToDelete] = useState<DocumentWithStatus | null>(null);
 
-    console.log("documentsWithStatus", documentsWithStatus);
-
     useEffect(() => {
         if (selectedDoc && documentsWithStatus) {
             const currentSelectedDocData = documentsWithStatus.find(d => d.s3Key === selectedDoc.s3Key);
