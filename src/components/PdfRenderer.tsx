@@ -2,7 +2,16 @@ import React, { useState, useEffect, useRef } from "react";
 import UploadButton from "./UploadButton";
 import DocumentViewer from "./documentViewer/DocumentViewer";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2, CheckCircle2, XCircle, AlertTriangle, Clock, FileText, Download } from "lucide-react";
+import {
+    Loader2,
+    Trash2,
+    CheckCircle2,
+    XCircle,
+    AlertTriangle,
+    Clock,
+    FileText,
+    Download,
+} from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -12,33 +21,43 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import { DocumentWithStatus } from "@/lib/utils";
 
-export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: string, setIsViewingDocument: (isViewing: boolean) => void }) {
+export default function PdfRenderer({
+    chatId,
+    setIsViewingDocument,
+}: {
+    chatId: string;
+    setIsViewingDocument: (isViewing: boolean) => void;
+}) {
     const { toast } = useToast();
-    const [documentsWithStatus, setDocumentsWithStatus] = useState<DocumentWithStatus[]>([])
-    const [loading, setLoading] = useState<boolean>(false)
-    const [error, setError] = useState<string | null>(null)
+    const [documentsWithStatus, setDocumentsWithStatus] = useState<
+        DocumentWithStatus[]
+    >([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const fetchStatuses = async () => {
         try {
-            const res = await fetch(`/api/documents/status?chatId=${encodeURIComponent(chatId)}`)
-            if (!res.ok) throw new Error(`Error ${res.status}`)
-            const data = await res.json() as DocumentWithStatus[]
-            setDocumentsWithStatus(data)
-            return data
+            const res = await fetch(
+                `/api/documents/status?chatId=${encodeURIComponent(chatId)}`
+            );
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const data = (await res.json()) as DocumentWithStatus[];
+            setDocumentsWithStatus(data);
+            return data;
         } catch (err: any) {
-            setError(err.message)
-            return []
+            setError(err.message);
+            return [];
         }
-    }
+    };
 
     // Separate function to manage polling
     const managePolling = (documents: DocumentWithStatus[]) => {
         const anyProcessing = documents.some(
-            doc =>
+            (doc) =>
                 typeof doc.processingStatus === "string" &&
                 ["QUEUED", "PROCESSING"].includes(doc.processingStatus)
         );
@@ -55,34 +74,44 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
 
     useEffect(() => {
         const start = async () => {
-            setLoading(true)
-            const data = await fetchStatuses()
-            setLoading(false)
+            setLoading(true);
+            const data = await fetchStatuses();
+            setLoading(false);
             managePolling(data);
-        }
-        start()
+        };
+        start();
 
         return () => {
             if (intervalRef.current) {
-                clearInterval(intervalRef.current)
+                clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-        }
-    }, [chatId])
+        };
+    }, [chatId]);
 
     // Monitor document status changes to manage polling
     useEffect(() => {
         managePolling(documentsWithStatus);
     }, [documentsWithStatus]);
 
-    const [selectedDoc, setSelectedDoc] = useState<null | { fileName: string; s3Key: string }>(null);
+    const [selectedDoc, setSelectedDoc] = useState<null | {
+        fileName: string;
+        s3Key: string;
+    }>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [docToDelete, setDocToDelete] = useState<DocumentWithStatus | null>(null);
+    const [docToDelete, setDocToDelete] = useState<DocumentWithStatus | null>(
+        null
+    );
 
     useEffect(() => {
         if (selectedDoc && documentsWithStatus) {
-            const currentSelectedDocData = documentsWithStatus.find(d => d.s3Key === selectedDoc.s3Key);
-            if (currentSelectedDocData && currentSelectedDocData.processingStatus !== 'COMPLETED') {
+            const currentSelectedDocData = documentsWithStatus.find(
+                (d) => d.s3Key === selectedDoc.s3Key
+            );
+            if (
+                currentSelectedDocData &&
+                currentSelectedDocData.processingStatus !== "COMPLETED"
+            ) {
                 setSelectedDoc(null);
             }
         }
@@ -91,33 +120,41 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
     const getDocUri = (s3Key: string) => {
         const base = process.env.NEXT_PUBLIC_AWS_S3_BUCKET_URL;
         if (!base) {
-            throw new Error("Missing NEXT_PUBLIC_AWS_S3_BUCKET_URL in your environment variables.");
+            throw new Error(
+                "Missing NEXT_PUBLIC_AWS_S3_BUCKET_URL in your environment variables."
+            );
         }
         return `${base}/${s3Key}`;
     };
 
     const handleDelete = async (doc: DocumentWithStatus) => {
-        if (!doc.uploadedAt) return
-        setDeletingId(doc.docId)
+        if (!doc.uploadedAt) return;
+        setDeletingId(doc.docId);
         try {
             const res = await fetch(
-                `/api/documents/${encodeURIComponent(doc.chatId)}/${encodeURIComponent(doc.uploadedAt)}`,
+                `/api/documents/${encodeURIComponent(doc.chatId)}/${encodeURIComponent(
+                    doc.uploadedAt
+                )}`,
                 {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ s3Key: doc.s3Key, docId: doc.docId }),
                 }
-            )
-            if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`)
-            toast({ title: 'Deleted', description: 'Document deleted successfully' })
-            await fetchStatuses() // Ensure status is refreshed after deletion
+            );
+            if (!res.ok) throw new Error(`Delete failed: ${res.statusText}`);
+            toast({ title: "Deleted", description: "Document deleted successfully" });
+            await fetchStatuses(); // Ensure status is refreshed after deletion
         } catch (err: any) {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' })
+            toast({
+                title: "Error",
+                description: err.message,
+                variant: "destructive",
+            });
         } finally {
-            setDeletingId(null)
-            setDocToDelete(null)
+            setDeletingId(null);
+            setDocToDelete(null);
         }
-    }
+    };
 
     // Enhanced upload success handler
     const handleUploadSuccess = async () => {
@@ -126,48 +163,53 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
     };
 
     const isAnyDocumentProcessing = documentsWithStatus.some(
-        doc => doc.processingStatus === 'QUEUED' || doc.processingStatus === 'PROCESSING'
+        (doc) =>
+            doc.processingStatus === "QUEUED" || doc.processingStatus === "PROCESSING"
     );
 
     const getStatusColor = (status: string | undefined) => {
         switch (status) {
-            case 'COMPLETED':
-                return 'text-green-700';
-            case 'PROCESSING':
-                return 'text-[#3F72AF]';
-            case 'QUEUED':
-                return 'text-amber-700';
-            case 'FAILED':
-                return 'text-red-700';
+            case "COMPLETED":
+                return "text-green-700";
+            case "PROCESSING":
+                return "text-[#3F72AF]";
+            case "QUEUED":
+                return "text-amber-700";
+            case "FAILED":
+                return "text-red-700";
             default:
-                return 'text-[#112D4E]';
+                return "text-[#112D4E]";
         }
     };
 
     const getStatusBg = (status: string | undefined) => {
         switch (status) {
-            case 'COMPLETED':
-                return 'bg-green-50 border-green-200';
-            case 'PROCESSING':
-                return 'bg-[#DBE2EF]/50 border-[#3F72AF]/30';
-            case 'QUEUED':
-                return 'bg-amber-50 border-amber-200';
-            case 'FAILED':
-                return 'bg-red-50 border-red-200';
+            case "COMPLETED":
+                return "bg-green-50 border-green-200";
+            case "PROCESSING":
+                return "bg-[#DBE2EF]/50 border-[#3F72AF]/30";
+            case "QUEUED":
+                return "bg-amber-50 border-amber-200";
+            case "FAILED":
+                return "bg-red-50 border-red-200";
             default:
-                return 'bg-[#F9F7F7] border-[#DBE2EF]';
+                return "bg-[#F9F7F7] border-[#DBE2EF]";
         }
     };
 
     const getStatusIcon = (doc: DocumentWithStatus) => {
-        const isQueued = doc.processingStatus === 'QUEUED';
-        const isProcessing = doc.processingStatus === 'PROCESSING';
-        const isFailed = doc.processingStatus === 'FAILED';
-        const isCompleted = doc.processingStatus === 'COMPLETED';
+        const isQueued = doc.processingStatus === "QUEUED";
+        const isProcessing = doc.processingStatus === "PROCESSING";
+        const isFailed = doc.processingStatus === "FAILED";
+        const isCompleted = doc.processingStatus === "COMPLETED";
 
-        if (isCompleted) return <CheckCircle2 size={18} className="text-green-600" />;
+        if (isCompleted)
+            return <CheckCircle2 size={18} className="text-green-600" />;
         if (isQueued) return <Clock size={18} className="text-amber-600" />;
-        if (isProcessing) return <Loader2 className="h-[18px] w-[18px] animate-spin text-[#3F72AF]" />;
+        if (isProcessing)
+            return (
+                <Loader2 className="h-[18px] w-[18px] animate-spin text-[#3F72AF]" />
+            );
         if (isFailed) return <XCircle size={18} className="text-red-600" />;
         return <AlertTriangle size={18} className="text-[#112D4E]" />;
     };
@@ -177,7 +219,10 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
             {!selectedDoc ? (
                 <div className="w-full overflow-y-auto p-6">
                     <div className="mb-6">
-                        <UploadButton chatId={chatId} onUploadSuccess={handleUploadSuccess} />
+                        <UploadButton
+                            chatId={chatId}
+                            onUploadSuccess={handleUploadSuccess}
+                        />
                     </div>
                     {isAnyDocumentProcessing && (
                         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -186,8 +231,13 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
                                     <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-gray-900 mb-1">Processing Documents</p>
-                                    <p className="text-sm text-gray-600">Some documents are being processed. This may take a few moments...</p>
+                                    <p className="font-semibold text-gray-900 mb-1">
+                                        Processing Documents
+                                    </p>
+                                    <p className="text-sm text-gray-600">
+                                        Some documents are being processed. This may take a few
+                                        moments...
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -200,34 +250,32 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
                                     <FileText className="h-5 w-5 text-blue-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">Documents</h3>
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Documents
+                                    </h3>
                                     <p className="text-sm text-gray-600">
-                                        {documentsWithStatus.length} {documentsWithStatus.length === 1 ? 'document' : 'documents'}
+                                        {documentsWithStatus.length !== 0
+                                            ? documentsWithStatus.length
+                                            : ""}{" "}
+                                        {documentsWithStatus.length === 1
+                                            ? "document"
+                                            : documentsWithStatus.length === 0
+                                                ? "Upload your first document to get started with document analysis"
+                                                : "documents"}
                                     </p>
                                 </div>
                             </div>
                             {documentsWithStatus.length > 0 && (
                                 <div className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                                    {documentsWithStatus.filter(doc => doc.processingStatus === 'COMPLETED').length} ready
+                                    {
+                                        documentsWithStatus.filter(
+                                            (doc) => doc.processingStatus === "COMPLETED"
+                                        ).length
+                                    }{" "}
+                                    ready
                                 </div>
                             )}
                         </div>
-
-                        {documentsWithStatus.length === 0 && !loading && (
-                            <div className="text-center py-16 bg-white rounded-lg border border-gray-200 shadow-sm">
-                                <div className="max-w-sm mx-auto">
-                                    <div className="mb-4">
-                                        <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                                            <FileText className="h-8 w-8 text-blue-600" />
-                                        </div>
-                                    </div>
-                                    <h4 className="text-lg font-medium text-gray-900 mb-2">No documents yet</h4>
-                                    <p className="text-gray-600 text-sm leading-relaxed">
-                                        Upload your first document to get started with document analysis
-                                    </p>
-                                </div>
-                            </div>
-                        )}
 
                         {loading && (
                             <div className="flex items-center justify-center py-12">
@@ -240,29 +288,48 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
 
                         <div className="grid gap-3">
                             {documentsWithStatus.map((doc) => {
-                                const isCompleted = doc.processingStatus === 'COMPLETED';
-                                const isFailed = doc.processingStatus === 'FAILED';
-                                const isProcessing = doc.processingStatus === 'PROCESSING' || doc.processingStatus === 'QUEUED';
+                                const isCompleted = doc.processingStatus === "COMPLETED";
+                                const isFailed = doc.processingStatus === "FAILED";
+                                const isProcessing =
+                                    doc.processingStatus === "PROCESSING" ||
+                                    doc.processingStatus === "QUEUED";
 
                                 return (
                                     <div
                                         key={doc.docId}
                                         className={`
                                         group relative bg-white rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md
-                                        ${isCompleted ? 'border-gray-200 hover:border-blue-500' : ''}
-                                        ${isFailed ? 'border-red-200 bg-red-50' : ''}
-                                        ${isProcessing ? 'border-gray-200' : ''}
+                                        ${isCompleted
+                                                ? "border-gray-200 hover:border-blue-500"
+                                                : ""
+                                            }
+                                        ${isFailed
+                                                ? "border-red-200 bg-red-50"
+                                                : ""
+                                            }
+                                        ${isProcessing ? "border-gray-200" : ""}
                                     `}
                                     >
                                         <div className="p-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="flex-shrink-0">
-                                                    <div className={`
+                                                    <div
+                                                        className={`
                                                     p-2 rounded-lg
-                                                    ${isCompleted ? 'bg-green-100' : ''}
-                                                    ${isProcessing ? 'bg-blue-100' : ''}
-                                                    ${isFailed ? 'bg-red-100' : ''}
-                                                `}>
+                                                    ${isCompleted
+                                                                ? "bg-green-100"
+                                                                : ""
+                                                            }
+                                                    ${isProcessing
+                                                                ? "bg-blue-100"
+                                                                : ""
+                                                            }
+                                                    ${isFailed
+                                                                ? "bg-red-100"
+                                                                : ""
+                                                            }
+                                                `}
+                                                    >
                                                         {getStatusIcon(doc)}
                                                     </div>
                                                 </div>
@@ -270,33 +337,45 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
                                                 <div className="flex-1 min-w-0">
                                                     <button
                                                         className={`
-                                                        w-full text-left
-                                                        ${!isCompleted ? 'cursor-not-allowed' : 'cursor-pointer'}
-                                                    `}
+            text-left w-fit
+            ${!isCompleted ? "cursor-not-allowed" : "cursor-pointer"}
+        `}
                                                         onClick={() => {
                                                             if (isCompleted) {
-                                                                setSelectedDoc({ fileName: doc.fileName, s3Key: doc.s3Key });
+                                                                setSelectedDoc({
+                                                                    fileName: doc.fileName,
+                                                                    s3Key: doc.s3Key,
+                                                                });
                                                                 setIsViewingDocument(true);
                                                             }
                                                         }}
                                                         disabled={!isCompleted}
                                                     >
-                                                        <h4 className={`
-                                                        font-medium text-gray-900 truncate mb-2
-                                                        ${isCompleted ? 'group-hover:text-blue-600' : 'opacity-70'}
-                                                    `}>
-                                                            {doc.fileName}
-                                                        </h4>
-
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`
-                                                            inline-flex items-center px-2 py-1 rounded-md text-xs font-medium
-                                                            ${isCompleted ? 'bg-green-100 text-green-800' : ''}
-                                                            ${isProcessing ? 'bg-blue-100 text-blue-800' : ''}
-                                                            ${isFailed ? 'bg-red-100 text-red-800' : ''}
-                                                        `}>
-                                                                {doc.processingStatus?.toLowerCase()}
-                                                            </span>
+                                                        <div className=" flex items-center gap-2 justify-between">
+                                                            <div className="flex-1 overflow-hidden">
+                                                                <h4
+                                                                    className={`
+        font-medium text-gray-900
+        truncate max-w-56
+        ${isCompleted ? "group-hover:text-blue-600" : "opacity-70"}
+    `}
+                                                                    title={doc.fileName}
+                                                                >
+                                                                    {doc.fileName}
+                                                                </h4>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                <span
+                                                                    className={`
+                    inline-flex items-center px-2 py-1 rounded-md text-xs font-medium
+                    ${isCompleted ? "bg-green-100 text-green-800" : ""}
+                    ${isProcessing ? "bg-blue-100 text-blue-800" : ""}
+                    ${isFailed ? "bg-red-100 text-red-800" : ""}
+                `}
+                                                                >
+                                                                    {doc.processingStatus?.toLowerCase()}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </button>
                                                 </div>
@@ -338,7 +417,10 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
                 />
             )}
 
-            <AlertDialog open={!!docToDelete} onOpenChange={() => setDocToDelete(null)}>
+            <AlertDialog
+                open={!!docToDelete}
+                onOpenChange={() => setDocToDelete(null)}
+            >
                 <AlertDialogContent className="bg-white border border-gray-200 rounded-lg">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-gray-900 flex items-center gap-2">
@@ -346,12 +428,15 @@ export default function PdfRenderer({ chatId, setIsViewingDocument }: { chatId: 
                             Delete Document
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-gray-600">
-                            Are you sure you want to delete <span className="font-medium">"{docToDelete?.fileName}"</span>?
+                            Are you sure you want to delete{" "}
+                            <span className="font-medium">"{docToDelete?.fileName}"</span>?
                             This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="hover:bg-gray-100 text-gray-700 border-gray-300 rounded-md">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="hover:bg-gray-100 text-gray-700 border-gray-300 rounded-md">
+                            Cancel
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700 text-white rounded-md"
                             onClick={() => docToDelete && handleDelete(docToDelete)}

@@ -192,7 +192,7 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
         <>
             <Button
                 onClick={() => setShowShareDialog(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white border-none text-xs sm:text-sm px-3 sm:px-4 flex-1 sm:flex-none rounded-md"
+                className=" bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
             >
                 <span className="hidden sm:inline">
                     {shareSessionData?.password && shareSessionData?.isActive ? "Manage Share" : "Share Chat"}

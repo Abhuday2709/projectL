@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import ChatWrapper from "@/components/chat/ChatWrapper";
 import PdfRenderer from "@/components/PdfRenderer";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Sidebar from "@/components/Sidebar";
 import { useState, useEffect } from "react";
@@ -20,8 +20,11 @@ export default function ChatPage() {
     const { toast } = useToast();
     const [chatDetails, setChatDetails] = useState<Chat | null>(null);
     const [isChatLoading, setIsChatLoading] = useState(false);
-    const [chatName, setChatName] = useState("Chat");
+    const [chatName, setChatName] = useState("Proposal");
+    const [podcastDuration, setPodcastDuration] = useState<number>(5); // Default 5 minutes
+    const [durationError, setDurationError] = useState<string>("");
     const chatIdStr = typeof chatId === "string" ? chatId : Array.isArray(chatId) ? chatId[0] ?? "" : "";
+    
     const fetchChatDetails = async () => {
         if (!chatIdStr) return;
         setIsChatLoading(true);
@@ -119,7 +122,13 @@ export default function ChatPage() {
             const result = await fetch('/api/podcast', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ DocIdList: documentIds, chatId: chatIdStr, user_id: chatDetails?.user_id, createdAt: chatDetails?.createdAt }),
+                body: JSON.stringify({ 
+                    DocIdList: documentIds, 
+                    chatId: chatIdStr, 
+                    user_id: chatDetails?.user_id, 
+                    createdAt: chatDetails?.createdAt,
+                    duration: podcastDuration 
+                }),
             });
             if (!result.ok) {
                 toast({
@@ -130,7 +139,7 @@ export default function ChatPage() {
             } else {
                 toast({
                     title: "Podcast generation started",
-                    description: "Your podcast is being generated. You will be notified when it's ready.",
+                    description: `Your ${podcastDuration}-minute podcast is being generated. You will be notified when it's ready.`,
                     variant: "default",
                 });
                 // The optimistic update is now confirmed by the backend.
@@ -149,13 +158,14 @@ export default function ChatPage() {
             case 'PROCESSING':
                 return 'Generating...';
             case 'COMPLETED':
-                return 'Regenerate Podcast';
+                return 'Regenerate';
             case 'FAILED':
                 return 'Retry Generation';
             default:
                 return 'Generate Podcast';
         }
     };
+
     return (
     <div className="flex bg-gray-50 min-h-[170vh] lg:min-h-0">
         <Sidebar />
@@ -190,19 +200,34 @@ export default function ChatPage() {
                     <PanelGroup direction="horizontal" className="flex-1 overflow-scroll h-full">
                         <Panel defaultSize={55} minSize={42}>
                             <div className="h-full flex flex-col gap-4 p-4">
-                                <div className={`flex flex-col overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-sm p-4 ${isViewingDocument ? "h-[95%]" : "min-h-[60%]"}`}>
+                                <div className={`flex flex-col overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-sm p-4 ${isViewingDocument ? "h-[90%]" : "min-h-[75%]"}`}>
                                     <div className="flex-1 h-full">
                                         <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} />
                                     </div>
                                 </div>
                                 {!isViewingDocument && (
-                                    <div className="flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm p-4 overflow-y-auto">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h2 className="text-lg font-semibold text-gray-900">Generate Podcast</h2>
+                                    <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <h3 className="flex items-center text-base font-semibold text-gray-800">
+                                                    <Clock className="h-5 w-5 mr-2 text-[#3F72AF]" />
+                                                    Podcast Summary
+                                                </h3>
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    Listen to an AI-generated podcast summary of your documents
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {durationError && (
+                                            <p className="text-sm text-red-600 bg-red-50 p-2 rounded-md border border-red-200">
+                                                {durationError}
+                                            </p>
+                                        )}
+                                        <div className="flex items-center space-x-3">
                                             <Button
                                                 onClick={handleGeneratePodcast}
-                                                disabled={isGenerating || (documents?.length || 0) === 0}
-                                                className="w-44 bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 rounded-md"
+                                                disabled={isGenerating || documents.length === 0 || !!durationError || !podcastDuration}
+                                                className="flex-1 h-10 text-sm px-4 py-2 bg-[#3F72AF] hover:bg-[#112D4E] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                                             >
                                                 {isGenerating ? (
                                                     <>
@@ -210,24 +235,25 @@ export default function ChatPage() {
                                                         Generating...
                                                     </>
                                                 ) : (
-                                                    getButtonText()
+                                                    <>
+                                                        <Clock className="h-4 w-4 mr-2" />
+                                                        {getButtonText()}
+                                                    </>
                                                 )}
                                             </Button>
+                                            {podcastUrl && !isGenerating && (
+                                                <div className="flex-1">
+                                                    <audio 
+                                                        controls 
+                                                        className="w-full h-10 rounded-md"
+                                                        style={{ height: '40px' }}
+                                                    >
+                                                        <source src={podcastUrl} type="audio/mpeg" />
+                                                        Your browser does not support the audio element.
+                                                    </audio>
+                                                </div>
+                                            )}
                                         </div>
-                                        <p className="text-sm text-gray-600 mb-4">
-                                            {isGenerating 
-                                                ? "Generating your podcast, this may take a few minutes. Feel free to chat with the documents in the meantime."
-                                                : "Listen to an audio podcast summary of the uploaded documents."
-                                            }
-                                        </p>
-                                        {podcastUrl && !isGenerating && (
-                                            <div className="space-y-2">
-                                                <audio controls className="w-full">
-                                                    <source src={podcastUrl} />
-                                                    Your browser does not support the audio element.
-                                                </audio>
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -254,40 +280,52 @@ export default function ChatPage() {
                                     </div>
                                 </div>
                                 {!isViewingDocument && (
-                                    <div className="flex-1 flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm p-3 sm:p-4 min-h-[120px]">
-                                        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Generate Podcast</h2>
-                                        <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">
-                                            Generate an audio podcast summary of the uploaded documents.
-                                        </p>
-                                        <Button
-                                            onClick={handleGeneratePodcast}
-                                            disabled={isGenerating || (documents?.length || 0) === 0}
-                                            className="mb-2 w-full sm:w-44 bg-blue-600 hover:bg-blue-700 text-white border-none disabled:bg-gray-300 disabled:text-gray-500 text-xs sm:text-sm rounded-md"
-                                        >
-                                            {isGenerating ? (
-                                                <>
-                                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-2" />
-                                                    Generating...
-                                                </>
-                                            ) : (
-                                                getButtonText()
-                                            )}
-                                        </Button>
-                                        <p className="text-xs sm:text-sm text-gray-600">
-                                            {isGenerating
-                                                ? "Generating your podcast, till then chat with the documents."
-                                                : "Generate an audio podcast summary of the uploaded documents."
-                                            }
-                                        </p>
-                                        {podcastUrl && !isGenerating && (
-                                            <div className="space-y-2 mt-2">
-                                                <h3 className="font-semibold text-sm sm:text-base text-gray-900">Podcast Audio</h3>
-                                                <audio controls className="w-full h-8">
-                                                    <source src={podcastUrl} />
+                                    <div className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col space-y-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex flex-col flex-1">
+                                                <h3 className="flex items-center text-sm font-semibold text-gray-800">
+                                                    <Clock className="h-4 w-4 mr-2 text-[#3F72AF]" />
+                                                    Podcast Summary
+                                                </h3>
+                                                <p className="text-xs text-gray-600 mt-1">
+                                                    Listen to an AI summary of your documents
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {durationError && (
+                                            <p className="text-xs text-red-600 bg-red-50 p-2 rounded-md border border-red-200">
+                                                {durationError}
+                                            </p>
+                                        )}
+                                        <div className="flex flex-col space-y-2">
+                                            <Button
+                                                onClick={handleGeneratePodcast}
+                                                disabled={isGenerating || documents.length === 0 || !!durationError || !podcastDuration}
+                                                className="w-full h-8 text-xs px-3 py-1 bg-[#3F72AF] hover:bg-[#112D4E] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                {isGenerating ? (
+                                                    <>
+                                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                                        Generating...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Clock className="h-3 w-3 mr-1" />
+                                                        {getButtonText()}
+                                                    </>
+                                                )}
+                                            </Button>
+                                            {podcastUrl && !isGenerating && (
+                                                <audio 
+                                                    controls 
+                                                    className="w-full h-8 rounded-md"
+                                                    style={{ height: '32px' }}
+                                                >
+                                                    <source src={podcastUrl} type="audio/mpeg" />
                                                     Your browser does not support the audio element.
                                                 </audio>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

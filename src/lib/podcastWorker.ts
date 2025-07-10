@@ -86,13 +86,33 @@ Respond ONLY with the summary paragraph.`;
  * **Phase 2, Step 3**: Generates a structured podcast outline from a summary.
  */
 async function generatePodcastOutline(summary: string, tone: string): Promise<string[]> {
-    console.log("Generating a structured podcast outline...");
-    const prompt = `You are a podcast producer. Based on the following summary, generate a detailed, multi-point outline for a podcast episode. The tone should be ${tone}. The outline must include:
-1.  An engaging Introduction/Hook.
-2.  3 to 5(or more if needed) distinct thematic Sections or Key Points.
-3.  A concluding Summary/Outro.
+    console.log("Generating a structured podcast outline with focus on key sections...");
+    const prompt = `You are a podcast producer creating an outline for a business proposal summary. The tone should be ${tone}.
 
-For each point, write a single, clear, descriptive sentence. Respond ONLY with the numbered list of outline points and nothing else.`;
+Based on the summary provided, generate a detailed, multi-point outline.
+
+**CRITICAL INSTRUCTIONS:**
+1.  **Prioritize Key Sections:** The outline MUST prominently feature and allocate more detail to the following core sections if they are present in the summary:
+    *   Problem Statement
+    *   Objectives
+    *   Approach / Solutions (give special attention to any AI-related solutions)
+    *   Scope of Work
+    *   Commercials / Pricing Details
+    *   Conclusion / Next Steps
+
+2.  **Summarize Other Points:** For any other points in the summary, include them but keep them very brief (a single, concise sentence).
+
+3.  **Structure:** The final outline must include:
+    *   An engaging Introduction/Hook.
+    *   Thematic sections, with the prioritized sections forming the main body.
+    *   A concluding Summary/Outro.
+
+Respond ONLY with the numbered list of outline points and nothing else.
+
+**DOCUMENT SUMMARY:**
+---
+${summary}
+---`;
 
     const result = await generativeModel.generateContent([prompt, summary]);
     return result.response.text().split('\n').filter(line => line.match(/^\d+\./)).map(line => line.replace(/^\d+\.\s*/, '').trim());
@@ -137,9 +157,15 @@ ${context}
 /**
  * **Phase 4, Step 5**: Assembles and polishes the final script.
  */
-async function polishFinalScript(draftScript: string): Promise<string> {
+async function polishFinalScript(draftScript: string, duration = 5): Promise<string> {
+    const targetWordCount = duration * 150;
+    const wordCountRange = `${targetWordCount - 100}-${targetWordCount + 50}`; // e.g., 650-800 for 5 mins
+
     console.log("Polishing the final script...");
-    const prompt = `You are going to produce a 5-7 minute podcast episode based on the draft script I provide. Your job is to adapt and polish the single-voice script into a natural back-and-forth between two engaging hosts, "Charles" and "Natalie." Follow these guidelines:
+    const prompt = `You are going to produce a podcast episode based on the draft script I provide. Your job is to adapt and polish the single-voice script into a natural back-and-forth between two engaging hosts, "Charles" and "Natalie." Follow these guidelines:
+**CRITICAL CONSTRAINTS:**
+1.  **TARGET DURATION:** The final episode must be approximately **${duration} minutes** long.
+2.  **STRICT WORD COUNT:** The total word count of the final script MUST be between **${wordCountRange} words**. Do not exceed this limit. Be concise and edit ruthlessly to meet the target.
 
 Opening (10-15 seconds):
 
@@ -161,8 +187,10 @@ Do not read the text verbatim—the goal is to rephrase and elevate it.
 Do not include any explicit laughter or stage directions.
 Closing (15-20 seconds):
 
-Charles: Write a new, thoughtful recap of the main takeaway in one sentence.
-Natalie: Invite listeners to share feedback or tease the next topic ("Catch us next time when we'll be talking about…").
+Charles: Write a thoughtful recap of the main value proposition or key insight from the proposal in one sentence.
+
+Natalie: Conclude with an encouraging message about the proposal's potential impact or value (e.g., "This proposal really demonstrates the strategic value NetworkScience can bring to your organization" or "The solutions outlined here could be exactly what your team needs to achieve those goals").
+
 Output Format:
 
 Produce only the final script, labeling each line with "Charles:" or "Natalie:".
@@ -594,7 +622,7 @@ async function getChunksByDocIds(docIds: string[]): Promise<string[]> {
             const result = await qdrantClient.scroll(COLLECTION_NAME, {
                 filter: { must: [{ key: 'documentId', match: { value: docId } }] },
                 with_payload: true,
-                limit: 250, // Fetch in batches of 250
+                limit: 350, // Fetch in batches of 350
                 offset: nextOffset,
             });
             const texts = result.points.map(pt => pt.payload?.text).filter(Boolean) as string[];

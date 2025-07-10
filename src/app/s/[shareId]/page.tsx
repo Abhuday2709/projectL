@@ -9,6 +9,7 @@ import { Chat } from "@/models/chatModel";
 import Image from "next/image";
 import ClientPdfRenderer from "./components/clientPdfRenderer";
 import ChatWrapper from "./components/chat/ChatWrapper";
+import { ShareSession } from "@/models/shareSessionModel";
 
 export default function ChatPage() {
     const { shareId } = useParams();
@@ -16,12 +17,7 @@ export default function ChatPage() {
     const shareIdStr = typeof shareId === "string" ? shareId : Array.isArray(shareId) ? shareId[0] ?? "" : "";
     console.log("Share ID:", shareIdStr);
     
-    const [shareSession, setShareSession] = useState<{
-        shareId: string;
-        chatId: string;
-        password: string;
-        isActive: boolean;
-    } | null>(null);
+    const [shareSession, setShareSession] = useState<ShareSession | null>(null);
     const [isShareSessionLoading, setIsShareSessionLoading] = useState(true);
     const [shareSessionError, setShareSessionError] = useState<null | string>(null);
 
@@ -60,7 +56,7 @@ export default function ChatPage() {
     }
 
     // If share session is inactive, show 404
-    if (shareSession && shareSession.isActive === false) {
+    if (shareSession && (shareSession.isActive === false) || (shareSession?.expiresAt && new Date(shareSession.expiresAt) < new Date())) {
         notFound();
     }
 
