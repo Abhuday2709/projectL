@@ -30,6 +30,5 @@ export const ChatConfig = {
     },
     indexes: {
         chatId: 'chatId-index',
-        createdAt: 'createdAt-index'
     }
 } as const;

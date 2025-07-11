@@ -531,7 +531,7 @@ questionAnswers.push({
         // For now, let's not re-throw, assuming status update is sufficient.
     }
     return Promise.resolve();
-}, { connection });
+}, { connection, concurrency: 3 }); // Adjust concurrency based on your system's capacity});
 
 worker.on('completed', job => {
     // console.log(`Job ${job.id} for ${job.data.fileName} has completed!`);
