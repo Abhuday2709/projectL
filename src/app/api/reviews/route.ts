@@ -7,7 +7,12 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 import { DocumentConfig } from '@/models/documentModel';
 
 const reviewClient = DynamoDBDocumentClient.from(dynamoClient);
-const s3Client = new S3Client({ region: process.env.NEXT_PUBLIC_AWS_REGION });
+const s3Client = new S3Client({
+    region: process.env.NEXT_PUBLIC_AWS_REGION, credentials: {
+        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
+    }
+});
 const qdrant = new QdrantClient({ host: process.env.QDRANT_HOST!, port: Number(process.env.QDRANT_PORT!) });
 const COLLECTION = process.env.QDRANT_COLLECTION_NAME!;
 
