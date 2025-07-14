@@ -15,8 +15,8 @@ export default function ChatPage() {
     const { shareId } = useParams();
 
     const shareIdStr = typeof shareId === "string" ? shareId : Array.isArray(shareId) ? shareId[0] ?? "" : "";
-    console.log("Share ID:", shareIdStr);
-    
+    // console.log("Share ID:", shareIdStr);
+
     const [shareSession, setShareSession] = useState<ShareSession | null>(null);
     const [isShareSessionLoading, setIsShareSessionLoading] = useState(true);
     const [shareSessionError, setShareSessionError] = useState<null | string>(null);
@@ -24,17 +24,16 @@ export default function ChatPage() {
     const fetchShareSession = async () => {
         if (!shareIdStr) return;
         try {
-            console.log("Fetching share session for ID:", shareIdStr);
-            
+            // console.log("Fetching share session for ID:", shareIdStr);
+
             const res = await fetch(`/api/shareSession/byShareId?shareId=${shareIdStr}`);
-            console.log("Response status:", res.ok);
+            // console.log("Response status:", res.ok);
             if (!res.ok) throw new Error("Share session not found");
             const data = await res.json();
-            console.log("Fetched share session:", data);
+            // console.log("Fetched share session:", data);
             setShareSession(data);
-        } catch (err: any) { 
-            console.log("Error fetching share session:", err);
-            
+        } catch (err: any) {
+            // console.log("Error fetching share session:", err);
             setShareSessionError(err.message);
         } finally {
             setIsShareSessionLoading(false);
@@ -42,7 +41,7 @@ export default function ChatPage() {
     };
     useEffect(() => {
         fetchShareSession();
-        
+
     }, [shareIdStr]);
 
     // Password dialog state
@@ -54,9 +53,17 @@ export default function ChatPage() {
     if (!shareSession && !isShareSessionLoading) {
         notFound();
     }
+    const nowMs = Date.now();
+    const expiresAtMs = (shareSession?.expiresAt ?? 0) * 1000;
+    const isExpired = expiresAtMs < nowMs;
+    // console.log("Share session expiration check:", {
+    //     nowMs,
+    //     expiresAtMs,
+    //     isExpired
+    // });
 
     // If share session is inactive, show 404
-    if (shareSession && (shareSession.isActive === false) || (shareSession?.expiresAt && new Date(shareSession.expiresAt) < new Date())) {
+    if (shareSession && ((shareSession.isActive === false)|| isExpired  )) {
         notFound();
     }
 
@@ -82,8 +89,8 @@ export default function ChatPage() {
             const res = await fetch(`/api/chat/${chatIdStr}`);
             if (!res.ok) throw new Error("Chat not found");
             const data = await res.json();
-            console.log("Fetched chat details:", data);
-            
+            // console.log("Fetched chat details:", data);
+
             setChatDetails(data);
             if (data.podcastFinal) {
                 setPodcastUrl(data.podcastFinal);
@@ -167,7 +174,7 @@ export default function ChatPage() {
                         <div className="h-full flex flex-col gap-4 p-4">
                             <div className={`bg-white flex flex-col overflow-y-auto rounded-lg border border-gray-200 shadow-sm p-4 ${isViewingDocument ? "h-[95%]" : "h-[70%]"}`}>
                                 <div className="flex-1">
-                                    <ClientPdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument}/>
+                                    <ClientPdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} />
                                 </div>
                             </div>
                             {!isViewingDocument && (

@@ -126,7 +126,7 @@ export default function DocumentScoringPage() {
       const res = await fetch(`/api/category/getCategories`)
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to fetch')
       const data = await res.json()
-      console.log("Fetched Categories:", data);
+      // console.log("Fetched Categories:", data);
       setAllCategories(data)
     } catch (err) {
       toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
@@ -136,7 +136,7 @@ export default function DocumentScoringPage() {
   useEffect(() => {
     if (allCategories.length > 0) {
       const sorted = [...allCategories].sort((a, b) => a.order - b.order)
-      console.log("Sorted Categories:", sorted);
+      // console.log("Sorted Categories:", sorted);
 
       setSortedCategories(sorted)
     }
@@ -151,7 +151,7 @@ export default function DocumentScoringPage() {
       throw new Error(err.error || "adding questions failed")
     }
     const data = await res.json()
-    console.log("Fetched Questions:", data);
+    // console.log("Fetched Questions:", data);
     setAllQuestions(data)
   }
 
@@ -161,7 +161,7 @@ export default function DocumentScoringPage() {
       const res = await fetch(`/api/reviews?user_id=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch reviews");
       const data: ScoringSession[] = await res.json();
-      console.log("Fetched Reviews:", data);
+      // console.log("Fetched Reviews:", data);
       setReviews(data);
     } catch (err) {
       toast({ title: 'Error fetching reviews', description: (err as Error).message, variant: 'destructive' });

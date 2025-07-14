@@ -102,7 +102,7 @@ export default function ChatPage() {
 
         if (podcastUrl) {
             const urlParts = podcastUrl.split('/');
-            console.log("urlParts", urlParts);
+            // console.log("urlParts", urlParts);
             const s3Key = urlParts.slice(3).join('/'); // Remove 'https://bucket.s3.region.amazonaws.com/'
             deleteFromS3(s3Key)
         }

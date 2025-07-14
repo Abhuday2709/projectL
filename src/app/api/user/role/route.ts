@@ -8,7 +8,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function GET(req: NextRequest) {
     try {
-        console.log('Fetching user role...');
+        // console.log('Fetching user role...');
         
           const { userId } = await auth();      
         if (!userId) {
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
                 { status: 401 }
             );
         }
-        console.log('Authenticated user ID:', userId);
+        // console.log('Authenticated user ID:', userId);
         
         // Fetch user data from DynamoDB
         const getUserCommand = new GetCommand({
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
             },
         });
         const result = await docClient.send(getUserCommand);
-        console.log('DynamoDB result:', result.Item);
+        // console.log('DynamoDB result:', result.Item);
         if (!result.Item) {
             // User not found in database, default to 'user' role
             return NextResponse.json(
@@ -35,11 +35,11 @@ export async function GET(req: NextRequest) {
                 { status: 200 }
             );
         }
-        console.log('User data fetched:', result);
+        // console.log('User data fetched:', result);
         
         // Return the user's role (default to 'user' if role field doesn't exist)
         const userRole = result.Item.role;
-        console.log('User role fetched:', userRole);
+        // console.log('User role fetched:', userRole);
         return NextResponse.json(
             { role: userRole },
             { status: 200 }

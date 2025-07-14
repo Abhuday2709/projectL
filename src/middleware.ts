@@ -19,7 +19,7 @@ export default clerkMiddleware(
   // ClerkMiddleware handler takes (auth, req)
   async (auth: ClerkMiddlewareAuth, req: NextRequest) => {
     const { pathname } = req.nextUrl;
-    console.log("Middleware triggered for path:", pathname);
+    // console.log("Middleware triggered for path:", pathname);
 
     // 1. Check if path is a share page (/s/[shareId]) - these are public
     if (pathname.startsWith("/s/")) {

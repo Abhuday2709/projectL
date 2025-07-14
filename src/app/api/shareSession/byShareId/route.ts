@@ -7,7 +7,7 @@ import { shareSessionConfig, type ShareSession } from '@/models/shareSessionMode
 const docClient2 = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function GET(request: NextRequest) {
-    console.log('/api/shareSession/byShareId called');
+    // console.log('/api/shareSession/byShareId called');
     
     const shareId = request.nextUrl.searchParams.get('shareId');
     if (!shareId) {

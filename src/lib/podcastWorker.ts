@@ -22,7 +22,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const generativeModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
-console.log("⤷ Connecting to Redis at:", process.env.REDIS_URL);
+// console.log("⤷ Connecting to Redis at:", process.env.REDIS_URL);
 
 // --- Qdrant Setup ---
 const qdrantClient = new QdrantClient({
@@ -86,7 +86,7 @@ Respond ONLY with the summary paragraph.`;
  * **Phase 2, Step 3**: Generates a structured podcast outline from a summary.
  */
 async function generatePodcastOutline(summary: string, tone: string): Promise<string[]> {
-    console.log("Generating a structured podcast outline with focus on key sections...");
+    // console.log("Generating a structured podcast outline with focus on key sections...");
     const prompt = `You are a podcast producer creating an outline for a business proposal summary. The tone should be ${tone}.
 
 Based on the summary provided, generate a detailed, multi-point outline.
@@ -122,7 +122,7 @@ ${summary}
  * **Phase 3, Step 4 (Retrieve)**: Searches Qdrant for chunks relevant to an outline point.
  */
 async function searchRelevantChunks(query: string, docIds: string[]): Promise<string[]> {
-    console.log(`Searching for chunks related to: "${query}"`);
+    // console.log(`Searching for chunks related to: "${query}"`);
     const queryVector = await embedText(query);
 
     const searchResult = await qdrantClient.search(COLLECTION_NAME, {
@@ -161,7 +161,7 @@ async function polishFinalScript(draftScript: string, duration = 5): Promise<str
     const targetWordCount = duration * 150;
     const wordCountRange = `${targetWordCount - 100}-${targetWordCount + 50}`; // e.g., 650-800 for 5 mins
 
-    console.log("Polishing the final script...");
+    // console.log("Polishing the final script...");
     const prompt = `You are going to produce a podcast episode based on the draft script I provide. Your job is to adapt and polish the single-voice script into a natural back-and-forth between two engaging hosts, "Charles" and "Natalie." Follow these guidelines:
 **CRITICAL CONSTRAINTS:**
 1.  **TARGET DURATION:** The final episode must be approximately **${duration} minutes** long.
@@ -256,7 +256,7 @@ async function uploadBufferToS3(buffer: Buffer, fileName: string, contentType: s
             await upload.done();
 
             const s3Url = `https://${process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${fileName}`;
-            console.log(`File uploaded to S3: ${s3Url}`);
+            // console.log(`File uploaded to S3: ${s3Url}`);
             return s3Url;
         } catch (err) {
             lastError = err;
@@ -433,7 +433,7 @@ async function processAndStorePodcastAudio(script: string, chatId: string, user_
             }
 
             audioResults.push({ speaker, text, audioUrl: s3AudioUrl });
-            console.log(`Generated and uploaded audio for ${speaker}: ${s3AudioUrl}`);
+            // console.log(`Generated and uploaded audio for ${speaker}: ${s3AudioUrl}`);
         } catch (err) {
             console.error(`Failed to generate/upload audio for ${speaker}:`, err);
             audioResults.push({ speaker, text, audioUrl: '' });
@@ -445,12 +445,12 @@ async function processAndStorePodcastAudio(script: string, chatId: string, user_
     const validAudioUrls = s3AudioUrls.filter(Boolean);
     if (validAudioUrls.length > 1) {
         finalPodcastUrl = await concatenateAudioWithRetry(validAudioUrls, chatId);
-        console.log("Final combined podcast audio URL:", finalPodcastUrl);
+        // console.log("Final combined podcast audio URL:", finalPodcastUrl);
     } else if (validAudioUrls.length === 1) {
         finalPodcastUrl = validAudioUrls[0];
-        console.log("Single podcast audio URL:", finalPodcastUrl);
+        // console.log("Single podcast audio URL:", finalPodcastUrl);
     } else {
-        console.log("No audio files to combine.");
+        // console.log("No audio files to combine.");
     }
     for (const s3AudioUrl of validAudioUrls) {
         try {
@@ -458,7 +458,7 @@ async function processAndStorePodcastAudio(script: string, chatId: string, user_
             const urlParts = s3AudioUrl.split('/');
             const s3Key = urlParts.slice(3).join('/'); // Remove 'https://bucket.s3.region.amazonaws.com/'
             deleteFromS3(s3Key);
-            console.log('S3 delete successful for', s3Key);
+            // console.log('S3 delete successful for', s3Key);
         } catch (s3Error) {
             console.error('S3 deletion error:', s3Error);
             console.warn('Failed to delete from S3:', s3AudioUrl);
@@ -483,7 +483,7 @@ async function processAndStorePodcastAudio(script: string, chatId: string, user_
                 },
             }));
             success = true;
-            console.log("Podcast audio URLs and COMPLETED status stored in DynamoDB chat table.");
+            // console.log("Podcast audio URLs and COMPLETED status stored in DynamoDB chat table.");
         } catch (err) {
             lastError = err;
             attempt++;
@@ -509,7 +509,7 @@ const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379"
 const podcastWorker = new Worker<ProcessPodcasts>(
     'processPodcast',
     async (job) => {
-        console.log('Processing podcast job with new RAG workflow:', job.data);
+        // console.log('Processing podcast job with new RAG workflow:', job.data);
         const { DocIdList, chatId, user_id, createdAt } = job.data;
 
         try {
@@ -526,7 +526,7 @@ const podcastWorker = new Worker<ProcessPodcasts>(
             // Step 1 is assumed to be completed before this worker is called.
             // Chunks are already in Qdrant. We just need to fetch them.
             const allChunks = await getChunksByDocIds(DocIdList); // You need to implement or use your existing getChunksByDocIds
-            console.log(`Fetched ${allChunks.length} chunks from Qdrant for document(s) [${DocIdList.join(', ')}].`);
+            // console.log(`Fetched ${allChunks.length} chunks from Qdrant for document(s) [${DocIdList.join(', ')}].`);
             if (allChunks.length === 0) {
                 console.error("No chunks found for the given documents. Aborting job.");
                 // Optionally update the chat with an error message
@@ -551,7 +551,7 @@ const podcastWorker = new Worker<ProcessPodcasts>(
             if (outline.length < 3) {
                 throw new Error("Failed to generate a valid outline from the document summary.");
             }
-            console.log("Successfully generated podcast outline:", outline);
+            // console.log("Successfully generated podcast outline:", outline);
 
             // --- PHASE 3: WRITING THE SCRIPT ---
             // Step 4: Generate the Script for Each Outline Point
@@ -564,9 +564,9 @@ const podcastWorker = new Worker<ProcessPodcasts>(
                 if (relevantChunks.length > 0) {
                     const sectionScript = await generateScriptSection(point, relevantChunks);
                     scriptSections.push(sectionScript);
-                    console.log(`-> Script generated for section: "${point}"`);
+                    // console.log(`-> Script generated for section: "${point}"`);
                 } else {
-                    console.log(`-> No relevant chunks found for section: "${point}". Skipping.`);
+                    // console.log(`-> No relevant chunks found for section: "${point}". Skipping.`);
                 }
             }
 
@@ -575,11 +575,11 @@ const podcastWorker = new Worker<ProcessPodcasts>(
             const draftScript = scriptSections.join('\n\n---\n\n');
             const finalPodcastScript = await polishFinalScript(draftScript);
 
-            console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
-            console.log(finalPodcastScript);
+            // console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
+            // console.log(finalPodcastScript);
 //         const temp = `Charles: So, Abhuday biggest takeaway: OLX Poland's AI journey showcases how strategic AI can dramatically improve efficiency, customer experiences, and scalability.
 // Natalie: It's really a blueprint for businesses looking to revolutionize their own customer service strategies.`
-//         console.log("temp");
+//         // console.log("temp");
 
             // Step 6: Extract dialogues for further processing or storage
             await processAndStorePodcastAudio(finalPodcastScript, chatId, user_id, createdAt);
@@ -598,11 +598,11 @@ const podcastWorker = new Worker<ProcessPodcasts>(
             throw error;
         }
     },
-    { connection }
+    { connection,concurrency:3 }
 );
 
 podcastWorker.on('completed', (job) => {
-    console.log(`Podcast job ${job.id} completed successfully.`);
+    // console.log(`Podcast job ${job.id} completed successfully.`);
 });
 
 podcastWorker.on('failed', (job, err) => {

@@ -58,7 +58,7 @@ export async function DELETE(
 ) {
     try {
         const { userId } = await params;
-        console.log("Deleting user with ID:", userId);
+        // console.log("Deleting user with ID:", userId);
 
         if (!userId) {
             return NextResponse.json({ error: "userId parameter required" }, { status: 400 });

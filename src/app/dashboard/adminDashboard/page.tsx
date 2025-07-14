@@ -62,7 +62,7 @@ export default function AdminDashboardReviewPage() {
             throw new Error(err.error || "adding questions failed")
         }
         const data = await res.json()
-        console.log("Fetched Questions:", data);
+        // console.log("Fetched Questions:", data);
         setQuestion(data)
     }
 
@@ -82,7 +82,7 @@ export default function AdminDashboardReviewPage() {
             const res = await fetch('/api/admin/getAllUsers');
             if (!res.ok) throw new Error('Failed to fetch users');
             const data: User[] = await res.json();
-            console.log("Fetched Users:", data);
+            // console.log("Fetched Users:", data);
 
             setUsers(data);
             return data;
@@ -114,14 +114,14 @@ export default function AdminDashboardReviewPage() {
                         : user?.firstName || user?.lastName || 'Unknown User'
                 };
             });
-            console.log("Fetched Reviews with User Info:", reviewsWithUserInfo);
+            // console.log("Fetched Reviews with User Info:", reviewsWithUserInfo);
 
             setReviews(reviewsWithUserInfo);
 
             // Group reviews by user
             const grouped = userData.reduce<UserReviewGroup[]>((acc, user) => {
                 const userReviews = reviewsWithUserInfo.filter(review => review.user_id === user.user_id);
-                console.log(`User ${user.email} has ${userReviews.length} reviews`);
+                // console.log(`User ${user.email} has ${userReviews.length} reviews`);
 
                 if (userReviews.length >= 0) {
                     const displayName = user.firstName && user.lastName
@@ -143,7 +143,7 @@ export default function AdminDashboardReviewPage() {
                 }
                 return a.displayName.localeCompare(b.displayName);
             });
-            console.log("Grouped User Reviews:", grouped);
+            // console.log("Grouped User Reviews:", grouped);
 
 
             setUserReviewGroups(grouped);

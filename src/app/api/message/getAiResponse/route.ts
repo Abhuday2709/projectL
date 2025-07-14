@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         // Reverse the messages to get chronological order (oldest first)
         const chronologicalMessages = recentMessages.reverse();
 
-        console.log(`Found ${chronologicalMessages.length} recent messages for chatId ${chatId}`);
+        // console.log(`Found ${chronologicalMessages.length} recent messages for chatId ${chatId}`);
 
         const embedding = await generateEmbeddings(userMessage);
         

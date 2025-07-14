@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         } 
-        console.log('Uploading file:', file.name, file.type, file.size);
+        // console.log('Uploading file:', file.name, file.type, file.size);
         // Convert file to buffer
         const buffer = Buffer.from(await file.arrayBuffer());
 

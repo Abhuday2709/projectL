@@ -36,6 +36,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "@/models/userModel";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function UserManagementPage() {
     const { isLoaded, isSignedIn,userId } = useAuth();
@@ -46,6 +48,7 @@ export default function UserManagementPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdatingAdmin, setIsUpdatingAdmin] = useState<string | null>(null);
 
     useEffect(() => {
         if (isLoaded && !isSignedIn) router.push("/sign-in");
@@ -97,6 +100,43 @@ export default function UserManagementPage() {
         } finally {
             setIsDeleting(false);
             setUserToDelete(null);
+        }
+    };
+
+    const handleAdminToggle = async (userId: string, currentAdminStatus: boolean) => {
+        setIsUpdatingAdmin(userId);
+        try {
+            const response = await fetch(`/api/admin/updateUserRole/${userId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ isAdmin: !currentAdminStatus }),
+            });
+
+            if (!response.ok) throw new Error('Failed to update user role');
+
+            setUsers(prev =>
+                prev.map(user =>
+                    user.user_id === userId
+                        ? { ...user, isAdmin: !currentAdminStatus }
+                        : user
+                )
+            );
+
+            toast({
+                title: 'Success',
+                description: `User role updated successfully.`,
+            });
+            fetchUsers();
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: 'Failed to update user role. Please try again.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsUpdatingAdmin(null);
         }
     };
 
@@ -193,6 +233,7 @@ export default function UserManagementPage() {
                                                     <TableHead className="text-[#112D4E] font-semibold">User</TableHead>
                                                     <TableHead className="text-[#112D4E] font-semibold">Email</TableHead>
                                                     <TableHead className="text-[#112D4E] font-semibold">Joined</TableHead>
+                                                    <TableHead className="text-[#112D4E] font-semibold">Role</TableHead>
                                                     <TableHead className="text-[#112D4E] font-semibold text-right">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
@@ -236,6 +277,24 @@ export default function UserManagementPage() {
                                                             <div className="flex items-center gap-2">
                                                                 <Calendar className="h-4 w-4 text-[#3F72AF]" />
                                                                 <span className="text-[#112D4E]">{formatDate(user.createdAt)}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center space-x-2">
+                                                                <Switch
+                                                                    checked={user.role==='admin'}
+                                                                    disabled={isUpdatingAdmin === user.user_id}
+                                                                    onCheckedChange={() => handleAdminToggle(user.user_id, user.role==='admin')}
+                                                                />
+                                                                <Label className="text-[#112D4E]">
+                                                                    {isUpdatingAdmin === user.user_id ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    ) : user.role==='admin' ? (
+                                                                        'Admin'
+                                                                    ) : (
+                                                                        'User'
+                                                                    )}
+                                                                </Label>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-right">

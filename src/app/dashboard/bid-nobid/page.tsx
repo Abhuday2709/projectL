@@ -53,7 +53,7 @@ export default function DashboardReviewPage() {
             throw new Error(err.error || "adding questions failed")
         }
         const data = await res.json()
-        console.log("Fetched Questions:", data);
+        // console.log("Fetched Questions:", data);
 
         setQuestion(data)
     }

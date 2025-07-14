@@ -101,7 +101,7 @@ export async function deleteFromS3(key: string, maxRetries = 5): Promise<void> {
                 Key: key,
             });
             await s3Client.send(command);
-            console.log(`S3 delete successful for key: ${key}`);
+            // console.log(`S3 delete successful for key: ${key}`);
             return;
         } catch (err) {
             lastError = err;

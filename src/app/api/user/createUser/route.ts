@@ -8,7 +8,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 export async function POST(request: Request) {
 
     try {
-        console.log("HI");
+        // console.log("HI");
         
         const body = await request.json();
         if(body.user_id === undefined || body.email === undefined) {

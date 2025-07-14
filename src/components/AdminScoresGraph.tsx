@@ -108,7 +108,7 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                 const res = await fetch("/api/category/getCategories");
                 if (!res.ok) throw new Error("Failed to fetch categories");
                 const data = await res.json();
-                console.log("Fetched categories:", data);
+                // console.log("Fetched categories:", data);
                 
                 setCategories(data);
             } catch (err) {
@@ -154,10 +154,10 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                     : attractScoreObj
                         ? Number(attractScoreObj)
                         : null;
-                console.log("Processing review scores:", {
-                    abilityScore,
-                    attractScore
-                });
+                // console.log("Processing review scores:", {
+                //    abilityScore,
+                //    attractScore
+                // });
 
                 if (abilityScore !== null && attractScore !== null) {
                     const abilityTotal = review.answers?.length ?? 1;
@@ -169,11 +169,10 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                     const attractPct = Math.round(
                         (attractScore * 100) / (attractTotal)
                     );
-                    console.log("Calculated percentages:", {
-                        abilityPct,
-                        attractPct
-                    });
-                    
+                    // console.log("Calculated percentages:", {
+                    // //    abilityPct,
+                    // //    attractPct
+                    // });
 
                     processedData.push({
                         id: review.user_id,

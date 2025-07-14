@@ -14,7 +14,7 @@ export async function generateResponse(
 ): Promise<string> {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        console.log("gemini key", process.env.GEMINI_API_KEY);
+        // console.log("gemini key", process.env.GEMINI_API_KEY);
         
         // Format conversation history
         const conversationHistory = recentMessages.length > 0
@@ -67,7 +67,7 @@ USER QUESTION: "${userMessage}"
 
         const response = result.response;
         const responseText = response.text();
-        console.log('Gemini API Response:', responseText);
+        // console.log('Gemini API Response:', responseText);
 
         return responseText;
 

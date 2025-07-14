@@ -58,7 +58,7 @@ async function ensureCollection() {
                     distance: DISTANCE_METRIC,
                 },
             });
-            console.log(`Collection '${COLLECTION_NAME}' created successfully.`);
+            // console.log(`Collection '${COLLECTION_NAME}' created successfully.`);
         }
     } catch (error) {
         console.error('Error ensuring Qdrant collection:', error);
@@ -71,7 +71,7 @@ async function ensureCollection() {
 (async () => {
     try {
         await ensureCollection();
-        console.log('Qdrant collection ensured successfully at worker startupfor review documents.');
+        // console.log('Qdrant collection ensured successfully at worker startupfor review documents.');
     } catch (error) {
         console.error('Failed to ensure Qdrant collection at startup. Worker may not function correctly:', error);
         // Decide if you want to exit the process if Qdrant is essential
@@ -94,11 +94,11 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
 }
 
 const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDocumentForReviewJobData>) => {
-    // console.log(`Processing job ${job.id} for document: ${job.data.fileName} (S3 Key: ${job.data.s3Key})`);
+    // // console.log(`Processing job ${job.id} for document: ${job.data.fileName} (S3 Key: ${job.data.s3Key})`);
     const { chatId, uploadedAt, docId, fileName, s3Key, fileType } = job.data;
     const user_id = job.data.user_id
     const createdAt = job.data.createdAt // Use provided createdAt or current time 
-    console.log('user_id', user_id);
+    // console.log('user_id', user_id);
 
     try {
         const updateToProcessingCmd = new UpdateCommand({
@@ -138,7 +138,7 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
     try {
         if (fileType === 'application/pdf') {
             try {
-                // console.log(`Attempting to download PDF from S3: ${s3Key}`);
+                // // console.log(`Attempting to download PDF from S3: ${s3Key}`);
                 const getObjectCommand = new GetObjectCommand({
                     Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
                     Key: s3Key,
@@ -150,7 +150,7 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                 }
 
                 const pdfBuffer = await streamToBuffer(s3Object.Body as Readable);
-                console.log(`PDF downloaded successfully. Size: ${pdfBuffer.length} bytes. Parsing text...`);
+                // console.log(`PDF downloaded successfully. Size: ${pdfBuffer.length} bytes. Parsing text...`);
 
                 const pageContents: string[] = []; // Initialize for each job
 
@@ -191,18 +191,18 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                 const pdfData = await pdf(pdfBuffer, pdfParseOptions); // This populates `pageContents`
 
                 // Existing logs for pdfData are still useful
-                console.log("metadata", pdfData.metadata);
+                // console.log("metadata", pdfData.metadata);
                 const info = pdfData.info;
-                console.log("info", info);
+                // console.log("info", info);
                 const numpages = pdfData.numpages;
-                console.log("numpages", numpages);
+                // console.log("numpages", numpages);
                 const numrender = pdfData.numrender;
-                console.log("numrender", numrender);
+                // console.log("numrender", numrender);
                 const version = pdfData.version;
-                console.log("version", version);
+                // console.log("version", version);
 
                 if (pageContents.length === 0) {
-                    console.log('No text content extracted from any pages of the PDF.');
+                    // console.log('No text content extracted from any pages of the PDF.');
                     // Update status to FAILED as no content was processed
                     const updateToFailedCmd = new UpdateCommand({
                         TableName: DocumentConfig.tableName,
@@ -222,12 +222,12 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                     const pageNumber = pageIndex + 1; // 1-indexed page number
 
                     if (!currentPageText || currentPageText.trim() === '') {
-                        console.log(`No text content on page ${pageNumber}. Skipping.`); // Optional: can be noisy
+                        // console.log(`No text content on page ${pageNumber}. Skipping.`); // Optional: can be noisy
                         continue;
                     }
 
                     const chunks = await splitter.splitText(currentPageText);
-                    console.log(`Page ${pageNumber} split into ${chunks.length} chunks.`);
+                    // console.log(`Page ${pageNumber} split into ${chunks.length} chunks.`);
 
                     for (let chunkIndexOnPage = 0; chunkIndexOnPage < chunks.length; chunkIndexOnPage++) {
                         const chunkText = chunks[chunkIndexOnPage];
@@ -251,11 +251,11 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                 }
 
                 if (points.length > 0) {
-                    // console.log(`Upserting ${points.length} points from ${pageContents.length} pages to Qdrant collection '${COLLECTION_NAME}'...`);
+                    // // console.log(`Upserting ${points.length} points from ${pageContents.length} pages to Qdrant collection '${COLLECTION_NAME}'...`);
                     await qdrantClient.upsert(COLLECTION_NAME, { points });
-                    console.log(`${points.length} points upserted successfully. HI`);
+                    // console.log(`${points.length} points upserted successfully. HI`);
                 } else {
-                    console.log('No text chunks to process for Qdrant after processing all pages.');
+                    // console.log('No text chunks to process for Qdrant after processing all pages.');
                     // Potentially mark as FAILED if no points were generated from non-empty pages
                     const updateToFailedNoPointsCmd = new UpdateCommand({
                         TableName: DocumentConfig.tableName,
@@ -273,7 +273,7 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
                 // Process each question with Gemini
                 for (const question of questions) {
                     try {
-                        console.log("question", question);
+                        // console.log("question", question);
 
                         // Search for relevant context
                         const searchResults = await qdrantClient.search(COLLECTION_NAME, {
@@ -335,9 +335,9 @@ Your response:`;
                         const answer = answerMatch ? answerMatch[1].toLowerCase().trim() : null;
                         const reasoning = reasonMatch ? reasonMatch[1].trim() : "No reasoning provided";
 
-                        console.log("Raw AI response:", response);
-                        console.log("Parsed answer:", answer);
-                        console.log("Parsed reasoning:", reasoning);
+                        // console.log("Raw AI response:", response);
+                        // console.log("Parsed answer:", answer);
+                        // console.log("Parsed reasoning:", reasoning);
 
                         // Convert answer to numeric score
                         let score: number;
@@ -357,7 +357,7 @@ if (answer === 'yes') {
     continue;
 }
 
-console.log("Final score:", score);
+// console.log("Final score:", score);
 
 questionAnswers.push({
     questionId: question.evaluationQuestionId,
@@ -431,7 +431,7 @@ questionAnswers.push({
                 throw error; // Re-throw the original processing error for BullMQ to handle
             }
         } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || fileType === 'application/msword') {
-            console.log(`Processing DOC/DOCX file: ${fileName} (S3 Key: ${s3Key})`);
+            // console.log(`Processing DOC/DOCX file: ${fileName} (S3 Key: ${s3Key})`);
 
             // 1. Download the file from S3
             const getObjectCommand = new GetObjectCommand({
@@ -452,12 +452,12 @@ questionAnswers.push({
                 throw new Error(`Zero-byte buffer obtained from S3 for DOC/DOCX file: ${s3Key}`);
             }
 
-            console.log(`DOC/DOCX file ${fileName} downloaded successfully. Size: ${nodeBuffer.length} bytes. Extracting text...`);
+            // console.log(`DOC/DOCX file ${fileName} downloaded successfully. Size: ${nodeBuffer.length} bytes. Extracting text...`);
 
             // 3. Pass the buffer to mammoth
             const result = await mammoth.extractRawText({ buffer: nodeBuffer });
             const text = result.value;
-            // console.log("text from docx", text); // Uncomment for debugging if needed
+            // // console.log("text from docx", text); // Uncomment for debugging if needed
 
             if (!text || text.trim() === '') {
                 // Update status to FAILED as no content was processed
@@ -476,7 +476,7 @@ questionAnswers.push({
             }
 
             const chunks = await splitter.splitText(text);
-            console.log(`DOC/DOCX split into ${chunks.length} chunks.`);
+            // console.log(`DOC/DOCX split into ${chunks.length} chunks.`);
             for (let i = 0; i < chunks.length; i++) {
                 const chunkText = chunks[i];
                 if (chunkText.trim() === '') continue;
@@ -487,7 +487,7 @@ questionAnswers.push({
                 });
             }
         } else {
-            console.log(`Skipping unsupported file type: ${fileName} (Type: ${fileType})`);
+            // console.log(`Skipping unsupported file type: ${fileName} (Type: ${fileType})`);
             // Update status to COMPLETED with a note that it's unsupported by this worker
             const updateToSkippedCmd = new UpdateCommand({
                 TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
@@ -500,7 +500,7 @@ questionAnswers.push({
 
         if (points.length > 0) {
             await qdrantClient.upsert(COLLECTION_NAME, { points });
-            console.log(`${points.length} points upserted successfully for ${fileName}.`);
+            // console.log(`${points.length} points upserted successfully for ${fileName}.`);
             const updateToCompletedCmd = new UpdateCommand({
                 TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
                 UpdateExpression: 'set processingStatus = :status, processingError = :err_val',
@@ -531,22 +531,22 @@ questionAnswers.push({
         // For now, let's not re-throw, assuming status update is sufficient.
     }
     return Promise.resolve();
-}, { connection });
+}, { connection,concurrency:3 });
 
 worker.on('completed', job => {
-    // console.log(`Job ${job.id} for ${job.data.fileName} has completed!`);
+    // // console.log(`Job ${job.id} for ${job.data.fileName} has completed!`);
 });
 
 worker.on('failed', (job, err) => {
     const jobFileName = job?.data?.fileName || 'unknown file';
     if (job) {
-        // console.log(`Job ${job.id} for ${jobFileName} has failed with ${err.message}`);
+        // // console.log(`Job ${job.id} for ${jobFileName} has failed with ${err.message}`);
     } else {
-        // console.log(`A job for ${jobFileName} has failed with ${err.message}`);
+        // // console.log(`A job for ${jobFileName} has failed with ${err.message}`);
     }
 });
 
-console.log('Worker started listening for jobs on the \'review documents\' queue with PDF and DOC/DOCX processing logic...');
+// console.log('Worker started listening for jobs on the \'review documents\' queue with PDF and DOC/DOCX processing logic...');
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
