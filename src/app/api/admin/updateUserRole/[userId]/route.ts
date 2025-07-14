@@ -8,7 +8,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
 export async function PATCH(
     req: Request,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
     try {
         const { userId } = await params;
