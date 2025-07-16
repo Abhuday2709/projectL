@@ -6,7 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Document } from "@/models/documentModel";
 
-export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmin }: {
+/**
+ * Card component displaying a scoring session review summary.
+ * @param {object} props.review - ScoringSession object with session metadata.
+ * @param {(b: boolean) => void} props.setIsPageLoading - Callback to toggle page loading indicator.
+ * @param {(r: ScoringSession) => void} props.setReviewToDelete - Callback to select a review for deletion.
+ * @param {boolean} props.isAdmin - Whether the user has admin privileges (controls delete button visibility).
+ * @returns JSX.Element - Rendered review card.
+ * @usage
+ * <ReviewCard review={session} setIsPageLoading={setLoading} setReviewToDelete={setToDelete} isAdmin={false} />
+ */
+export function ReviewCard({
+    review,
+    setIsPageLoading,
+    setReviewToDelete,
+    isAdmin
+}: {
     review: ScoringSession,
     setIsPageLoading: (b: boolean) => void,
     setReviewToDelete: (r: ScoringSession) => void,
@@ -15,8 +30,9 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
     const router = useRouter();
     const [documents, setDocuments] = useState<Document[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<any>(null);
 
+    // Fetch associated document statuses on mount/update
     useEffect(() => {
         if (!review.scoringSessionId) return;
         setLoading(true);
@@ -30,6 +46,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
             .finally(() => setLoading(false));
     }, [review.scoringSessionId]);
 
+    // Determine if any document is still processing
     const isAnyProcessing = documents.some(
         (doc) => doc.processingStatus === "QUEUED" || doc.processingStatus === "PROCESSING"
     );
@@ -56,6 +73,7 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col min-h-32 justify-between">
+                    {/* Session metadata */}
                     <div className="space-y-2 mb-4">
                         <div className="flex items-center gap-2 text-sm text-[#3F72AF]">
                             <Calendar className="h-4 w-4" />
@@ -76,11 +94,13 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
                             </div>
                         )}
                     </div>
+                    {/* Disable delete if processing */}
                     {isAnyProcessing && (
                         <div className="text-xs text-[#3F72AF] mt-2">
                             Document is being processed. Delete disabled.
                         </div>
                     )}
+                    {/* Action buttons */}
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
@@ -94,19 +114,21 @@ export function ReviewCard({ review, setIsPageLoading, setReviewToDelete, isAdmi
                         >
                             Open
                         </Button>
-                        {!isAdmin&& <Button
-                            variant="outline"
-                            size="sm"
-                            className="p-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors border-[#DBE2EF]"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setReviewToDelete(review);
-                            }}
-                            disabled={isAnyProcessing}
-                            title={isAnyProcessing ? "Cannot delete while a document is processing" : ""}
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>}
+                        {!isAdmin && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="p-2 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors border-[#DBE2EF]"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReviewToDelete(review);
+                                }}
+                                disabled={isAnyProcessing}
+                                title={isAnyProcessing ? "Cannot delete while a document is processing" : ""}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
                     </div>
                 </div>
             </CardContent>

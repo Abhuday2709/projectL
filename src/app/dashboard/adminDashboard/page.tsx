@@ -10,12 +10,13 @@ import type { ScoringSession } from "@/models/scoringReviewModel";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
 import EditQuestionsAndCategories from "@/components/EditQuestionsAnd Categories";
-import { CategoryType, QuestionType } from "@/lib/utils";
+import { QuestionType } from "@/lib/utils";
 import { Settings, Loader2, Users, User as UserIcon, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UserReviewGroup } from "@/components/AdminReviewCard";
 import { BarChart3 } from "lucide-react";
 import AdminScoresGraph from "@/components/AdminScoresGraph";
+import { Category } from "@/models/categoryModel";
 
 interface User {
     user_id: string;
@@ -41,10 +42,10 @@ export default function AdminDashboardReviewPage() {
 
     // All hooks must be called unconditionally
     const [showEditModal, setShowEditModal] = useState(false);
-    const [categories, setCategories] = useState<CategoryType[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [questions, setQuestions] = useState<QuestionType[]>([]);
     const [isPageLoading, setIsPageLoading] = useState(false);
-    const [allCategories, setAllCategories] = useState<CategoryType[]>([]);
+    const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [question, setQuestion] = useState<QuestionType[]>([]);
     const [reviews, setReviews] = useState<ReviewWithUser[]>([]);
     const [isLoading, setIsLoading] = useState(false);

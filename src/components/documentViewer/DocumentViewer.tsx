@@ -16,7 +16,15 @@ interface DocumentViewerProps {
 }
 
 type DocumentType = 'pdf' | 'docx' | 'unsupported';
-
+/**  
+ * DocumentViewer component  
+ * Loads and renders a document based on its type (PDF, DOCX, or unsupported).  
+ * @param props.url - URL of the document.  
+ * @param props.fileName - The name of the document file.  
+ * @param props.onReturn - Optional callback when returning from the viewer.  
+ * @returns JSX.Element displaying the document viewer UI.  
+ * @example <DocumentViewer url="docUrl" fileName="doc.pdf" />
+ */
 const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn }) => {
     const { toast } = useToast();
     const [documentType, setDocumentType] = useState<DocumentType>('unsupported');
@@ -28,9 +36,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
     const isMountedRef = useRef(true);
 
     const CustomPageValidator = z.object({ page: z.string().refine((num) => Number(num) > 0 && Number(num) <= (1)) });
-    const { register, handleSubmit, formState: { errors }, setValue } = useForm({ 
-        defaultValues: { page: '1' }, 
-        resolver: zodResolver(CustomPageValidator) 
+    const { formState: { errors }, setValue } = useForm({
+        defaultValues: { page: '1' },
+        resolver: zodResolver(CustomPageValidator)
     });
 
     useEffect(() => {
@@ -39,7 +47,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
             isMountedRef.current = false;
         };
     }, []);
-
+    /**  
+     * Determines the document type based on file extension.  
+     * @param url - URL of the document.  
+     * @param fileName - Name of the document file.  
+     * @returns DocumentType ("pdf", "docx", or "unsupported").  
+     */
     const getDocumentType = (url: string, fileName: string): DocumentType => {
         const ext = fileName.split('.').pop()?.toLowerCase() || url.split('.').pop()?.toLowerCase().split('?')[0];
         switch (ext) {
@@ -49,11 +62,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
             default: return 'unsupported';
         }
     };
-
+    /**  
+     * Fetches the document from the provided URL and returns it as a File object.  
+     * @param url - The URL of the document.  
+     * @returns A Promise resolving to a File object.  
+     * @throws Error with CORS or fetch failure messages.  
+     */
     const fetchDocument = async (url: string): Promise<File> => {
         try {
-            const response = await fetch(url, { 
-                mode: 'cors', 
+            const response = await fetch(url, {
+                mode: 'cors',
                 headers: { 'Accept': '*/*' },
                 signal: AbortSignal.timeout(30000) // 30 second timeout
             });
@@ -68,24 +86,29 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
             throw err;
         }
     };
-
+    /**  
+     * Processes the document based on its URL and fileName.  
+     * Determines document type and retrieves content accordingly.
+     * @param documentUrl - The URL of the document.
+     * @param fileName - The document file name.
+     */
     const processDocument = useCallback(async (documentUrl: string, fileName: string) => {
         // Prevent processing the same URL multiple times
         if (processedUrlRef.current === documentUrl) {
             return;
         }
-        
+
         processedUrlRef.current = documentUrl;
-        setLoading(true); 
-        setError(''); 
+        setLoading(true);
+        setError('');
         setValue('page', '1');
-        
+
         try {
             const type = getDocumentType(documentUrl, fileName);
-            
+
             if (!isMountedRef.current) return;
             setDocumentType(type);
-            
+
             switch (type) {
                 case 'pdf':
                     if (isMountedRef.current) {
@@ -95,10 +118,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
                 case 'docx': {
                     const docxFile = await fetchDocument(documentUrl);
                     if (!isMountedRef.current) return;
-                    
+
                     const arrayBuffer = await docxFile.arrayBuffer();
                     if (!isMountedRef.current) return;
-                    
+
                     const result = await mammoth.convertToHtml({ arrayBuffer });
                     if (isMountedRef.current) {
                         setContent(result.value);
@@ -123,13 +146,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
         if (url && fileName) {
             processDocument(url, fileName);
         }
-        
+
         return () => {
             // Reset processed URL when component unmounts or URL changes
             processedUrlRef.current = '';
         };
     }, [url, fileName, processDocument]);
-
+    /**  
+     * Renders the document content based on loading, error, and type.  
+     * @returns JSX.Element containing the document viewer UI.
+     */
     const renderContent = () => {
         if (loading) {
             return (
@@ -161,25 +187,25 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
                 </div>
             );
         }
-        
+
         switch (documentType) {
-            case 'pdf': 
+            case 'pdf':
                 return (
-                    <PdfViewer 
+                    <PdfViewer
                         key={`pdf-${url}`} // Add key to force re-mount when URL changes
-                        content={content} 
-                        fileName={fileName} 
-                        documentType={documentType} 
+                        content={content}
+                        fileName={fileName}
+                        documentType={documentType}
                         onReturn={onReturn}
                     />
                 );
-            case 'docx': 
+            case 'docx':
                 return (
-                    <DocxViewer 
+                    <DocxViewer
                         key={`docx-${url}`} // Add key to force re-mount when URL changes
-                        content={content} 
-                        fileName={fileName} 
-                        documentType={documentType} 
+                        content={content}
+                        fileName={fileName}
+                        documentType={documentType}
                         onReturn={onReturn}
                     />
                 );

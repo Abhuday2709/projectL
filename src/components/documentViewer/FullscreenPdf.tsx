@@ -13,7 +13,17 @@ interface PdfFullscreenProps {
     isDocx: boolean
     content?: string
 }
-
+/**  
+ * PdfFullscreen component  
+ * Displays a PDF document in fullscreen mode using a modal dialog.  
+ * @param props.fileUrl - URL of the PDF file.  
+ * @param props.fileName - Name of the document.  
+ * @param props.documentType - Document type ("pdf", "docx", or "unsupported").  
+ * @param props.isDocx - Boolean flag for DOCX files.  
+ * @param props.content - Optional document content for DOCX rendering.  
+ * @returns JSX.Element representing the fullscreen PDF viewer.  
+ * @example <PdfFullscreen fileUrl="url" fileName="doc.pdf" documentType="pdf" isDocx={false} />
+ */
 const PdfFullscreen = ({ fileUrl, fileName, documentType, isDocx, content }: PdfFullscreenProps) => {
     const [isOpen, setIsOpen] = useState(false)
     const [numPages, setNumPages] = useState<number>()

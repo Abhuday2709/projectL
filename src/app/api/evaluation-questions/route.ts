@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
     }
     const id = uuidv4();
-    const item = { user_id: userId, evaluationQuestionId: id, categoryId, text: questionText, order, isMaster: false };
+    const item = { user_id: userId, evaluationQuestionId: id, categoryId, text: questionText, order };
     await evalClient.send(new PutCommand({ TableName: EvaluationQuestionConfig.tableName, Item: item }));
     return NextResponse.json(item, { status: 201 });
 }

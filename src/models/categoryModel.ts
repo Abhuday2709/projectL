@@ -5,7 +5,6 @@ export const CategorySchema = z.object({
     categoryId : z.string().uuid(),
     categoryName : z.string(),
     order: z.number(),
-    isMaster: z.boolean().default(false),
     qualificationCutoff: z.number().default(50),
 }); 
 export type Category = z.infer<typeof CategorySchema>;

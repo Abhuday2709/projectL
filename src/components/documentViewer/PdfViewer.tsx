@@ -13,7 +13,16 @@ interface PdfViewerProps {
     onReturn?: () => void;
     documentType: 'pdf' | 'docx' | 'unsupported';
 }
-
+/**  
+ * PdfViewer component  
+ * Renders a PDF document with navigation controls.  
+ * @param props.content - The URL or base64 string of the PDF document.  
+ * @param props.fileName - The name of the document.  
+ * @param props.onReturn - Optional callback when returning from fullscreen.  
+ * @param props.documentType - The type of document ("pdf", "docx", or "unsupported").  
+ * @returns JSX.Element representing the PDF viewer.  
+ * @example <PdfViewer content="someUrl" fileName="document.pdf" documentType="pdf" />
+ */
 const PdfViewer: React.FC<PdfViewerProps> = ({ content, fileName, onReturn, documentType }) => {
     const { toast } = useToast();
     const [numPages, setNumPages] = useState<number>();
@@ -32,7 +41,10 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ content, fileName, onReturn, docu
         standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/',
     }), []);
 
-    // Cleanup function to cancel ongoing tasks
+    /**  
+     * Cleanup function to cancel ongoing tasks.  
+     * Calls destroy/cleanup on document and page refs if available.  
+     */
     const cleanupTasks = () => {
         if (documentRef.current) {
             try {
@@ -55,40 +67,58 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ content, fileName, onReturn, docu
             cleanupTasks();
         };
     }, []);
-
+    /**  
+     * Callback invoked when the document loads successfully.  
+     * Sets the total number of pages and updates loading state.  
+     * @param param0.numPages - Total pages in the PDF document.  
+     */
     const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
         setNumPages(numPages);
         setIsLoading(false);
     };
-
+    /**  
+     * Callback invoked on document load error.  
+     * Displays an error toast unless it is a cancellation error.  
+     * @param error - The error object from PDF loading.  
+     */
     const handleDocumentLoadError = (error: any) => {
         // Only show toast if it's not a cancellation error
         if (!error?.message?.includes('cancelled') && !error?.message?.includes('abort')) {
-            toast({ 
-                title: 'Error loading PDF', 
-                description: 'Please try again later', 
-                variant: 'destructive' 
+            toast({
+                title: 'Error loading PDF',
+                description: 'Please try again later',
+                variant: 'destructive'
             });
         }
         setIsLoading(false);
     };
-
+    /**  
+     * Callback for page render errors.  
+     * Suppresses known cancellation/abort errors.  
+     * @param error - The error object from page rendering.  
+     */
     const handlePageRenderError = (error: any) => {
         // Suppress AbortException and cancellation errors
-        if (error?.message?.includes('cancelled') || 
+        if (error?.message?.includes('cancelled') ||
             error?.message?.includes('abort') ||
             error?.name === 'AbortException') {
             return; // Don't log these errors
         }
         console.warn('Page render error:', error);
     };
-
+    /**  
+    * Navigate to the previous page.  
+    * Decrements the current page ensuring it's not less than 1.  
+    */
     const onPrev = () => {
         const newPage = currPage - 1 > 1 ? currPage - 1 : 1;
         setCurrPage(newPage);
         setPageValue(String(newPage));
     };
-
+    /**  
+     * Navigate to the next page.  
+     * Increments the current page up to the total number of pages.  
+     */
     const onNext = () => {
         if (numPages !== undefined) {
             const newPage = currPage + 1 > numPages ? numPages : currPage + 1;
@@ -96,7 +126,11 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ content, fileName, onReturn, docu
             setPageValue(String(newPage));
         }
     };
-
+    /**  
+     * Sets the current page from a manual input.  
+     * Validates against page boundaries.  
+     * @param num - The desired page number.  
+     */
     const onPageSubmit = (num: number) => {
         if (numPages && (num < 1 || num > numPages)) {
             setErrors({ page: 'Invalid page' });

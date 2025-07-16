@@ -6,7 +6,6 @@ export const EvaluationQuestionSchema = z.object({
     categoryId : z.string().uuid(),
     text: z.string(),
     order: z.number(),
-    isMaster: z.boolean().default(false),
 }); 
 export type EvaluationQuestion = z.infer<typeof EvaluationQuestionSchema>;
 export const EvaluationQuestionConfig = {

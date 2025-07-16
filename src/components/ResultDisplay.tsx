@@ -1,11 +1,23 @@
 import { Results } from "@/lib/utils";
 import { ResponsiveContainer, ScatterChart, ReferenceArea, CartesianGrid, ReferenceLine, XAxis, YAxis, Tooltip, Scatter, Cell, ReferenceDot } from "recharts";
-
+/**
+ * Props for the ResultDisplay component.
+ * @property {Results[]} results - Array of result objects containing categoryName, score, total, and qualificationCutoff.
+ * @property {string} recommendation - Text recommendation based on results.
+ */
 interface ResultDisplayProps {
     results: Results[];
     recommendation: string;
 }
 
+/**
+ * Custom tooltip for the scatter chart.
+ * @param {object} props.active - Whether the tooltip is active.
+ * @param {any[]} props.payload - Data payload from the chart.
+ * @returns JSX.Element|null - Styled tooltip showing ability and attractiveness percentages.
+ * @usage
+ * <Tooltip content={<CustomTooltip />} />
+ */
 const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
@@ -19,8 +31,15 @@ const CustomTooltip = ({ active, payload }: any) => {
     }
     return null;
 };
-
+/**
+ * Displays evaluation results including scores, recommendation, and a quadrant chart.
+ * @param {ResultDisplayProps} props - Props containing results and recommendation.
+ * @returns JSX.Element - Rendered evaluation UI.
+ * @usage
+ * <ResultDisplay results={resultsArray} recommendation="Focus on high-value bids" />
+ */
 export default function ResultDisplay({ results, recommendation }: ResultDisplayProps) {
+    // Show placeholder when not enough data
     if (results.length < 2) {
         return (
             <div className="flex items-center justify-center">

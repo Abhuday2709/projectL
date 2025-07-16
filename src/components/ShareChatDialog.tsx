@@ -10,7 +10,13 @@ import { ShareSession } from "@/models/shareSessionModel";
 interface ShareChatDialogProps {
     chatId: string;
 }
-
+/**
+ * Dialog for creating and managing a shareable link to a chat.
+ * @param {object} props.chatId - Identifier of the chat to share.
+ * @returns JSX.Element - Button and modal dialog for share link settings.
+ * @usage
+ * <ShareChatDialog chatId="abc123" />
+ */
 export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
     const { toast } = useToast();
     const [showShareDialog, setShowShareDialog] = useState(false);
@@ -22,7 +28,10 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [passwordFeedback, setPasswordFeedback] = useState<{ message: string; color: string; isWeak: boolean }>({ message: "", color: "", isWeak: true });
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-
+    /**
+     * Assess password strength and update feedback state.
+     * @param {string} password - The password to check.
+     */
     const checkPasswordStrength = (password: string) => {
         let score = 0;
         let message = "";
@@ -33,19 +42,19 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
             setPasswordFeedback({ message: "", color: "", isWeak: true });
             return;
         }
-
+        // Common password check
         const commonPasswords = ["123456", "password", "12345678", "qwerty", "123456789"];
         if (commonPasswords.includes(password.toLowerCase())) {
             setPasswordFeedback({ message: "Very weak: This password is too common.", color: "text-red-500", isWeak: true });
             return;
         }
-
+        // Criteria scoring
         if (password.length >= 8) score++;
         if (/[A-Z]/.test(password)) score++;
         if (/[a-z]/.test(password)) score++;
         if (/[0-9]/.test(password)) score++;
         if (/[^A-Za-z0-9]/.test(password)) score++;
-
+        // Strength messages
         if (password.length > 0 && password.length < 8) {
             message = "Weak: Must be at least 8 characters.";
             color = "text-red-500";
@@ -77,13 +86,18 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
         }
         setPasswordFeedback({ message, color, isWeak });
     };
-
+    /**
+     * Handle password input change.
+     * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event.
+     */
     const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newPassword = e.target.value;
         setSharePassword(newPassword);
         checkPasswordStrength(newPassword);
     };
-
+    /**
+     * Fetch existing share session data for this chat.
+     */
     const fetchShareSession = async () => {
         if (!chatId) return;
         try {
@@ -100,7 +114,10 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
             setShareSessionData(null);
         }
     };
-
+    /**
+     * Update share session on the server.
+     * @param {object} payload - Fields to update: chatId, password?, isActive?, validityDays?.
+     */
     const updateShareSession = async (payload: { chatId: string; password?: string; isActive?: boolean; validityDays?: number }) => {
         try {
             const res = await fetch("/api/shareSession/update", {
@@ -125,13 +142,15 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
             });
         }
     };
-
+    // Load session on mount or chatId change
     useEffect(() => {
         if (chatId) {
             fetchShareSession();
         }
     }, [chatId]);
-
+    /**
+     * Hash and set new password for share session.
+     */
     const handleUpdatePassword = async () => {
         if (!sharePassword.trim() || passwordFeedback.isWeak) {
             toast({ title: "Weak Password", description: "Please choose a stronger password.", variant: "destructive" });
@@ -149,7 +168,9 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
         setSharePassword("");
         setPasswordFeedback({ message: "", color: "", isWeak: true });
     };
-
+    /**
+     * Toggle share session active state.
+     */
     const handleToggleActive = async () => {
         if (!shareSessionData) return;
         const newActiveState = !shareSessionData.isActive;
@@ -158,7 +179,10 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
             isActive: newActiveState,
         });
     };
-
+    /**
+     * Copy given text to clipboard and show toast.
+     * @param {string} text - Text to copy.
+     */
     const copyToClipboard = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -169,7 +193,10 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
             toast({ title: "Failed to copy", description: "Please copy the link manually.", variant: "destructive" });
         }
     };
-
+    /**
+     * Compute expiration status and formatted text.
+     * @returns {{ text: string; isExpired: boolean }} - Expiration info.
+     */
     const getExpirationDetails = () => {
         if (!shareSessionData?.expiresAt) return { text: "No expiration set.", isExpired: false };
         const expiresDate = new Date(shareSessionData.expiresAt * 1000);
@@ -190,6 +217,7 @@ export default function ShareChatDialog({ chatId }: ShareChatDialogProps) {
 
     return (
         <>
+            {/* Trigger Button */}
             <Button
                 onClick={() => setShowShareDialog(true)}
                 className=" bg-[#3F72AF] hover:bg-[#112D4E] text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"

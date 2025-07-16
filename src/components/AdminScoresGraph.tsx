@@ -23,10 +23,22 @@ interface AdminScoresGraphProps {
     isOpen: boolean;
     onClose: () => void;
 }
-
+/**
+ * CustomTooltip component displays details of a review score on hover.
+ *
+ * @param {any} props - Contains active status and payload.
+ * @returns {JSX.Element | null} Tooltip element if active; otherwise, null.
+ *
+ * @example
+ * <CustomTooltip active={true} payload={[{ payload: reviewData }]} />
+ */
 const CustomTooltip = ({ active, payload }: any) => {
+    console.log(payload,active);
+    
     if (active && payload && payload.length) {
         const data = payload[0].payload;
+        console.log("data",data);
+        
         return (
             <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg max-w-xs">
                 <p className="font-semibold text-sm text-[#112D4E]">{data.userName}</p>
@@ -41,7 +53,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     return null;
 };
 
-// Consistent color palette
+// Consistent color palette for quadrants
 const COLORS = {
     bidToWin: {
         bg: "bg-green-50",
@@ -84,7 +96,17 @@ const COLORS = {
         label: "#dc2626",
     }
 };
-
+/**
+ * Returns the dot color based on review scores relative to a qualification cutoff.
+ *
+ * @param {number} attractiveness - The attractiveness percentage.
+ * @param {number} abilityToWin - The ability to win percentage.
+ * @param {number} [qualificationCutoff=50] - The cutoff score.
+ * @returns {string} Hex color code for the dot.
+ *
+ * @example
+ * const color = getScoreColor(65, 70, 50);
+ */
 const getScoreColor = (attractiveness: number, abilityToWin: number, qualificationCutoff: number = 50) => {
     if (attractiveness >= qualificationCutoff && abilityToWin >= qualificationCutoff) {
         return COLORS.bidToWin.dot;
@@ -96,7 +118,15 @@ const getScoreColor = (attractiveness: number, abilityToWin: number, qualificati
         return COLORS.noBid.dot;
     }
 };
-
+/**
+ * AdminScoresGraph React component displays a scatter chart of review scores with interactive quadrant filtering.
+ *
+ * @param {AdminScoresGraphProps} props - Contains reviews, dialog open state, and onClose callback.
+ * @returns {JSX.Element} A dialog component containing the scatter chart.
+ *
+ * @example
+ * <AdminScoresGraph reviews={reviewsArray} isOpen={true} onClose={() => console.log("closed")} />
+ */
 export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScoresGraphProps) {
     const [selectedQuadrant, setSelectedQuadrant] = useState<string | null>(null);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -118,7 +148,14 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
         fetchCategories();
     }, []);
 
-    // Process reviews to extract scoring data
+    /**
+     * Processes review data to compute percentages and produce an array of ReviewScore objects.
+     *
+     * @returns {ReviewScore[]} Array of processed review score objects.
+     *
+     * @example
+     * const scores = processReviewData();
+     */
     const processReviewData = (): ReviewScore[] => {
         const processedData: ReviewScore[] = [];
         // Find the correct category IDs just once
@@ -154,10 +191,6 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                     : attractScoreObj
                         ? Number(attractScoreObj)
                         : null;
-                // console.log("Processing review scores:", {
-                //    abilityScore,
-                //    attractScore
-                // });
 
                 if (abilityScore !== null && attractScore !== null) {
                     const abilityTotal = review.answers?.length ?? 1;
@@ -169,10 +202,6 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                     const attractPct = Math.round(
                         (attractScore * 100) / (attractTotal)
                     );
-                    // console.log("Calculated percentages:", {
-                    // //    abilityPct,
-                    // //    attractPct
-                    // });
 
                     processedData.push({
                         id: review.user_id,
@@ -311,31 +340,16 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                             <ResponsiveContainer width="100%" height="100%">
                                 <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 40 }}>
                                     {/* Quadrant backgrounds */}
-                                    <ReferenceArea x1={0} x2={attractQualCutoff} y1={0} y2={abilityQualCutoff} fill={COLORS.noBid.area} />
-                                    <ReferenceArea x1={attractQualCutoff} x2={100} y1={0} y2={abilityQualCutoff} fill={COLORS.fasterClosure.area} />
-                                    <ReferenceArea x1={0} x2={attractQualCutoff} y1={abilityQualCutoff} y2={100} fill={COLORS.buildCapability.area} />
-                                    <ReferenceArea x1={attractQualCutoff} x2={100} y1={abilityQualCutoff} y2={100} fill={COLORS.bidToWin.area} />
+                                    <ReferenceArea x1={0} x2={abilityQualCutoff} y1={0} y2={attractQualCutoff} fill={COLORS.noBid.area} />
+                                    <ReferenceArea x1={abilityQualCutoff} x2={100} y1={0} y2={attractQualCutoff} fill={COLORS.fasterClosure.area} />
+                                    <ReferenceArea x1={0} x2={abilityQualCutoff} y1={attractQualCutoff} y2={100} fill={COLORS.buildCapability.area} />
+                                    <ReferenceArea x1={abilityQualCutoff} x2={100} y1={attractQualCutoff} y2={100} fill={COLORS.bidToWin.area} />
                                     
                                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                    <ReferenceLine x={attractQualCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
-                                    <ReferenceLine y={abilityQualCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
+                                    <ReferenceLine x={abilityQualCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
+                                    <ReferenceLine y={attractQualCutoff} stroke="#9ca3af" strokeDasharray="2 2" />
                                     
                                     <XAxis
-                                        type="number"
-                                        dataKey="attractiveness"
-                                        name="Opportunity Attractiveness"
-                                        domain={[0, 100]}
-                                        tick={{ fontSize: 12, fill: '#374151' }}
-                                        tickLine={{ stroke: '#9ca3af' }}
-                                        axisLine={{ stroke: '#9ca3af' }}
-                                        label={{
-                                            value: "Opportunity Attractiveness %",
-                                            position: "insideBottom",
-                                            offset: -20,
-                                            style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px', fontWeight: 'bold' }
-                                        }}
-                                    />
-                                    <YAxis
                                         type="number"
                                         dataKey="abilityToWin"
                                         name="Ability to Win"
@@ -345,6 +359,21 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                                         axisLine={{ stroke: '#9ca3af' }}
                                         label={{
                                             value: "Ability to Win %",
+                                            position: "insideBottom",
+                                            offset: -20,
+                                            style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px', fontWeight: 'bold' }
+                                        }}
+                                    />
+                                    <YAxis
+                                        type="number"
+                                        dataKey="attractiveness"
+                                        name="Opportunity Attractiveness"
+                                        domain={[0, 100]}
+                                        tick={{ fontSize: 12, fill: '#374151' }}
+                                        tickLine={{ stroke: '#9ca3af' }}
+                                        axisLine={{ stroke: '#9ca3af' }}
+                                        label={{
+                                            value: "Opportunity Attractiveness %",
                                             angle: -90,
                                             position: "insideLeft",
                                             style: { textAnchor: 'middle', fill: '#374151', fontSize: '12px', fontWeight: 'bold' }

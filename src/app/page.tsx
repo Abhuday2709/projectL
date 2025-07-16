@@ -5,21 +5,25 @@ import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
+// Main landing page component for PROJECT-L
 export default function Home() {
   const router = useRouter();
+  // State to control loading overlay visibility
   const [showLoader, setShowLoader] = useState(false);
+  // Reset loader when route changes
   useEffect(() => {
     setShowLoader(false);
   }, [router]);
   return (
     <>
+      {/* Loading overlay - displays when navigating between pages */}
       {showLoader && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-white/70 backdrop-blur-sm">
           <Loader2 className="h-12 w-12 text-[#3F72AF] animate-spin" />
         </div>
       )}
       <div className="bg-[#F9F7F7] min-h-screen">
+        {/* Hero section with main CTA */}
         <MaxWidthWrapper className='mb-12 mt-24 sm:mt-40 flex flex-col items-center justify-center text-center'>
           <div className='mx-auto mb-4 flex max-w-fit items-center justify-center space-x-2 overflow-hidden rounded-full border border-[#DBE2EF] bg-white px-7 py-2 shadow-md backdrop-blur transition-all hover:border-[#3F72AF] hover:bg-[#DBE2EF]/30'>
             <p className='text-sm font-semibold text-[#112D4E]'>
@@ -55,7 +59,7 @@ export default function Home() {
           </Button>
         </MaxWidthWrapper>
 
-        {/* value proposition section */}
+        {/* Background gradient effects */}
         <div>
           <div className='relative isolate'>
             <div
@@ -101,7 +105,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Features Overview */}
+        {/* Feature cards section - displays 4 main product features */}
         <div className='mx-auto mb-16 mt-32 max-w-5xl sm:mt-56'>
           <div className='mb-12 px-6 lg:px-8'>
             <div className='mx-auto max-w-2xl sm:text-center'>
@@ -170,7 +174,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* How it works section */}
+        {/* Step-by-step guide section */}
         <div className='mx-auto mb-32 mt-16 max-w-5xl'>
           <div className='mb-12 px-6 lg:px-8'>
             <div className='mx-auto max-w-2xl sm:text-center'>
@@ -255,7 +259,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Use Cases Section */}
+        {/* Use cases section - showing different applications */}
         <div className='mx-auto mb-32 mt-16 max-w-5xl px-6 lg:px-8'>
           <div className='mb-12'>
             <div className='mx-auto max-w-2xl sm:text-center'>

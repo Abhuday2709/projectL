@@ -8,10 +8,19 @@ interface AIMessageProps {
   message: IMessage
   isNextMessageSamePerson?: boolean 
 }
-
+/**
+ * AI message component with markdown support
+ * Includes copy functionality and loading states
+ * @param message - Message object to display
+ * @param isNextMessageSamePerson - Whether next message is from same sender
+ */
 function AIMessage({ message, isNextMessageSamePerson }: AIMessageProps) {
   const [copied, setCopied] = useState(false)
-
+  /** 
+   * Formats timestamp to local time
+   * @param dateString - ISO date string
+   * @returns Formatted time string (HH:MM)
+   */
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString([], { 
       hour: '2-digit', 

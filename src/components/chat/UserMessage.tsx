@@ -1,13 +1,48 @@
 import { Message as IMessage } from '@/models/messageModel'
 import { cn } from '@/lib/utils'
 import { User, Check, Clock } from 'lucide-react'
+/**
+ * IMessage
+ * --------
+ * Type alias for a Message object imported from '@/models/messageModel'.
+ *
+ * @typedef {import('@/models/messageModel').Message} IMessage
+ * @see {@link '@/models/messageModel'}
+ */
+/**
+ * UserMessageProps
+ * ----------------
+ * Props for the UserMessage component.
+ *
+ * @property {IMessage} message                     – the message data to render
+ * @property {boolean} [isNextMessageSamePerson]    – whether the next message in the thread is from the same sender (affects opacity and icon)
+ */
 
 interface UserMessageProps {
   message: IMessage
   isNextMessageSamePerson?: boolean
-} 
-
+}
+/**
+ * UserMessage
+ * -----------
+ * Renders a single user message bubble with an avatar, text content, timestamp, and status icon.
+ *
+ * @param {UserMessageProps} props
+ * @param {IMessage} props.message                    – the message object (contains `text` and `createdAt`)
+ * @param {boolean} [props.isNextMessageSamePerson]   – if true, renders a clock icon and lower opacity
+ * @returns {JSX.Element}                             – the rendered React component
+ */
 function UserMessage({ message, isNextMessageSamePerson }: UserMessageProps) {
+  /**
+   * formatTime
+   * ----------
+   * Formats an ISO date string into a human-readable 'HH:MM' local time.
+   *
+   * @param {string} dateString   – an ISO 8601 date-time string
+   * @returns {string}            – formatted local time, e.g. "10:15"
+   * @example
+   * formatTime("2025-07-16T10:15:00Z"); // "10:15"
+   */
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString([], {
       hour: '2-digit',

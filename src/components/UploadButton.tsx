@@ -26,7 +26,17 @@ interface UploadButtonProps {
     user_id?: string;
     createdAt?: string;
 }
-
+/**
+ * Button and dialog to upload a document file to S3 and create a document record.
+ * @param {string} props.chatId - ID of the chat session.
+ * @param {boolean} [props.forReview] - Flag if the document is for review.
+ * @param {() => void} [props.onUploadSuccess] - Callback after successful upload.
+ * @param {string} [props.user_id] - ID of the uploading user.
+ * @param {string} [props.createdAt] - Creation timestamp string.
+ * @returns JSX.Element - Upload button and modal dialog.
+ * @usage
+ * <UploadButton chatId="abc123" onUploadSuccess={() => refreshList()} />
+ */
 const UploadButton = ({ chatId, onUploadSuccess, forReview, user_id, createdAt }: UploadButtonProps) => {
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
@@ -34,7 +44,10 @@ const UploadButton = ({ chatId, onUploadSuccess, forReview, user_id, createdAt }
     const [uploadProgress, setUploadProgress] = useState(0);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const acceptedFileTypes = ACCEPTED_MIME_TYPES;
-
+    /**
+     * Simulate progress bar updates until real upload completes.
+     * @returns {NodeJS.Timeout} - Interval ID for clearing.
+     */
     const startSimulatedProgress = () => {
         setUploadProgress(0);
         const interval = setInterval(() => {
@@ -42,7 +55,10 @@ const UploadButton = ({ chatId, onUploadSuccess, forReview, user_id, createdAt }
         }, 500);
         return interval;
     };
-
+    /**
+     * Handle file drop/upload and record creation.
+     * @param {File[]} files - Array of dropped files (only first used).
+     */
     const onDrop = async (files: File[]) => {
         if (!files[0]) return;
 

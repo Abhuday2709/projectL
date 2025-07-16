@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 
-import { CategoryType, DocumentWithStatus, QuestionType, Results } from "@/lib/utils"
+import { DocumentWithStatus, QuestionType, Results } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 
@@ -28,6 +28,7 @@ import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb"
 
 // Icon imports
 import { CheckCircle2, Clock, Loader2, RefreshCw, XCircle } from "lucide-react"
+import { Category } from "@/models/categoryModel"
 
 // Initialize the DynamoDB Document Client
 const docClient = DynamoDBDocumentClient.from(dynamoClient)
@@ -53,7 +54,7 @@ export default function DocumentScoringPage() {
 
   // Extract reviewId from URL parameters, ensuring it's a string
   const reviewId = params.reviewId as string
-  const [allCategories, setAllCategories] = useState<CategoryType[]>([])
+  const [allCategories, setAllCategories] = useState<Category[]>([])
   const [allQuestions, setAllQuestions] = useState<QuestionType[]>([])
   const [reviews, setReviews] = useState<ScoringSession[]>([]);
   const [documentsWithStatus, setDocumentsWithStatus] = useState<DocumentWithStatus[]>([])
@@ -132,7 +133,7 @@ export default function DocumentScoringPage() {
       toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
     }
   }
-  const [sortedCategories, setSortedCategories] = useState<CategoryType[]>([])
+  const [sortedCategories, setSortedCategories] = useState<Category[]>([])
   useEffect(() => {
     if (allCategories.length > 0) {
       const sorted = [...allCategories].sort((a, b) => a.order - b.order)
@@ -379,10 +380,10 @@ export default function DocumentScoringPage() {
     if (abilityPct >= abilityQualCutoff && attractPct >= attractQualCutoff) return "✅ Bid to Win";
 
     // Ability to Win above cutoff, Attractiveness below cutoff
-    if (abilityPct >= abilityQualCutoff && attractPct < attractQualCutoff) return "🔧 Build Capability";
+    if (abilityPct >= abilityQualCutoff && attractPct < attractQualCutoff) return "⏳ Faster Closure";
 
     // Ability to Win below cutoff, Attractiveness above cutoff
-    if (abilityPct < abilityQualCutoff && attractPct >= attractQualCutoff) return "⏳ Faster Closure";
+    if (abilityPct < abilityQualCutoff && attractPct >= attractQualCutoff) return "🔧 Build Capability";
 
     return ""; // Default case
   }

@@ -20,7 +20,26 @@ interface PdfControlsProps {
     isDocx: boolean;
     content?: string;
 }
-
+/**  
+ * PdfControls component  
+ * Renders document navigation and control UI for PDFs.  
+ * @param props.currPage - Current page number.  
+ * @param props.numPages - Total number of pages (optional).  
+ * @param props.onPrev - Callback to go to previous page.  
+ * @param props.onNext - Callback to go to next page.  
+ * @param props.onPageSubmit - Callback when a manual page input is submitted.  
+ * @param props.pageValue - Current page input value.  
+ * @param props.setPageValue - Setter for the page input value.  
+ * @param props.errors - Optional errors object for page input.  
+ * @param props.fileUrl - URL of the document.  
+ * @param props.fileName - Document file name.  
+ * @param props.documentType - Type of document (pdf, docx, unsupported).  
+ * @param props.onReturn - Optional return callback.  
+ * @param props.isDocx - Boolean indicating if the document is DOCX.  
+ * @param props.content - Optional document content.  
+ * @returns JSX.Element with navigation controls.  
+ * @example <PdfControls currPage={1} onPrev={onPrev} ... />
+ */
 const PdfControls: React.FC<PdfControlsProps> = ({
     currPage,
     numPages,

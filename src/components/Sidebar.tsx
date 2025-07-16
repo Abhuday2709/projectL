@@ -2,17 +2,20 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Menu, X, FileText, Search, Loader2, Settings, Users } from "lucide-react"; 
+import { Menu, X, FileText, Search, Loader2, Settings, Users } from "lucide-react";
 
+// Dashboard sidebar with role-based navigation and responsive design
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
+    // UI state management
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    // User role management
     const [userRole, setUserRole] = useState<string | null>(null);
     const [roleLoading, setRoleLoading] = useState(true);
 
-    // Fetch user role from database
+    // Fetch user role on component mount
     useEffect(() => {
         const fetchUserRole = async () => {
             try {
@@ -25,7 +28,7 @@ export default function Sidebar() {
                     setUserRole(null);
                 }
             } catch (error) {
-                    setUserRole(null);
+                setUserRole(null);
             } finally {
                 setRoleLoading(false);
             }
@@ -39,12 +42,13 @@ export default function Sidebar() {
         setIsLoading(false);
     }, [pathname]);
 
+    // Helper functions for route management and styling
     const handleRouteChange = (path: string) => {
         // If already on the target path or a sub-path, don't show loading
         if (pathname === path || pathname.startsWith(`${path}/`)) {
             return;
         }
-        
+
         setIsLoading(true);
         router.push(path);
         setIsOpen(false);
@@ -82,12 +86,11 @@ export default function Sidebar() {
     const linkClasses = (path: string) => {
         const isActive = isActiveRoute(path);
         const isCurrentPath = pathname === path || pathname.startsWith(`${path}/`);
-        
-        return `group flex items-center py-3 px-4 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02] ${
-            isActive
+
+        return `group flex items-center py-3 px-4 rounded-lg transition-all duration-200 cursor-pointer hover:scale-[1.02] ${isActive
                 ? "bg-[#3F72AF] text-white shadow-md hover:bg-[#112D4E] hover:shadow-lg"
                 : "text-[#112D4E] hover:text-[#3F72AF] hover:bg-[#DBE2EF]/30"
-        }`;
+            }`;
     };
 
     const iconClasses = (path: string) =>
@@ -181,7 +184,7 @@ export default function Sidebar() {
                                             Admin Tools
                                         </p>
                                     </div>
-                                    
+
                                     <div
                                         onClick={() => handleRouteChange('/dashboard/adminDashboard')}
                                         className={linkClasses("/dashboard/adminDashboard")}
@@ -189,7 +192,7 @@ export default function Sidebar() {
                                         <Settings className={iconClasses("/dashboard/adminDashboard")} />
                                         <span className="font-medium">Admin Dashboard</span>
                                     </div>
-                                    
+
                                     <div
                                         onClick={() => handleRouteChange('/dashboard/userManagement')}
                                         className={linkClasses("/dashboard/userManagement")}

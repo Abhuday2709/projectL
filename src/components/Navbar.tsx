@@ -5,23 +5,26 @@ import { Button } from './ui/button'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { Loader2 } from "lucide-react";
 
+// Main navigation component with authentication states
 const Navbar = () => {
     const { isLoaded, isSignedIn } = useUser()
     const router = useRouter();
     const pathname = usePathname();
+    // Controls loading state during navigation
     const [isNavLoading, setIsNavLoading] = useState(false);
 
+    // Reset loading state on route change
     useEffect(() => {
         setIsNavLoading(false);
     }, [pathname]);
 
-    // Helper function to handle navigation
+    // Handles navigation with loading state
     const handleNavigation = (targetPath: string) => {
         // If already on the target path, don't show loading
         if (pathname === targetPath) {
             return;
         }
-        
+
         setIsNavLoading(true);
         router.push(targetPath);
     };

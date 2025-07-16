@@ -3,20 +3,31 @@ import { ChatContext } from './ChatContext'
 import Message from './Message'
 import { ArrowDown, Loader2 } from 'lucide-react'
 
+/**
+ * Messages container component
+ * Displays chat messages with auto-scroll functionality
+ * Handles empty state and loading states
+ */
 function Messages() {
   const { messages, isLoading } = useContext(ChatContext)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const [isNearBottom, setIsNearBottom] = useState(true)
 
-  // Auto-scroll to bottom for new messages
+  /** 
+   * Scrolls container to bottom
+   * Used for new messages and manual scroll button
+   */
   const scrollToBottom = () => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
   }
 
-  // Monitor scroll position
+  /**
+   * Monitors scroll position to show/hide scroll button
+   * Triggers auto-scroll for new messages when near bottom
+   */
   useEffect(() => {
     const container = containerRef.current
     if (!container) return

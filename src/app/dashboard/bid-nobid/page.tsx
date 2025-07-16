@@ -21,24 +21,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import MaxWidthWrapper from "@/components/MaxWidthWrapper";
 import Sidebar from "@/components/Sidebar";
-import { CategoryType, QuestionType } from "@/lib/utils";
+import { QuestionType } from "@/lib/utils";
 import { ClipboardList, Plus, Trash2, Loader2 } from "lucide-react";
 import { ReviewCard } from "@/components/ReviewCard";
 import { useToast } from "@/hooks/use-toast";
+import { Category } from "@/models/categoryModel";
 
 export default function DashboardReviewPage() {
     const { isLoaded, isSignedIn, userId } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     // All hooks must be called unconditionally
-    const [categories, setCategories] = useState<CategoryType[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [questions, setQuestions] = useState<QuestionType[]>([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [reviewName, setReviewName] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const [reviewToDelete, setReviewToDelete] = useState<ScoringSession | null>(null);
     const [isPageLoading, setIsPageLoading] = useState(false);
-    const [allCategories, setAllCategories] = useState<CategoryType[]>([]);
+    const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [question, setQuestion] = useState<QuestionType[]>([]);
     const [reviews, setReviews] = useState<ScoringSession[]>([]);
     const [isLoading, setIsLoading] = useState(false);

@@ -2,6 +2,7 @@ import React, { createContext, ReactNode, useEffect, useState } from 'react'
 import { Message } from '@/models/messageModel'
 import { useMutation } from '@tanstack/react-query'
 
+/** Type definition for chat context response */
 type StreamResponse = {
   addMessage: () => void
   message: string
@@ -10,6 +11,7 @@ type StreamResponse = {
   messages: Message[]
 }
 
+/** Context provider for chat functionality */
 export const ChatContext = createContext<StreamResponse>({
   addMessage: () => {},
   message: '',
@@ -24,6 +26,13 @@ interface Props {
   children: ReactNode
 }
 
+/** 
+ * Chat context provider component
+ * Manages chat state and message handling
+ * @param chatId - Unique identifier for the chat session
+ * @param shareId - Optional ID for shared chats
+ * @param children - Child components to wrap
+ */
 export const ChatContextProvider = ({ chatId, shareId, children }: Props) => {
   const [message, setMessage] = useState<string>('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -53,6 +62,10 @@ export const ChatContextProvider = ({ chatId, shareId, children }: Props) => {
       fetchMessages();
     }
   }, [chatId]);
+  /** 
+   * Handles message submission and AI response
+   * Optimistically updates UI and handles errors
+   */
   const addMessageMutation = useMutation({
     mutationFn: (payload: { chatId: string; shareId?: string; text: string }) =>
       fetch('/api/message/saveUserMessage', {
@@ -123,7 +136,10 @@ export const ChatContextProvider = ({ chatId, shareId, children }: Props) => {
     },
   })
 
+  /** Updates message state with input value */
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)
+
+  /** Triggers message submission if message is not empty */
   const addMessage = () => message.trim() && addMessageMutation.mutate({ chatId, text: message })
   const isLoading = addMessageMutation.isPending || isGeneratingResponse || isInitialLoading
 

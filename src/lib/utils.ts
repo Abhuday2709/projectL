@@ -10,33 +10,49 @@ const s3Client = new S3Client({
         secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
     },
 });
+/**
+ * Merge and dedupe Tailwind CSS class names.
+ * @export
+ * @param {...ClassValue[]} inputs – Class values for clsx and twMerge.
+ * @returns {string} The merged class string.
+ */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 
+/**
+ * Accepted MIME types for file uploads, mapping to file extensions.
+ * @export
+ * @constant {Record<string, string[]>} ACCEPTED_MIME_TYPES
+ */
 export const ACCEPTED_MIME_TYPES = {
     'application/pdf': ['.pdf'],
     'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
 } as const; 
-
+/**
+ * Set of accepted MIME types for quick look-up.
+ * @export
+ * @constant {Set<string>} ACCEPTED_FILE_TYPES
+ */
 export const ACCEPTED_FILE_TYPES = new Set(Object.keys(ACCEPTED_MIME_TYPES));
-
+/**
+ * Check if an email belongs to the Network Science domain or allowed overrides.
+ * @export
+ * @param {string} email – Email address to validate.
+ * @returns {boolean} True if the email is allowed.
+ */
 export function isNetworkScienceEmail(email: string): boolean {
   return email.toLowerCase().endsWith('@networkscience.ai') || email === "abhudaylath@gmail.com" || email === "iit2022154@iiita.ac.in";
 }
 
-// types.ts
-export interface CategoryType {
-  user_id: string
-  categoryId: string
-  categoryName: string
-  order: number
-  qualificationCutoff: number
-}
 
-// Define the type for the items returned by the query, including the status fields
+/**
+ * Zod schema for documents with status fields.
+ * @export
+ * @constant {z.ZodType<DocumentWithStatus>} DocumentWithStatusSchema
+ */
 export const DocumentWithStatusSchema = DocumentSchema.pick({
     docId: true,
     fileName: true,
@@ -48,6 +64,12 @@ export const DocumentWithStatusSchema = DocumentSchema.pick({
     chatId: true, // Include chatId if useful for client-side cache or context
     missingQuestionIds: true,
 });
+
+/**
+ * Type inferred from DocumentWithStatusSchema.
+ * @export
+ * @typedef {z.infer<typeof DocumentWithStatusSchema>} DocumentWithStatus
+ */
 export type DocumentWithStatus = z.infer<typeof DocumentWithStatusSchema>;
 
 export interface QuestionType {
@@ -56,7 +78,6 @@ export interface QuestionType {
   text: string
   categoryId: string
   order: number
-  isMaster?: boolean
 }
 
 export interface AnswerType {
@@ -72,7 +93,11 @@ export interface Results {
   categoryId: string
   qualificationCutoff: number
 }
-
+/** 
+ * ProcessDocumentForReviewJobData defines payload for review-processing jobs.
+ * @export
+ * @interface ProcessDocumentForReviewJobData
+ */
 export interface ProcessDocumentForReviewJobData {
     chatId: string;
     uploadedAt: string;
@@ -83,14 +108,26 @@ export interface ProcessDocumentForReviewJobData {
     user_id?: string;
     createdAt?: string; 
 }
-
+/**
+ * ProcessPodcasts defines payload structure for podcast jobs.
+ * @export
+ * @interface ProcessPodcasts
+ */
 export interface ProcessPodcasts {
     DocIdList: string[];
     chatId: string;
     user_id: string;
     createdAt: string;
 }
-
+/**
+ * Deletes an object from S3, retrying up to maxRetries times on failure.
+ * @export
+ * @async
+ * @param {string} key – The S3 object key to delete.
+ * @param {number} [maxRetries=5] – Number of retry attempts.
+ * @returns {Promise<void>} Resolves when deletion succeeds.
+ * @throws {any} The last error if all retries fail.
+ */
 export async function deleteFromS3(key: string, maxRetries = 5): Promise<void> {
     let attempt = 0;
     let lastError: any = null;

@@ -1,5 +1,5 @@
 // components/EditQuestionsAndCategories.tsx
-import { CategoryType, QuestionType } from "@/lib/utils"
+import { QuestionType } from "@/lib/utils"
 import { useState } from "react"
 import { Button } from "./ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -13,7 +13,22 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Category } from "@/models/categoryModel"
 
+/**
+ * EditQuestionsAndCategories React component to edit evaluation questions and category settings.
+ *
+ * @param {Object} props - The component props.
+ * @param {string} props.userId - The ID of the user.
+ * @param {Category[]} props.categories - Array of category objects.
+ * @param {QuestionType[]} props.questions - Array of question objects.
+ * @param {() => void} props.onClose - Callback when closing the dialog.
+ *
+ * @returns {JSX.Element} A React component rendering the editing interface.
+ *
+ * @example
+ * <EditQuestionsAndCategories userId="123" categories={categories} questions={questions} onClose={() => {}} />
+ */
 export default function EditQuestionsAndCategories({
   userId,
   categories,
@@ -21,12 +36,12 @@ export default function EditQuestionsAndCategories({
   onClose,
 }: {
   userId: string
-  categories: CategoryType[]
+  categories: Category[]
   questions: QuestionType[]
   onClose: () => void
 }) {
   // Local state clones
-  const [localCategories, setLocalCategories] = useState<CategoryType[]>([...categories])
+  const [localCategories, setLocalCategories] = useState<Category[]>([...categories])
   const [localQuestions, setLocalQuestions] = useState<QuestionType[]>([...questions])
   const [isSaving, setIsSaving] = useState(false)
 
@@ -37,21 +52,43 @@ export default function EditQuestionsAndCategories({
   const [dialogValue, setDialogValue] = useState("")
   const [dialogTargetId, setDialogTargetId] = useState<string | null>(null)
   const [dialogCategoryId, setDialogCategoryId] = useState<string | null>(null)
-
+  /**
+   * Opens the dialog for adding a new question.
+   *
+   * @param {string} categoryId - The category identifier to which the question will be added.
+   *
+   * @example
+   * openAddQuestionDialog("cat-123");
+   */
   const openAddQuestionDialog = (categoryId: string) => {
     setDialogType("addQuestion")
     setDialogCategoryId(categoryId)
     setDialogValue("")
     setDialogOpen(true)
   }
-
+  /**
+   * Opens the dialog for editing an existing question.
+   *
+   * @param {string} questionId - The identifier of the question to edit.
+   * @param {string} currentText - The current text of the question.
+   *
+   * @example
+   * openEditQuestionDialog("q-123", "Current question text");
+   */
   const openEditQuestionDialog = (questionId: string, currentText: string) => {
     setDialogType("editQuestion")
     setDialogTargetId(questionId)
     setDialogValue(currentText)
     setDialogOpen(true)
   }
-
+  /**
+   * Handles the confirmation for both adding and editing a question.
+   *
+   * Side effects: Updates localQuestions state and shows a toast notification.
+   *
+   * @example
+   * handleDialogConfirm();
+   */
   const handleDialogConfirm = () => {
     if (dialogType === "addQuestion" && dialogCategoryId) {
       if (!dialogValue.trim()) return
@@ -67,8 +104,7 @@ export default function EditQuestionsAndCategories({
         user_id: userId,
         categoryId: dialogCategoryId,
         text: dialogValue.trim(),
-        order,
-        isMaster: false,
+        order
       }
       setLocalQuestions([...localQuestions, added])
       toast({ title: "Question added", description: `Question "${dialogValue.trim()}" was added.` })
@@ -87,11 +123,26 @@ export default function EditQuestionsAndCategories({
     setDialogTargetId(null)
     setDialogCategoryId(null)
   }
-
+  /**
+   * Deletes a question from the local state.
+   *
+   * @param {string} questionId - The identifier of the question to delete.
+   *
+   * @example
+   * handleDeleteQuestion("q-123");
+   */
   const handleDeleteQuestion = async (questionId: string) => {
     setLocalQuestions(localQuestions.filter((qq) => qq.evaluationQuestionId !== questionId))
   }
-
+  /**
+   * Updates the qualification cutoff for a given category.
+   *
+   * @param {string} categoryId - The identifier of the category.
+   * @param {number} newCutoff - The new qualification cutoff value.
+   *
+   * @example
+   * handleQualificationCutoffChange("cat-123", 60);
+   */
   const handleQualificationCutoffChange = (categoryId: string, newCutoff: number) => {
     setLocalCategories(
       localCategories.map((cat) =>
@@ -101,7 +152,14 @@ export default function EditQuestionsAndCategories({
       )
     )
   }
-
+  /**
+   * Reviews the local changes and synchronizes them with the backend via API calls.
+   *
+   * Side effects: Sends POST, DELETE, and PUT requests; shows toast notifications.
+   *
+   * @example
+   * handleReviewAndConfirm();
+   */
   const handleReviewAndConfirm = async () => {
     setIsSaving(true)
 

@@ -8,12 +8,19 @@ import { Document } from '@/models/documentModel'
 
 interface ChatWrapperProps {
     chatId: string
-} 
-
+}
+/**
+ * Main chat container component
+ * Handles document loading and empty states
+ * @param chatId - Unique identifier for chat session
+ */
 const ChatWrapper = ({ chatId }: ChatWrapperProps) => {
     const [documents, setDocuments] = useState<Document[]>([])
     const [loading, setLoading] = useState<boolean>(false)
-
+    /** 
+        * Fetches documents associated with chat
+        * Updates loading state and handles errors
+    */
     const fetchDocuments = () => {
         setLoading(true)
         fetch(`/api/documents/getDocuments?chatId=${encodeURIComponent(chatId)}`)

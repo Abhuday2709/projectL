@@ -1,12 +1,28 @@
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import { Message } from '@/models/messageModel';
 
+/**
+ * Throws if the Gemini API key is not configured.
+ * @throws {Error} If GEMINI_API_KEY is missing.
+ */
 if (!process.env.GEMINI_API_KEY) {
     throw new Error('Missing GEMINI_API_KEY environment variable');
 }
-
+/**
+ * Initialized Google Generative AI client.
+ * @constant {GoogleGenerativeAI} genAI
+ */
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
+/**
+ * Generate a conversational response using Gemini LLM.
+ * @export
+ * @async
+ * @param {string} userMessage – The user's query text.
+ * @param {string[]} documentContext – Array of relevant document snippets.
+ * @param {Message[]} [recentMessages=[]] – Recent conversation messages.
+ * @returns {Promise<string>} The generated reply in Markdown format.
+ * @throws {Error} On API key issues, quota issues, or generation failures.
+ */
 export async function generateResponse(
     userMessage: string,
     documentContext: string[],
@@ -14,8 +30,7 @@ export async function generateResponse(
 ): Promise<string> {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        // console.log("gemini key", process.env.GEMINI_API_KEY);
-        
+
         // Format conversation history
         const conversationHistory = recentMessages.length > 0
             ? recentMessages.map(msg => ({
@@ -92,7 +107,14 @@ USER QUESTION: "${userMessage}"
         throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
-
+/**
+ * Generate an embedding vector for the given text.
+ * @export
+ * @async
+ * @param {string} text – Text to embed.
+ * @returns {Promise<number[]>} Array of embedding values.
+ * @throws {Error} On API key issues, quota issues, or embedding failures.
+ */
 export async function generateEmbeddings(text: string): Promise<number[]> {
     try {
         const model = genAI.getGenerativeModel({ model: "embedding-001" });

@@ -7,6 +7,10 @@ interface ChatInputProps {
     isDisabled: boolean
 }
 
+/**
+ * Chat input component with auto-resize textarea
+ * @param isDisabled - Whether input is disabled (no documents uploaded)
+ */
 function ChatInput({ isDisabled }: ChatInputProps) {
     const {
         message,
@@ -26,6 +30,10 @@ function ChatInput({ isDisabled }: ChatInputProps) {
         }
     }, [message])
 
+    /** 
+     * Handles form submission
+     * Prevents empty messages and handles loading states
+     */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (message.trim() && !isDisabled && !isLoading) {
@@ -33,6 +41,10 @@ function ChatInput({ isDisabled }: ChatInputProps) {
         }
     }
 
+    /**
+     * Handles Enter key submission
+     * Allows Shift+Enter for new lines
+     */
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()

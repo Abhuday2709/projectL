@@ -23,7 +23,18 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DocumentWithStatus } from "@/lib/utils";
-
+/**
+ * PdfRenderer React component renders a PDF document view along with upload and status management.
+ *
+ * @param {Object} props - The component props.
+ * @param {string} props.chatId - The chat identifier used for document status fetching.
+ * @param {(isViewing: boolean) => void} props.setIsViewingDocument - A callback to set if a document is being viewed.
+ *
+ * @returns {JSX.Element} A React component.
+ *
+ * @example
+ * <PdfRenderer chatId="123" setIsViewingDocument={(isViewing) => console.log(isViewing)} />
+ */
 export default function PdfRenderer({
     chatId,
     setIsViewingDocument,
@@ -38,7 +49,14 @@ export default function PdfRenderer({
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
+    /**
+     * Asynchronously fetches document statuses from the API.
+     *
+     * @returns {Promise<DocumentWithStatus[]>} An array of document status objects.
+     *
+     * @example
+     * fetchStatuses().then((data) => console.log(data));
+     */
     const fetchStatuses = async () => {
         try {
             const res = await fetch(
@@ -54,7 +72,14 @@ export default function PdfRenderer({
         }
     };
 
-    // Separate function to manage polling
+    /**
+     * Manages the polling logic by starting or stopping the interval timer based on document processing status.
+     *
+     * @param {DocumentWithStatus[]} documents - Array of document status objects.
+     *
+     * @example
+     * managePolling(documentsArray);
+     */
     const managePolling = (documents: DocumentWithStatus[]) => {
         const anyProcessing = documents.some(
             (doc) =>
@@ -116,7 +141,17 @@ export default function PdfRenderer({
             }
         }
     }, [documentsWithStatus, selectedDoc]);
-
+    /**
+     * Constructs the document URI using the provided s3Key and environment variable.
+     *
+     * @param {string} s3Key - Identifier for the file in the AWS S3 bucket.
+     * @returns {string} The full URL for the document.
+     *
+     * @throws Will throw an error if NEXT_PUBLIC_AWS_S3_BUCKET_URL is missing.
+     *
+     * @example
+     * const uri = getDocUri("file-key-123");
+     */
     const getDocUri = (s3Key: string) => {
         const base = process.env.NEXT_PUBLIC_AWS_S3_BUCKET_URL;
         if (!base) {
@@ -126,7 +161,14 @@ export default function PdfRenderer({
         }
         return `${base}/${s3Key}`;
     };
-
+    /**
+     * Deletes the provided document by making an API DELETE request.
+     *
+     * @param {DocumentWithStatus} doc - Document object to delete.
+     *
+     * @example
+     * handleDelete(documentObj);
+     */
     const handleDelete = async (doc: DocumentWithStatus) => {
         if (!doc.uploadedAt) return;
         setDeletingId(doc.docId);
@@ -156,7 +198,12 @@ export default function PdfRenderer({
         }
     };
 
-    // Enhanced upload success handler
+    /**
+     * Handler called after a successful file upload. Refreshes the document statuses.
+     *
+     * @example
+     * handleUploadSuccess();
+     */
     const handleUploadSuccess = async () => {
         await fetchStatuses();
         // Polling will be automatically managed by the useEffect watching documentsWithStatus
@@ -166,37 +213,15 @@ export default function PdfRenderer({
         (doc) =>
             doc.processingStatus === "QUEUED" || doc.processingStatus === "PROCESSING"
     );
-
-    const getStatusColor = (status: string | undefined) => {
-        switch (status) {
-            case "COMPLETED":
-                return "text-green-700";
-            case "PROCESSING":
-                return "text-[#3F72AF]";
-            case "QUEUED":
-                return "text-amber-700";
-            case "FAILED":
-                return "text-red-700";
-            default:
-                return "text-[#112D4E]";
-        }
-    };
-
-    const getStatusBg = (status: string | undefined) => {
-        switch (status) {
-            case "COMPLETED":
-                return "bg-green-50 border-green-200";
-            case "PROCESSING":
-                return "bg-[#DBE2EF]/50 border-[#3F72AF]/30";
-            case "QUEUED":
-                return "bg-amber-50 border-amber-200";
-            case "FAILED":
-                return "bg-red-50 border-red-200";
-            default:
-                return "bg-[#F9F7F7] border-[#DBE2EF]";
-        }
-    };
-
+    /**
+     * Returns an icon element based on the document's processing status.
+     *
+     * @param {DocumentWithStatus} doc - The document object.
+     * @returns {JSX.Element} A react component for the respective icon.
+     *
+     * @example
+     * const icon = getStatusIcon(documentObj);
+     */
     const getStatusIcon = (doc: DocumentWithStatus) => {
         const isQueued = doc.processingStatus === "QUEUED";
         const isProcessing = doc.processingStatus === "PROCESSING";
