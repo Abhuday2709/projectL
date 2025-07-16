@@ -41,7 +41,6 @@ export default function ChatPage() {
     };
     useEffect(() => {
         fetchShareSession();
-
     }, [shareIdStr]);
 
     // Password dialog state
