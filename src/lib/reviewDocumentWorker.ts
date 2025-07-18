@@ -13,12 +13,16 @@ import { v4 as uuidv4 } from 'uuid'; // UUID generator
 import { DynamoDBDocumentClient, UpdateCommand, QueryCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'; // Added DynamoDB imports
 import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
 import mammoth from 'mammoth';
-import { EvaluationQuestionConfig, type EvaluationQuestion } from '../models/evaluationQuestionModel';
 import { scoringSessionConfig, ScoringSessionSchema, type ScoringSession } from '../models/scoringReviewModel';
 import { ProcessDocumentForReviewJobData } from './utils';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import IORedis from 'ioredis'; // Redis client for BullMQ
-// Configure S3 client (ensure NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY are set in env)
+import { Question, QuestionConfig } from '../models/questionsModel';
+
+/**
+ * S3 client for downloading documents.
+ * @requires AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+ */
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
@@ -27,7 +31,10 @@ const s3Client = new S3Client({
     },
 });
 
-// Qdrant Client Initialization
+/**
+ * Qdrant client for upserting and searching embeddings.
+ * @requires QDRANT_HOST, QDRANT_PORT
+ */
 const qdrantClient = new QdrantClient({
     host: process.env.QDRANT_HOST!,
     port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT!) : 6333,
@@ -41,11 +48,19 @@ if (!process.env.GEMINI_API_KEY) {
     throw new Error('Missing GEMINI_API_KEY environment variable');
 }
 
-// Initialize the Gemini API client
+/**
+ * Google Generative AI client for embeddings and generation.
+ */
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// DynamoDB Document Client
+/**
+ * DynamoDB DocumentClient for reading/writing metadata.
+ */
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+/**
+ * Creates the Qdrant collection if it does not already exist.
+ * @throws Error if collection creation fails.
+ */
 async function ensureCollection() {
     try {
         const collections = await qdrantClient.getCollections();
@@ -84,6 +99,12 @@ const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379"
     maxRetriesPerRequest: null
 });
 
+/**
+ * Reads a Node.js Readable stream into a single Buffer.
+ * @param {Readable} stream - Input stream.
+ * @returns {Promise<Buffer>} Concatenated buffer of stream data.
+ * @throws Error if stream errors.
+ */
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const chunks: Buffer[] = [];
@@ -93,6 +114,14 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
     });
 }
 
+/**
+ * Worker that processes uploaded documents for review:
+ * - Downloads PDF/DOCX from S3
+ * - Extracts and splits text into chunks
+ * - Generates embeddings with Gemini
+ * - Upserts chunks into Qdrant
+ * - Evaluates questions using LLM and stores answers in DynamoDB
+ */
 const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDocumentForReviewJobData>) => {
     // // console.log(`Processing job ${job.id} for document: ${job.data.fileName} (S3 Key: ${job.data.s3Key})`);
     const { chatId, uploadedAt, docId, fileName, s3Key, fileType } = job.data;
@@ -115,13 +144,13 @@ const worker = new Worker('processDocumentForReview', async (job: Job<ProcessDoc
 
     // Fetch all questions for the user
     const questionsCommand = new ScanCommand({
-        TableName: EvaluationQuestionConfig.tableName
+        TableName: QuestionConfig.tableName
     });
 
-    let questions: EvaluationQuestion[] = [];
+    let questions: Question[] = [];
     try {
         const questionsResult = await docClient.send(questionsCommand);
-        questions = questionsResult.Items as EvaluationQuestion[];
+        questions = questionsResult.Items as Question[];
     } catch (error) {
         console.error('Failed to fetch questions:', error);
         throw error;
@@ -341,33 +370,33 @@ Your response:`;
 
                         // Convert answer to numeric score
                         let score: number;
-if (answer === 'yes') {
-    score = 2;
-} else if (answer === '-1') {
-    unanswerableQuestions.push(question.evaluationQuestionId);
-    continue;
-} else if (answer === 'maybe') {
-    score = 1;
-} else if (answer === 'no') {
-    score = 0;
-} else {
-    // If parsing failed, treat as unanswerable
-    console.warn(`Failed to parse AI response for question ${question.evaluationQuestionId}: ${response}`);
-    unanswerableQuestions.push(question.evaluationQuestionId);
-    continue;
-}
+                        if (answer === 'yes') {
+                            score = 2;
+                        } else if (answer === '-1') {
+                            unanswerableQuestions.push(question.questionId);
+                            continue;
+                        } else if (answer === 'maybe') {
+                            score = 1;
+                        } else if (answer === 'no') {
+                            score = 0;
+                        } else {
+                            // If parsing failed, treat as unanswerable
+                            console.warn(`Failed to parse AI response for question ${question.questionId}: ${response}`);
+                            unanswerableQuestions.push(question.questionId);
+                            continue;
+                        }
 
-// console.log("Final score:", score);
+                        // console.log("Final score:", score);
 
-questionAnswers.push({
-    questionId: question.evaluationQuestionId,
-    answer: score,
-    reasoning: reasoning // Add reasoning to the answer object
-});
+                        questionAnswers.push({
+                            questionId: question.questionId,
+                            answer: score,
+                            reasoning: reasoning // Add reasoning to the answer object
+                        });
 
                     } catch (error) {
-                        console.error(`Error processing question ${question.evaluationQuestionId}:`, error);
-                        unanswerableQuestions.push(question.evaluationQuestionId);
+                        console.error(`Error processing question ${question.questionId}:`, error);
+                        unanswerableQuestions.push(question.questionId);
                     }
                 }
 
@@ -380,7 +409,7 @@ questionAnswers.push({
                     answers: questionAnswers,
                     name: fileName,
                     recommendation: '',
-                    opportunityInfo: [], 
+                    opportunityInfo: [],
                 };
 
                 // Save scoring session
@@ -487,7 +516,6 @@ questionAnswers.push({
                 });
             }
         } else {
-            // console.log(`Skipping unsupported file type: ${fileName} (Type: ${fileType})`);
             // Update status to COMPLETED with a note that it's unsupported by this worker
             const updateToSkippedCmd = new UpdateCommand({
                 TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
@@ -495,12 +523,10 @@ questionAnswers.push({
                 ExpressionAttributeValues: { ':status': 'COMPLETED', ':error': `File type ${fileType} not processed by worker.` },
             });
             await docClient.send(updateToSkippedCmd);
-            return Promise.resolve(); // End processing for this job
+            return Promise.resolve();
         }
-
         if (points.length > 0) {
             await qdrantClient.upsert(COLLECTION_NAME, { points });
-            // console.log(`${points.length} points upserted successfully for ${fileName}.`);
             const updateToCompletedCmd = new UpdateCommand({
                 TableName: DocumentConfig.tableName, Key: { chatId, uploadedAt },
                 UpdateExpression: 'set processingStatus = :status, processingError = :err_val',
@@ -510,7 +536,6 @@ questionAnswers.push({
         } else {
             throw new Error('No text chunks generated for Qdrant from the document.');
         }
-
     } catch (error: any) {
         console.error(`Error processing document ${s3Key} (${fileName}):`, error);
         try {
@@ -526,27 +551,22 @@ questionAnswers.push({
         } catch (statusUpdateError) {
             console.error(`CRITICAL: Failed to update status to FAILED for docId ${docId} after processing error:`, statusUpdateError);
         }
-        // Do not re-throw if you want BullMQ to consider it handled based on status update.
-        // If you re-throw, BullMQ will mark it as failed and potentially retry based on queue settings.
-        // For now, let's not re-throw, assuming status update is sufficient.
     }
     return Promise.resolve();
-}, { connection,concurrency:3 });
+}, { connection, concurrency: 3 });
 
 worker.on('completed', job => {
-    // // console.log(`Job ${job.id} for ${job.data.fileName} has completed!`);
+    
 });
 
 worker.on('failed', (job, err) => {
     const jobFileName = job?.data?.fileName || 'unknown file';
     if (job) {
-        // // console.log(`Job ${job.id} for ${jobFileName} has failed with ${err.message}`);
+        
     } else {
-        // // console.log(`A job for ${jobFileName} has failed with ${err.message}`);
+        
     }
 });
-
-// console.log('Worker started listening for jobs on the \'review documents\' queue with PDF and DOC/DOCX processing logic...');
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

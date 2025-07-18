@@ -4,8 +4,32 @@ import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { CategoryConfig } from '@/models/categoryModel';
 
+////////////////////////////////////////////////////////////////////////////////
+// Update Category Endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * DynamoDB client for updating category table.
+ */
 const updClient = DynamoDBDocumentClient.from(dynamoClient);
 
+/**
+ * POST /api/categories/update
+ * Updates a category's name and optionally qualificationCutoff.
+ * Requires Clerk authentication.
+ *
+ * @param {NextRequest} request - JSON body with userId, order, categoryId, categoryName, [qualificationCutoff].
+ * @returns {Promise<NextResponse>} JSON success or error message.
+ * @usage
+ * POST /api/category/updateCategory
+ * Body: {
+ *   userId: string,
+ *   order: number,
+ *   categoryId: string,
+ *   categoryName: string,
+ *   qualificationCutoff?: number
+ * }
+ */
 export async function POST(request: NextRequest) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });

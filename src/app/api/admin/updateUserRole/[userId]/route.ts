@@ -6,6 +6,10 @@ import { NextResponse } from "next/server";
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+////////////////////////////////////////////////////////////////////////////////
+// API Route: PATCH /api/admin/updateUserRole/[userId]
+// Updates a user's admin status and Clerk metadata.
+////////////////////////////////////////////////////////////////////////////////
 export async function PATCH(
     req: Request,
     { params }: { params: Promise<{ userId: string }> }

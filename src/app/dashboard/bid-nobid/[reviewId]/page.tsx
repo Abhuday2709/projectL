@@ -223,18 +223,18 @@ export default function DocumentScoringPage() {
     if (documentsWithStatus.length > 0) {
       return documentsWithStatus[0].missingQuestionIds ?? []
     }
-    return allQuestions.map(q => q.evaluationQuestionId) // Default to all questions if no doc
+    return allQuestions.map(q => q.questionId) // Default to all questions if no doc
   }, [documentsWithStatus, allQuestions])
 
   // Filter questions that need manual scoring
   const questionsForManualScoring = useMemo(() =>
-    allQuestions.filter(q => unansweredByAIQuestionIds.includes(q.evaluationQuestionId)),
+    allQuestions.filter(q => unansweredByAIQuestionIds.includes(q.questionId)),
     [allQuestions, unansweredByAIQuestionIds]
   )
 
   // Filter questions that were already answered by the AI
   const questionsAnsweredByAI = useMemo(() =>
-    allQuestions.filter(q => !unansweredByAIQuestionIds.includes(q.evaluationQuestionId)),
+    allQuestions.filter(q => !unansweredByAIQuestionIds.includes(q.questionId)),
     [allQuestions, unansweredByAIQuestionIds]
   )
 
@@ -406,8 +406,8 @@ export default function DocumentScoringPage() {
 
     // 1. Validate that all required questions are answered
     const unansweredIds = questionsForManualScoring
-      .filter(q => userAnswers[q.evaluationQuestionId] === undefined)
-      .map(q => q.evaluationQuestionId)
+      .filter(q => userAnswers[q.questionId] === undefined)
+      .map(q => q.questionId)
 
     if (unansweredIds.length > 0) {
       setHighlightedQuestionIds(unansweredIds)
@@ -422,7 +422,7 @@ export default function DocumentScoringPage() {
 
     // 2. Format and merge answers - FIXED LOGIC
     // Only create "User provided answer" for questions that were actually answered manually
-    const manuallyAnsweredQuestionIds = questionsForManualScoring.map(q => q.evaluationQuestionId);
+    const manuallyAnsweredQuestionIds = questionsForManualScoring.map(q => q.questionId);
 
     const newlyAnswered = Object.entries(userAnswers)
       .filter(([questionId]) => manuallyAnsweredQuestionIds.includes(questionId))
@@ -449,7 +449,7 @@ export default function DocumentScoringPage() {
     }, {} as Record<string, number>);
 
     allAnswers.forEach((ans) => {
-      const question = allQuestions.find(q => q.evaluationQuestionId === ans.questionId)
+      const question = allQuestions.find(q => q.questionId === ans.questionId)
       if (question) {
         scoresByCategoryId[question.categoryId] += ans.answer
       }
@@ -552,7 +552,7 @@ export default function DocumentScoringPage() {
                 </h1>
                 {questionsForManualScoring.length > 0 && (
                   <span className="text-xs sm:text-sm text-[#3F72AF] whitespace-nowrap">
-                    {questionsForManualScoring.filter(q => userAnswers[q.evaluationQuestionId] !== undefined).length} of {questionsForManualScoring.length} questions answered
+                    {questionsForManualScoring.filter(q => userAnswers[q.questionId] !== undefined).length} of {questionsForManualScoring.length} questions answered
                   </span>
                 )}
               </div>
@@ -713,25 +713,25 @@ export default function DocumentScoringPage() {
                           <AccordionContent className="px-4 py-4">
                             <div className="space-y-4">
                               {categoryUnansweredQuestions.map((q) => (
-                                <div key={q.evaluationQuestionId} className={`bg-[#F9F7F7] p-4 rounded-lg border ${highlightedQuestionIds.includes(q.evaluationQuestionId) ? 'border-red-500 bg-red-50' : ''}`}>
+                                <div key={q.questionId} className={`bg-[#F9F7F7] p-4 rounded-lg border ${highlightedQuestionIds.includes(q.questionId) ? 'border-red-500 bg-red-50' : ''}`}>
                                   <div className="mb-3 flex items-center gap-2">
                                     <span className="text-sm font-medium text-[#112D4E] leading-relaxed">{q.text}</span>
-                                    <span className={`ml-2 px-2 py-0.5 text-xs rounded ${highlightedQuestionIds.includes(q.evaluationQuestionId) ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                      {highlightedQuestionIds.includes(q.evaluationQuestionId) ? 'Please answer' : 'Not answered by AI'}
+                                    <span className={`ml-2 px-2 py-0.5 text-xs rounded ${highlightedQuestionIds.includes(q.questionId) ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                      {highlightedQuestionIds.includes(q.questionId) ? 'Please answer' : 'Not answered by AI'}
                                     </span>
                                   </div>
-                                  <RadioGroup value={String(userAnswers[q.evaluationQuestionId] ?? '')} onValueChange={(val) => handleAnswerChange(q.evaluationQuestionId, Number(val) as 0 | 1 | 2)} className="flex flex-wrap gap-4">
+                                  <RadioGroup value={String(userAnswers[q.questionId] ?? '')} onValueChange={(val) => handleAnswerChange(q.questionId, Number(val) as 0 | 1 | 2)} className="flex flex-wrap gap-4">
                                     <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="0" id={`${q.evaluationQuestionId}-no`} className="border-[#3F72AF] text-[#3F72AF]" />
-                                      <Label htmlFor={`${q.evaluationQuestionId}-no`} className="text-sm font-medium cursor-pointer">No</Label>
+                                      <RadioGroupItem value="0" id={`${q.questionId}-no`} className="border-[#3F72AF] text-[#3F72AF]" />
+                                      <Label htmlFor={`${q.questionId}-no`} className="text-sm font-medium cursor-pointer">No</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="1" id={`${q.evaluationQuestionId}-maybe`} className="border-[#3F72AF] text-[#3F72AF]" />
-                                      <Label htmlFor={`${q.evaluationQuestionId}-maybe`} className="text-sm font-medium cursor-pointer">Maybe</Label>
+                                      <RadioGroupItem value="1" id={`${q.questionId}-maybe`} className="border-[#3F72AF] text-[#3F72AF]" />
+                                      <Label htmlFor={`${q.questionId}-maybe`} className="text-sm font-medium cursor-pointer">Maybe</Label>
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="2" id={`${q.evaluationQuestionId}-yes`} className="border-[#3F72AF] text-[#3F72AF]" />
-                                      <Label htmlFor={`${q.evaluationQuestionId}-yes`} className="text-sm font-medium cursor-pointer">Yes</Label>
+                                      <RadioGroupItem value="2" id={`${q.questionId}-yes`} className="border-[#3F72AF] text-[#3F72AF]" />
+                                      <Label htmlFor={`${q.questionId}-yes`} className="text-sm font-medium cursor-pointer">Yes</Label>
                                     </div>
                                   </RadioGroup>
                                 </div>
@@ -760,12 +760,12 @@ export default function DocumentScoringPage() {
                           <AccordionContent className="px-4 py-4">
                             <div className="space-y-4">
                               {categoryAnsweredQuestions.map((q) => {
-                                const answer = activeScoringSession?.answers?.find(ans => ans.questionId === q.evaluationQuestionId);
+                                const answer = activeScoringSession?.answers?.find(ans => ans.questionId === q.questionId);
 
                                 // Show error state if answer is expected but not found
                                 if (!answer) {
                                   return (
-                                    <div key={q.evaluationQuestionId} className="bg-red-50 p-4 rounded-lg border border-red-400">
+                                    <div key={q.questionId} className="bg-red-50 p-4 rounded-lg border border-red-400">
                                       <div className="mb-3 flex items-center gap-2">
                                         <span className="text-sm font-medium text-[#112D4E] leading-relaxed">{q.text}</span>
                                         <span className="ml-2 px-2 py-0.5 text-xs rounded bg-red-100 text-red-800">AI Answer Missing</span>
@@ -781,7 +781,7 @@ export default function DocumentScoringPage() {
                                 const reasoning = answer.reasoning || "No reasoning available";
 
                                 return (
-                                  <div key={q.evaluationQuestionId} className="bg-[#F9F7F7] p-4 rounded-lg border border-green-400">
+                                  <div key={q.questionId} className="bg-[#F9F7F7] p-4 rounded-lg border border-green-400">
                                     <div className="mb-3 flex items-center gap-2">
                                       <span className="text-sm font-medium text-[#112D4E] leading-relaxed">{q.text}</span>
                                       <span className="ml-2 px-2 py-0.5 text-xs rounded bg-green-100 text-green-800">Answered by AI</span>

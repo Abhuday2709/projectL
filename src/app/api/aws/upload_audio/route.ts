@@ -2,7 +2,11 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Initialize S3 Client
+
+/**
+ * S3 client for uploading podcast audio files.
+ * @requires NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY
+ */
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
@@ -11,6 +15,15 @@ const s3Client = new S3Client({
     },
 });
 
+/**
+ * Handles POST requests to upload audio files to S3.
+ * - Validates AWS env vars, file presence, size, and type.
+ * - Sanitizes filename and uploads with a timestamped key.
+ * @param {NextRequest} request - Incoming multipart/form-data request containing 'file'.
+ * @returns {Promise<NextResponse>} JSON response with 'fileUrl' and 'key', or error.
+ * @usage
+ * POST /api/aws/upload_audio (formData: { file: File })
+ */
 export async function POST(request: NextRequest) {
     try {
         // Validate environment variables
@@ -105,6 +118,6 @@ export async function POST(request: NextRequest) {
 export const config = {
     api: {
         bodyParser: false,
-        responseLimit: '50mb',
+        responseLimit: '100mb',
     },
 };

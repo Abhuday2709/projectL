@@ -8,6 +8,10 @@ import { dynamoClient } from "@/lib/AWS/AWS_CLIENT";
 
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+////////////////////////////////////////////////////////////////////////////////
+// API Route: GET /api/admin/getAllUsers
+// Retrieves all user records.
+////////////////////////////////////////////////////////////////////////////////
 export async function GET(request: Request) {
     try {
         const command = new ScanCommand({

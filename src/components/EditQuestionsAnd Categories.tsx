@@ -92,19 +92,12 @@ export default function EditQuestionsAndCategories({
   const handleDialogConfirm = () => {
     if (dialogType === "addQuestion" && dialogCategoryId) {
       if (!dialogValue.trim()) return
-      const order =
-        Math.max(
-          0,
-          ...localQuestions
-            .filter((q) => q.categoryId === dialogCategoryId)
-            .map((q) => q.order ?? 0)
-        ) + 1
       const added = {
-        evaluationQuestionId: crypto.randomUUID(),
+        questionId: crypto.randomUUID(),
         user_id: userId,
         categoryId: dialogCategoryId,
         text: dialogValue.trim(),
-        order
+        uploadedAt: new Date().toISOString(),
       }
       setLocalQuestions([...localQuestions, added])
       toast({ title: "Question added", description: `Question "${dialogValue.trim()}" was added.` })
@@ -112,7 +105,7 @@ export default function EditQuestionsAndCategories({
     if (dialogType === "editQuestion" && dialogTargetId) {
       setLocalQuestions(
         localQuestions.map((qq) =>
-          qq.evaluationQuestionId === dialogTargetId ? { ...qq, text: dialogValue.trim() } : qq
+          qq.questionId === dialogTargetId ? { ...qq, text: dialogValue.trim() } : qq
         )
       )
       toast({ title: "Question edited", description: `Question updated to "${dialogValue.trim()}".` })
@@ -132,7 +125,7 @@ export default function EditQuestionsAndCategories({
    * handleDeleteQuestion("q-123");
    */
   const handleDeleteQuestion = async (questionId: string) => {
-    setLocalQuestions(localQuestions.filter((qq) => qq.evaluationQuestionId !== questionId))
+    setLocalQuestions(localQuestions.filter((qq) => qq.questionId !== questionId))
   }
   /**
    * Updates the qualification cutoff for a given category.
@@ -164,13 +157,13 @@ export default function EditQuestionsAndCategories({
     setIsSaving(true)
 
     // Questions diff
-    const originalQIds = new Set(questions.map((q) => q.evaluationQuestionId))
-    const localQIds = new Set(localQuestions.map((q) => q.evaluationQuestionId))
+    const originalQIds = new Set(questions.map((q) => q.questionId))
+    const localQIds = new Set(localQuestions.map((q) => q.questionId))
 
-    const addedQs = localQuestions.filter((q) => !originalQIds.has(q.evaluationQuestionId))
-    const deletedQs = questions.filter((q) => !localQIds.has(q.evaluationQuestionId))
+    const addedQs = localQuestions.filter((q) => !originalQIds.has(q.questionId))
+    const deletedQs = questions.filter((q) => !localQIds.has(q.questionId))
     const updatedQs = localQuestions.filter((q) => {
-      const orig = questions.find((o) => o.evaluationQuestionId === q.evaluationQuestionId)
+      const orig = questions.find((o) => o.questionId === q.questionId)
       return orig && orig.text !== q.text
     })
 
@@ -186,10 +179,9 @@ export default function EditQuestionsAndCategories({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
-            order: q.order,
             categoryId: q.categoryId,
-            questionText: q.text,
+            text: q.text,
+            uploadedAt: q.uploadedAt || new Date().toISOString(),
           }),
         })
         if (!res.ok) {
@@ -202,8 +194,8 @@ export default function EditQuestionsAndCategories({
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
-            evaluationQuestionId: q.evaluationQuestionId,
+            questionId: q.questionId,
+            uploadedAt: q.uploadedAt || new Date().toISOString(),
           }),
         })
         if (!res.ok) {
@@ -216,9 +208,9 @@ export default function EditQuestionsAndCategories({
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
-            evaluationQuestionId: q.evaluationQuestionId,
-            questionText: q.text,
+            questionId: q.questionId,
+            text: q.text,
+            uploadedAt:q.uploadedAt
           }),
         })
         if (!res.ok) {
@@ -260,7 +252,7 @@ export default function EditQuestionsAndCategories({
   }
 
   return (
-    <div className="space-y-6 min-w-[500px] p-6 bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] min-h-screen">
+    <div className="space-y-6 min-w-[500px] p-6 bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] h-full">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-[#112D4E] mb-2">Edit Questions & Categories</h2>
         <p className="text-[#3F72AF] opacity-80">Manage your evaluation questions and category settings</p>
@@ -310,7 +302,7 @@ export default function EditQuestionsAndCategories({
             {localQuestions
               .filter((q) => q.categoryId === cat.categoryId)
               .map((q, index) => (
-                <div key={q.evaluationQuestionId} className="bg-[#F9F7F7] p-4 rounded-lg border border-[#DBE2EF] hover:bg-white transition-colors duration-200">
+                <div key={q.questionId} className="bg-[#F9F7F7] p-4 rounded-lg border border-[#DBE2EF] hover:bg-white transition-colors duration-200">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <span className="text-xs text-[#3F72AF] font-medium">Q{index + 1}</span>
@@ -320,7 +312,7 @@ export default function EditQuestionsAndCategories({
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => openEditQuestionDialog(q.evaluationQuestionId, q.text)}
+                        onClick={() => openEditQuestionDialog(q.questionId, q.text)}
                         className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover=text-[#112D4E] transition-colors duration-200"
                       >
                         Edit
@@ -328,7 +320,7 @@ export default function EditQuestionsAndCategories({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDeleteQuestion(q.evaluationQuestionId)}
+                        onClick={() => handleDeleteQuestion(q.questionId)}
                         className="border-red-400 text-red-600 hover:bg-red-500 hover=text-white transition-colors duration-200"
                       >
                         Delete

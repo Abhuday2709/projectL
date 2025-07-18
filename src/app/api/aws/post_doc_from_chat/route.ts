@@ -11,6 +11,20 @@ const s3Client = new S3Client({
     },
 });
 
+////////////////////////////////////////////////////////////////////////////////
+// API Route: POST /api/aws/post_doc_from_chat
+// Handles direct uploads to S3 via multipart/form-data.
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * POST handler to upload a file to S3.
+ * - Validates AWS env vars and file constraints.
+ * - Streams multipart file to S3 with a unique key.
+ *
+ * @param request - NextRequest containing formData with 'file' field.
+ * @returns JSON with success, fileUrl, and key, or error details.
+ */
+
 export async function POST(request: NextRequest) {
     try {
         // Validate environment variables

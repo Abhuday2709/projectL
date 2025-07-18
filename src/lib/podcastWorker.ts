@@ -17,21 +17,46 @@ import  fs  from 'fs';
 import os from 'os';
 import { exec } from 'child_process';
 
-// --- Gemini API Setup ---
+
+/**
+ * Google Gemini AI client instance.
+ * @constant {GoogleGenerativeAI} genAI
+ * @requires process.env.GEMINI_API_KEY
+ */
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+/**
+ * Generative model for text generation.
+ * @constant
+ */
 const generativeModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+/**
+ * Embedding model for text embeddings.
+ * @constant
+ */
 const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
-// console.log("⤷ Connecting to Redis at:", process.env.REDIS_URL);
-
-// --- Qdrant Setup ---
+/**
+ * Qdrant client for vector storage and retrieval.
+ * @constant {QdrantClient} qdrantClient
+ * @requires QDRANT_HOST, QDRANT_PORT environment variables
+ */
 const qdrantClient = new QdrantClient({
     host: process.env.QDRANT_HOST!,
     port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT!) : 6333,
 });
+/**
+ * Name of the Qdrant collection to use.
+ * @constant {string} COLLECTION_NAME
+ */
 const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME!;
 
-// --- AWS Setup ---
+
+/**
+ * S3 client for uploading and deleting files.
+ * @constant {S3Client} s3Client
+ * @requires NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY
+ */
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
@@ -40,6 +65,10 @@ const s3Client = new S3Client({
     },
 });
 
+/**
+ * DynamoDB Document client for database operations.
+ * @constant {DynamoDBDocumentClient} docClient
+ */
 const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({
     region: process.env.NEXT_PUBLIC_AWS_REGION,
     credentials: {
@@ -47,19 +76,28 @@ const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({
         secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
     },
 }));
-
+/**
+ * API key for Murf text-to-speech service.
+ * @constant {string} murfApiKey
+ */
 const murfApiKey = process.env.NEXT_PUBLIC_MURF_API_KEY || '';
 
 
 // --- Helper Functions ---
-
+/**
+ * Embed given text into a numeric vector using the embedding model.
+ * @param {string} text - Text to embed.
+ * @returns {Promise<number[]>} Embedding vector.
+ */
 async function embedText(text: string): Promise<number[]> {
     const result = await embeddingModel.embedContent(text);
     return result.embedding.values;
 }
 
 /**
- * **Phase 2, Step 2.1**: Summarize main points from each batch of 10 chunks.
+ * Summarize main points in batches of chunks.
+ * @param {string[]} chunks - Array of text chunks.
+ * @returns {Promise<string>} Bullet-point main points.
  */
 async function summarizeChunkBatch(chunks: string[]): Promise<string> {
     const prompt = `Read the following document excerpts and extract the main points, arguments, or facts. List each as a bullet point. Respond ONLY with the bullet points.`;
@@ -69,7 +107,9 @@ async function summarizeChunkBatch(chunks: string[]): Promise<string> {
 }
 
 /**
- * **Phase 2, Step 2.2**: Creates a single, comprehensive summary from all main points.
+ * Generate a concise, comprehensive summary from main points.
+ * @param {string[]} allMainPoints - Array of bullet-point strings.
+ * @returns {Promise<string>} Single-paragraph summary.
  */
 async function generateComprehensiveSummaryFromMainPoints(allMainPoints: string[]): Promise<string> {
     const fullText = allMainPoints.join('\n\n');
@@ -83,7 +123,10 @@ Respond ONLY with the summary paragraph.`;
 }
 
 /**
- * **Phase 2, Step 3**: Generates a structured podcast outline from a summary.
+ * Create a podcast outline from summary.
+ * @param {string} summary - Document summary paragraph.
+ * @param {string} tone - Desired tone (e.g., conversational).
+ * @returns {Promise<string[]>} Array of outline items.
  */
 async function generatePodcastOutline(summary: string, tone: string): Promise<string[]> {
     // console.log("Generating a structured podcast outline with focus on key sections...");
@@ -118,8 +161,12 @@ ${summary}
     return result.response.text().split('\n').filter(line => line.match(/^\d+\./)).map(line => line.replace(/^\d+\.\s*/, '').trim());
 }
 
+
 /**
- * **Phase 3, Step 4 (Retrieve)**: Searches Qdrant for chunks relevant to an outline point.
+ * Search Qdrant for chunks relevant to a query.
+ * @param {string} query - Outline point or search phrase.
+ * @param {string[]} docIds - Document IDs to filter by.
+ * @returns {Promise<string[]>} Matching text chunks.
  */
 async function searchRelevantChunks(query: string, docIds: string[]): Promise<string[]> {
     // console.log(`Searching for chunks related to: "${query}"`);
@@ -138,7 +185,10 @@ async function searchRelevantChunks(query: string, docIds: string[]): Promise<st
 }
 
 /**
- * **Phase 3, Step 4 (Generate)**: Writes a single section of the podcast script.
+ * Generate a script section from context chunks.
+ * @param {string} outlinePoint - Section title.
+ * @param {string[]} contextChunks - Relevant text chunks.
+ * @returns {Promise<string>} Section script text.
  */
 async function generateScriptSection(outlinePoint: string, contextChunks: string[]): Promise<string> {
     const context = contextChunks.join('\n\n');
@@ -155,7 +205,10 @@ ${context}
 }
 
 /**
- * **Phase 4, Step 5**: Assembles and polishes the final script.
+ * Polish and format the final script into a dialogue.
+ * @param {string} draftScript - Combined draft of script sections.
+ * @param {number} [duration=5] - Target duration in minutes.
+ * @returns {Promise<string>} Polished script with labeled speakers.
  */
 async function polishFinalScript(draftScript: string, duration = 5): Promise<string> {
     const targetWordCount = duration * 150;
@@ -204,9 +257,12 @@ ${draftScript}
 }
 
 
-/*
-*** Phase 5, Step 6: Extracting Dialogue ***
-*/
+
+/**
+ * Extract dialogues labeled "Charles" or "Natalie" from script text.
+ * @param {string} script - Script with speaker labels.
+ * @returns {{ speaker: string; text: string }[]} Array of dialogue objects.
+ */
 
 function extractDialoguesRobust(script: string): { speaker: string; text: string }[] {
     const dialogues: { speaker: string; text: string }[] = [];
@@ -234,7 +290,13 @@ function extractDialoguesRobust(script: string): { speaker: string; text: string
 
     return dialogues;
 }
-
+/**
+ * Upload a Buffer to S3 with retries.
+ * @param {Buffer} buffer - File data.
+ * @param {string} fileName - Desired S3 key.
+ * @param {string} contentType - MIME type of the file.
+ * @returns {Promise<string>} Public S3 URL.
+ */
 async function uploadBufferToS3(buffer: Buffer, fileName: string, contentType: string): Promise<string> {
     const maxRetries = 5;
     let attempt = 0;
@@ -272,6 +334,11 @@ async function uploadBufferToS3(buffer: Buffer, fileName: string, contentType: s
     throw lastError;
 }
 
+/**
+ * Download an audio file from a URL into a Buffer.
+ * @param {string} url - Audio file URL.
+ * @returns {Promise<Buffer>} Downloaded data buffer.
+ */
 async function downloadAudioToBuffer(url: string): Promise<Buffer> {
     const response = await axios({
         url,
@@ -281,6 +348,14 @@ async function downloadAudioToBuffer(url: string): Promise<Buffer> {
 
     return Buffer.from(response.data);
 }
+
+/**
+ * Generate Murf TTS audio with retries.
+ * @param {string} text - Text to speak.
+ * @param {string} speaker - "Charles" or "Natalie".
+ * @param {number} [maxRetries=3] - Number of attempts.
+ * @returns {Promise<any>} Murf API response containing audio URL.
+ */
 async function generateMurfAudioWithRetry(text: string, speaker: string, maxRetries = 3) {
     let attempt = 0;
     let lastError: any = null;
@@ -298,6 +373,13 @@ async function generateMurfAudioWithRetry(text: string, speaker: string, maxRetr
     }
     throw lastError;
 }
+
+/**
+ * Call Murf API to generate TTS audio.
+ * @param {string} text - Text to convert.
+ * @param {string} speaker - Speaker identifier.
+ * @returns {Promise<any>} API response with audio URL.
+ */
 async function generateMurfAudio(text: string, speaker: string) {
     const voiceId = speaker === "Charles" ? "en-US-charles" : "en-US-natalie";
     const style = speaker === "Charles" ? "Conversational" : undefined;
@@ -323,10 +405,13 @@ async function generateMurfAudio(text: string, speaker: string) {
     return response.data.audioUrl || response.data.url || response.data;
 }
 
-// --- FFmpeg S3 Integration ---
-
-// ffmpeg.setFfmpegPath(ffmpegPath!);
-// ffmpeg.setFfprobePath(ffprobePath.path);
+/**
+ * Concatenate multiple audio URLs into one via ffmpeg.
+ * @param {string[]} audioUrls - Array of S3 URLs.
+ * @param {string} chatId - Chat session ID.
+ * @param {number} [maxRetries=3] - Retry count.
+ * @returns {Promise<string>} URL of combined audio file.
+ */
 async function concatenateAudioWithRetry(audioUrls: string[], chatId: string, maxRetries = 3): Promise<string> {
     let attempt = 0;
     let lastError: any = null;
@@ -345,6 +430,12 @@ async function concatenateAudioWithRetry(audioUrls: string[], chatId: string, ma
     throw lastError;
 }
 
+/**
+ * Download parts, run ffmpeg concat demuxer, upload result to S3.
+ * @param {string[]} audioUrls - URLs of audio parts.
+ * @param {string} chatId - Chat session identifier.
+ * @returns {Promise<string>} Final combined audio URL.
+ */
 async function concatenateAudioFromS3_concatDemuxer(
   audioUrls: string[],
   chatId: string
@@ -408,8 +499,13 @@ async function concatenateAudioFromS3_concatDemuxer(
 
 
 
-// --- Main Processing Function ---
-
+/**
+ * Process and store podcast audio: TTS per dialogue, concat, cleanup, DynamoDB update.
+ * @param {string} script - Final polished podcast script.
+ * @param {string} chatId - Chat session ID.
+ * @param {string} user_id - User identifier.
+ * @param {string} createdAt - Timestamp string for the session.
+ */
 async function processAndStorePodcastAudio(script: string, chatId: string, user_id: string, createdAt: string) {
     const dialogues = extractDialoguesRobust(script);
     const audioResults: { speaker: string; text: string; audioUrl: string }[] = [];
@@ -500,12 +596,20 @@ async function processAndStorePodcastAudio(script: string, chatId: string, user_
     }
 }
 
-// --- Main Podcast Worker ---
-// The connection options can be defined based on your environment
+
+/**
+ * Shared Redis connection for BullMQ.
+ * @constant {IORedis.Redis} connection
+ * @requires REDIS_URL
+ */
 const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
     maxRetriesPerRequest: null
 });
 
+/**
+ * BullMQ worker to process podcast generation jobs.
+ * @constant {Worker<ProcessPodcasts>} podcastWorker
+ */
 const podcastWorker = new Worker<ProcessPodcasts>(
     'processPodcast',
     async (job) => {
@@ -574,13 +678,6 @@ const podcastWorker = new Worker<ProcessPodcasts>(
             // Step 5: Assemble and Polish the Final Script
             const draftScript = scriptSections.join('\n\n---\n\n');
             const finalPodcastScript = await polishFinalScript(draftScript);
-
-            // console.log("\n--- FINAL POLISHED PODCAST SCRIPT ---\n");
-            // console.log(finalPodcastScript);
-//         const temp = `Charles: So, Abhuday biggest takeaway: OLX Poland's AI journey showcases how strategic AI can dramatically improve efficiency, customer experiences, and scalability.
-// Natalie: It's really a blueprint for businesses looking to revolutionize their own customer service strategies.`
-//         // console.log("temp");
-
             // Step 6: Extract dialogues for further processing or storage
             await processAndStorePodcastAudio(finalPodcastScript, chatId, user_id, createdAt);
 
@@ -602,17 +699,19 @@ const podcastWorker = new Worker<ProcessPodcasts>(
 );
 
 podcastWorker.on('completed', (job) => {
-    // console.log(`Podcast job ${job.id} completed successfully.`);
+    
 });
 
 podcastWorker.on('failed', (job, err) => {
-    // The logic to update status to FAILED is now inside the worker's main try/catch block.
-    // This listener is now just for logging.
     console.error(`Podcast job ${job?.id} failed:`, err);
 });
 
 
-// --- Utility Functions ---
+/**
+ * Retrieve all text chunks from Qdrant for given document IDs using scroll API.
+ * @param {string[]} docIds - Array of document IDs.
+ * @returns {Promise<string[]>} All fetched text chunks.
+ */
 async function getChunksByDocIds(docIds: string[]): Promise<string[]> {
     const allChunks: string[] = [];
     for (const docId of docIds) {

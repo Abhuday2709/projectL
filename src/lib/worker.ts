@@ -15,7 +15,10 @@ import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'; /
 import { dynamoClient } from '../lib/AWS/AWS_CLIENT';
 import mammoth from 'mammoth';
 
-// Configure S3 client (ensure NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY are set in env)
+/**
+ * S3 client for downloading documents from S3.
+ * @requires process.env.NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY
+ */
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
@@ -24,7 +27,10 @@ const s3Client = new S3Client({
     },
 });
 
-// Qdrant Client Initialization
+/**
+ * Qdrant client for upserting and searching document embeddings.
+ * @requires process.env.QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION_NAME
+ */
 const qdrantClient = new QdrantClient({
     host: process.env.QDRANT_HOST!,
     port: process.env.QDRANT_PORT ? parseInt(process.env.QDRANT_PORT!) : 6333,
@@ -34,9 +40,16 @@ const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME!;
 const VECTOR_SIZE = 768; // For Gemini 'embedding-001'
 const DISTANCE_METRIC = 'Cosine';
 
-// DynamoDB Document Client
+/**
+ * DynamoDB DocumentClient for updating document processing status.
+ */
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+/**
+ * Ensures that the Qdrant collection exists before processing.
+ * Creates the collection with the specified vector size and metric if missing.
+ * @throws Error if the collection cannot be created or accessed.
+ */
 async function ensureCollection() {
     try {
         const collections = await qdrantClient.getCollections();
@@ -74,7 +87,12 @@ async function ensureCollection() {
 const connection = new IORedis(process.env.REDIS_URL || "redis://localhost:6379", {
     maxRetriesPerRequest: null
 });
- 
+/**
+ * Converts a Readable stream into a Buffer.
+ * @param stream - Readable stream to read.
+ * @returns Buffer containing the stream's data.
+ * @throws Error if the stream emits an error.
+ */
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const chunks: Buffer[] = [];
@@ -83,12 +101,17 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
         stream.on('end', () => resolve(Buffer.concat(chunks)));
     });
 }
-
+/**
+ * BullMQ worker that processes documents (PDF/DOCX):
+ * 1. Downloads file from S3.
+ * 2. Extracts text (per page for PDFs, via mammoth for DOCX).
+ * 3. Splits text into chunks.
+ * 4. Generates embeddings via Gemini.
+ * 5. Upserts chunks to Qdrant.
+ * 6. Updates processing status in DynamoDB.
+ */
 const worker = new Worker('documents', async (job: Job<Document>) => {
-    // // console.log(`Processing job ${job.id} for document: ${job.data.fileName} (S3 Key: ${job.data.s3Key})`);
-    
     const { chatId, uploadedAt, docId, fileName, s3Key, fileType } = job.data;
-
     // Update status to PROCESSING
     try {
         const updateToProcessingCmd = new UpdateCommand({
@@ -112,7 +135,9 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
     try {
         if (fileType === 'application/pdf') {
             try {
-                // // console.log(`Attempting to download PDF from S3: ${s3Key}`);
+                /**
+                 * Extracts and embeds text from each page of the PDF.
+                 */
                 const getObjectCommand = new GetObjectCommand({
                     Bucket: process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME!,
                     Key: s3Key,
@@ -128,7 +153,9 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
 
                 const pageContents: string[] = []; // Initialize for each job
 
-                // Custom pagerender function to extract text and store it by page
+                /**
+                 * Custom pagerender to capture text by page.
+                 */
                 async function customPageRenderer(pageData: any): Promise<string> {
                     // pageData is PDFPageProxy from pdf.js
                     const renderOptions = {
@@ -165,18 +192,12 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
                 const pdfData = await pdf(pdfBuffer, pdfParseOptions); // This populates `pageContents`
 
                 // Existing logs for pdfData are still useful
-                // console.log("metadata", pdfData.metadata);
                 const info = pdfData.info;
-                // console.log("info", info);
                 const numpages = pdfData.numpages;
-                // console.log("numpages", numpages);
                 const numrender = pdfData.numrender;
-                // console.log("numrender", numrender);
                 const version = pdfData.version;
-                // console.log("version", version);
 
                 if (pageContents.length === 0) {
-                    // console.log('No text content extracted from any pages of the PDF.');
                     // Update status to FAILED as no content was processed
                     const updateToFailedCmd = new UpdateCommand({
                         TableName: DocumentConfig.tableName,
@@ -196,12 +217,10 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
                     const pageNumber = pageIndex + 1; // 1-indexed page number
 
                     if (!currentPageText || currentPageText.trim() === '') {
-                        // console.log(`No text content on page ${pageNumber}. Skipping.`); // Optional: can be noisy
                         continue;
                     }
 
                     const chunks = await splitter.splitText(currentPageText);
-                    // console.log(`Page ${pageNumber} split into ${chunks.length} chunks.`);
                     
                     for (let chunkIndexOnPage = 0; chunkIndexOnPage < chunks.length; chunkIndexOnPage++) {
                         const chunkText = chunks[chunkIndexOnPage];
@@ -225,11 +244,8 @@ const worker = new Worker('documents', async (job: Job<Document>) => {
                 }
                 
                 if (points.length > 0) {
-                    // // console.log(`Upserting ${points.length} points from ${pageContents.length} pages to Qdrant collection '${COLLECTION_NAME}'...`);
                     await qdrantClient.upsert(COLLECTION_NAME, { points });
-                    // console.log(`${points.length} points upserted successfully.`);
                 } else {
-                    // console.log('No text chunks to process for Qdrant after processing all pages.');
                     // Potentially mark as FAILED if no points were generated from non-empty pages
                     const updateToFailedNoPointsCmd = new UpdateCommand({
                         TableName: DocumentConfig.tableName,

@@ -45,7 +45,7 @@ export default function DashboardReviewPage() {
     const [isLoading, setIsLoading] = useState(false);
     const user_id = userId || "";
     const fetchQuestions = async () => {
-        const res = await fetch(`/api/evaluation-questions?userId=${userId}`, {
+        const res = await fetch(`/api/evaluation-questions`, {
             method: "GET",
             headers: { "Content-Type": "application/json" },
         })

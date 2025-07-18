@@ -11,8 +11,15 @@ import { scoringSessionConfig } from "@/models/scoringReviewModel";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { QdrantClient } from "@qdrant/js-client-rest";
 
+/**
+ * DynamoDB DocumentClient wrapper for command execution.
+ */
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+/**
+ * S3 client for deleting stored objects.
+ * @requires NEXT_PUBLIC_AWS_REGION, NEXT_PUBLIC_AWS_ACCESS_KEY_ID, NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY
+ */
 const s3Client = new S3Client({
     region: process.env.NEXT_PUBLIC_AWS_REGION!,
     credentials: {
@@ -21,6 +28,10 @@ const s3Client = new S3Client({
     },
 });
 
+/**
+ * Qdrant client for vector deletion operations.
+ * @requires QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION_NAME
+ */
 const qdrantClient = new QdrantClient({
     host: process.env.QDRANT_HOST!,
     port: parseInt(process.env.QDRANT_PORT!),
@@ -28,6 +39,15 @@ const qdrantClient = new QdrantClient({
 
 const QDRANT_COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME!;
 
+
+/**
+ * Deletes all documents associated with a given chat:
+ * 1. Removes file from S3.
+ * 2. Deletes embeddings from Qdrant.
+ * 3. Deletes document metadata from DynamoDB.
+ *
+ * @param chatId - Identifier of the chat whose documents to delete.
+ */
 async function deleteDocuments(chatId: string) {
     const queryDocs = new QueryCommand({
         TableName: DocumentConfig.tableName,
@@ -52,6 +72,10 @@ async function deleteDocuments(chatId: string) {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// API Route: DELETE /api/admin/delteUser/[userId]
+// Deletes a user and all associated data across services.
+////////////////////////////////////////////////////////////////////////////////
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ userId: string }> }

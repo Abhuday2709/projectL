@@ -17,7 +17,7 @@ const s3Client = new S3Client({
  * @returns {string} The merged class string.
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+    return twMerge(clsx(inputs))
 }
 
 
@@ -30,7 +30,7 @@ export const ACCEPTED_MIME_TYPES = {
     'application/pdf': ['.pdf'],
     'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-} as const; 
+} as const;
 /**
  * Set of accepted MIME types for quick look-up.
  * @export
@@ -44,7 +44,7 @@ export const ACCEPTED_FILE_TYPES = new Set(Object.keys(ACCEPTED_MIME_TYPES));
  * @returns {boolean} True if the email is allowed.
  */
 export function isNetworkScienceEmail(email: string): boolean {
-  return email.toLowerCase().endsWith('@networkscience.ai') || email === "abhudaylath@gmail.com" || email === "iit2022154@iiita.ac.in";
+    return email.toLowerCase().endsWith('@networkscience.ai') || email === "abhudaylath@gmail.com" || email === "iit2022154@iiita.ac.in";
 }
 
 
@@ -73,25 +73,24 @@ export const DocumentWithStatusSchema = DocumentSchema.pick({
 export type DocumentWithStatus = z.infer<typeof DocumentWithStatusSchema>;
 
 export interface QuestionType {
-  user_id: string
-  evaluationQuestionId: string
-  text: string
-  categoryId: string
-  order: number
+    questionId: string
+    text: string
+    categoryId: string
+    uploadedAt: string
 }
 
 export interface AnswerType {
-  questionId: string
-  answer: "No" | "Maybe" | "Yes"
-  score: 0 | 1 | 2
+    questionId: string
+    answer: "No" | "Maybe" | "Yes"
+    score: 0 | 1 | 2
 }
 
 export interface Results {
-  categoryName: string
-  score: number
-  total: number
-  categoryId: string
-  qualificationCutoff: number
+    categoryName: string
+    score: number
+    total: number
+    categoryId: string
+    qualificationCutoff: number
 }
 /** 
  * ProcessDocumentForReviewJobData defines payload for review-processing jobs.
@@ -106,7 +105,7 @@ export interface ProcessDocumentForReviewJobData {
     s3Key: string;
     fileType: string;
     user_id?: string;
-    createdAt?: string; 
+    createdAt?: string;
 }
 /**
  * ProcessPodcasts defines payload structure for podcast jobs.

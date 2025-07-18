@@ -6,8 +6,15 @@ import { NextResponse } from "next/server";
 import { scoringSessionConfig } from "@/models/scoringReviewModel";
 import { dynamoClient } from "@/lib/AWS/AWS_CLIENT";
 
+/**
+ * DynamoDB DocumentClient wrapper for command execution.
+ */
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
+////////////////////////////////////////////////////////////////////////////////
+// API Route: GET /api/admin/getAllReview
+// Retrieves all scoring review sessions.
+////////////////////////////////////////////////////////////////////////////////
 export async function GET(request: Request) {
     try {
         const command = new ScanCommand({
