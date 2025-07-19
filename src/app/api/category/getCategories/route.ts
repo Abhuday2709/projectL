@@ -21,9 +21,6 @@ const catClient = DynamoDBDocumentClient.from(dynamoClient);
  * GET /api/category/getCategories
  */
 export async function GET(request: NextRequest) {
-    // Optionally, you can keep auth for admin-only access, or remove for public
-    // const { userId } = await auth();
-
     try {
         const { Items } = await catClient.send(new ScanCommand({
             TableName: CategoryConfig.tableName,

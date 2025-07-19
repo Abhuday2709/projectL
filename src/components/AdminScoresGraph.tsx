@@ -395,13 +395,13 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
                                     </Scatter>
 
                                     {/* Quadrant labels */}
-                                    <ReferenceDot x={attractQualCutoff/2} y={abilityQualCutoff/2} r={0} isFront={true}
+                                    <ReferenceDot x={abilityQualCutoff/2} y={attractQualCutoff/2} r={0} isFront={true}
                                         label={{ value: "❌ No Bid", position: "center", fill: COLORS.noBid.label, fontWeight: "bold", fontSize: 11 }} />
-                                    <ReferenceDot x={(abilityQualCutoff + 100)/2} y={abilityQualCutoff/2} r={0} isFront={true}
+                                    <ReferenceDot x={(abilityQualCutoff + 100)/2} y={attractQualCutoff/2} r={0} isFront={true}
                                         label={{ value: "⏳ Faster Closure", position: "center", fill: COLORS.fasterClosure.label, fontWeight: "bold", fontSize: 10 }} />
-                                    <ReferenceDot x={abilityQualCutoff/2} y={(abilityQualCutoff + 100)/2} r={0} isFront={true}
+                                    <ReferenceDot x={abilityQualCutoff/2} y={(attractQualCutoff + 100)/2} r={0} isFront={true}
                                         label={{ value: "🔧 Build Capability", position: "center", fill: COLORS.buildCapability.label, fontWeight: "bold", fontSize: 11 }} />
-                                    <ReferenceDot x={(attractQualCutoff + 100)/2} y={(abilityQualCutoff + 100)/2} r={0} isFront={true}
+                                    <ReferenceDot x={(abilityQualCutoff + 100)/2} y={(attractQualCutoff + 100)/2} r={0} isFront={true}
                                         label={{ value: "✅ Bid to Win", position: "center", fill: COLORS.bidToWin.label, fontWeight: "bold", fontSize: 11 }} />
                                 </ScatterChart>
                             </ResponsiveContainer>

@@ -46,7 +46,7 @@ export default function EditQuestionsAndCategories({
   const [isSaving, setIsSaving] = useState(false)
 
   const { toast } = useToast()
-
+  const [invalidCutoffs, setInvalidCutoffs] = useState<Record<string, boolean>>({})
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState<"addQuestion" | "editQuestion" | null>(null)
   const [dialogValue, setDialogValue] = useState("")
@@ -137,6 +137,9 @@ export default function EditQuestionsAndCategories({
    * handleQualificationCutoffChange("cat-123", 60);
    */
   const handleQualificationCutoffChange = (categoryId: string, newCutoff: number) => {
+
+    const isValid = newCutoff >= 0 && newCutoff <= 100
+    setInvalidCutoffs(prev => ({ ...prev, [categoryId]: !isValid }))
     setLocalCategories(
       localCategories.map((cat) =>
         cat.categoryId === categoryId
@@ -210,7 +213,7 @@ export default function EditQuestionsAndCategories({
           body: JSON.stringify({
             questionId: q.questionId,
             text: q.text,
-            uploadedAt:q.uploadedAt
+            uploadedAt: q.uploadedAt
           }),
         })
         if (!res.ok) {
@@ -222,14 +225,13 @@ export default function EditQuestionsAndCategories({
       // Sync Categories via Next.js API
       for (const cat of updatedCategories) {
         const res = await fetch(`/api/category/updateCategory`, {
-          method: "POST",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
-            order: cat.order,
             categoryId: cat.categoryId,
             categoryName: cat.categoryName,
             qualificationCutoff: cat.qualificationCutoff,
+            createdAt: cat.createdAt
           }),
         })
         if (!res.ok) {
@@ -263,7 +265,7 @@ export default function EditQuestionsAndCategories({
           <div className="flex justify-between items-start mb-4">
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-[#112D4E] mb-3">{cat.categoryName}</h3>
-              
+
               {/* Qualification Cutoff Section */}
               <div className="bg-[#F9F7F7] p-4 rounded-lg border border-[#DBE2EF] mb-4">
                 <Label htmlFor={`cutoff-${cat.categoryId}`} className="text-sm font-medium text-[#3F72AF] mb-2 block">
@@ -275,9 +277,17 @@ export default function EditQuestionsAndCategories({
                     type="number"
                     min="0"
                     max="100"
-                    value={cat.qualificationCutoff || 50}
-                    onChange={(e) => handleQualificationCutoffChange(cat.categoryId, parseInt(e.target.value) || 0)}
-                    className="w-24 border-[#3F72AF] focus:border-[#112D4E] focus:ring-[#112D4E]"
+                    value={cat.qualificationCutoff}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10)
+                      handleQualificationCutoffChange(cat.categoryId, isNaN(val) ? 0 : val)
+                    }}
+                    className={[
+                      "w-24",
+                      invalidCutoffs[cat.categoryId]
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : "border-[#3F72AF] focus:border-[#112D4E] focus:ring-[#112D4E]",
+                    ].join(" ")}
                   />
                   <span className="text-sm text-[#3F72AF]">
                     Minimum score required to qualify in this category
@@ -285,10 +295,10 @@ export default function EditQuestionsAndCategories({
                 </div>
               </div>
             </div>
-            
+
             <div className="ml-4">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 onClick={() => openAddQuestionDialog(cat.categoryId)}
                 className="bg-[#3F72AF] hover:bg-[#112D4E] text-white transition-colors duration-200"
               >
@@ -309,8 +319,8 @@ export default function EditQuestionsAndCategories({
                       <p className="text-[#112D4E] mt-1">{q.text}</p>
                     </div>
                     <div className="flex space-x-2 ml-4">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
                         onClick={() => openEditQuestionDialog(q.questionId, q.text)}
                         className="border-[#3F72AF] text-[#3F72AF] hover:bg-[#3F72AF] hover=text-[#112D4E] transition-colors duration-200"
@@ -329,7 +339,7 @@ export default function EditQuestionsAndCategories({
                   </div>
                 </div>
               ))}
-            
+
             {localQuestions.filter((q) => q.categoryId === cat.categoryId).length === 0 && (
               <div className="text-center py-8 text-[#3F72AF] opacity-60">
                 <p>No questions in this category yet.</p>
@@ -341,9 +351,9 @@ export default function EditQuestionsAndCategories({
       ))}
 
       <div className="flex justify-end pt-6 border-t border-[#DBE2EF]">
-        <Button 
+        <Button
           onClick={handleReviewAndConfirm}
-          disabled={isSaving}
+          disabled={isSaving||Object.values(invalidCutoffs).some(Boolean)}
           className="bg-[#112D4E] hover:bg-[#3F72AF] text-white px-8 py-2 mb-4 transition-colors duration-200"
         >
           {isSaving ? "Saving..." : "Save Changes"}
@@ -375,14 +385,14 @@ export default function EditQuestionsAndCategories({
             />
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDialogOpen(false)}
               className="border-[#DBE2EF] text-[#3F72AF] hover:bg-[#F9F7F7]"
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleDialogConfirm}
               className="bg-[#3F72AF] hover:bg-[#112D4E] text-white"
             >

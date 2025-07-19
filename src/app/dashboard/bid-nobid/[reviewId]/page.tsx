@@ -133,15 +133,7 @@ export default function DocumentScoringPage() {
       toast({ title: 'Error fetching categories', description: (err as Error).message, variant: 'destructive' })
     }
   }
-  const [sortedCategories, setSortedCategories] = useState<Category[]>([])
-  useEffect(() => {
-    if (allCategories.length > 0) {
-      const sorted = [...allCategories].sort((a, b) => a.order - b.order)
-      // console.log("Sorted Categories:", sorted);
-
-      setSortedCategories(sorted)
-    }
-  }, [allCategories])
+  
   const fetchQuestions = async () => {
     const res = await fetch(`/api/evaluation-questions`, {
       method: "GET",
@@ -443,7 +435,7 @@ export default function DocumentScoringPage() {
     const allAnswers = [...newlyAnswered, ...previousAnswers]
 
     // 3. Calculate category scores using all categories
-    const scoresByCategoryId = sortedCategories.reduce((acc, cat) => {
+    const scoresByCategoryId = allCategories.reduce((acc, cat) => {
       acc[cat.categoryId] = 0;
       return acc;
     }, {} as Record<string, number>);
@@ -456,7 +448,7 @@ export default function DocumentScoringPage() {
     })
 
     // 4. Prepare results for UI display using all categories
-    const calculatedResults = sortedCategories.map((cat) => {
+    const calculatedResults = allCategories.map((cat) => {
       const questionsInCategory = allQuestions.filter(q => q.categoryId === cat.categoryId)
       return {
         categoryId: cat.categoryId,
@@ -701,7 +693,7 @@ export default function DocumentScoringPage() {
                 <div className="mb-8">
                   <h2 className="text-lg font-semibold text-[#112D4E] mb-2">Unanswered Questions</h2>
                   <Accordion type="multiple" className="space-y-4">
-                    {sortedCategories.map((cat) => {
+                    {allCategories.map((cat) => {
                       const categoryUnansweredQuestions = questionsForManualScoring.filter(q => q.categoryId === cat.categoryId);
                       if (categoryUnansweredQuestions.length === 0) return null;
 
@@ -748,7 +740,7 @@ export default function DocumentScoringPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-[#112D4E] mb-2 mt-8">Answered Questions</h2>
                   <Accordion type="multiple" className="space-y-4">
-                    {sortedCategories.map((cat) => {
+                    {allCategories.map((cat) => {
                       const categoryAnsweredQuestions = questionsAnsweredByAI.filter(q => q.categoryId === cat.categoryId);
                       if (categoryAnsweredQuestions.length === 0) return null;
 

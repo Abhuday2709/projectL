@@ -30,17 +30,14 @@ const updClient = DynamoDBDocumentClient.from(dynamoClient);
  *   qualificationCutoff?: number
  * }
  */
-export async function POST(request: NextRequest) {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
-
+export async function PUT(request: NextRequest) {
     const body = await request.json().catch(() => null);
     if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
 
-    const { userId: uid, order, categoryId, categoryName, qualificationCutoff } = body;
-    if (userId !== uid || typeof order !== 'number' || !categoryId || !categoryName)
+    const { categoryId, categoryName, qualificationCutoff, createdAt } = body;
+    if (!categoryId || !categoryName || !createdAt) {
         return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
-
+    }
     const updateExpr = qualificationCutoff !== undefined
         ? 'SET categoryName = :name, qualificationCutoff = :cutoff'
         : 'SET categoryName = :name';
@@ -51,7 +48,7 @@ export async function POST(request: NextRequest) {
     try {
         await updClient.send(new UpdateCommand({
             TableName: CategoryConfig.tableName,
-            Key: { user_id: uid, order },
+            Key: { categoryId , createdAt },
             UpdateExpression: updateExpr,
             ExpressionAttributeValues: exprAttrVals,
         }));
