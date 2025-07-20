@@ -462,11 +462,11 @@ export default function DocumentScoringPage() {
 
     // 5. Calculate percentages and get recommendation
     // calculatedResults[0] = Ability to Win (Y-axis), calculatedResults[1] = Attractiveness (X-axis)
-    const abilityPercentage = Math.round((calculatedResults[0]?.score * 100) / (calculatedResults[0]?.total * 2)) || 0;
-    const attractivenessPercentage = Math.round((calculatedResults[1]?.score * 100) / (calculatedResults[1]?.total * 2)) || 0;
+    const abilityPercentage = Math.round((calculatedResults[1]?.score * 100) / (calculatedResults[0]?.total * 2)) || 0;
+    const attractivenessPercentage = Math.round((calculatedResults[0]?.score * 100) / (calculatedResults[1]?.total * 2)) || 0;
 
-    const abilityQualCutoff = calculatedResults[0]?.qualificationCutoff || 50;
-    const attractQualCutoff = calculatedResults[1]?.qualificationCutoff || 50;
+    const abilityQualCutoff = calculatedResults[1]?.qualificationCutoff || 50;
+    const attractQualCutoff = calculatedResults[0]?.qualificationCutoff || 50;
 
     const finalRecommendation = getRecommendation(abilityPercentage, attractivenessPercentage, abilityQualCutoff, attractQualCutoff);
     setRecommendation(finalRecommendation);
