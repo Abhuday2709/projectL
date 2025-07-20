@@ -232,9 +232,9 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
         switch (selectedQuadrant) {
             case 'bid-to-win':
                 return score.attractiveness >= attractQualCutoff && score.abilityToWin >= abilityQualCutoff;
-            case 'faster-closure':
-                return score.attractiveness >= attractQualCutoff && score.abilityToWin < abilityQualCutoff;
             case 'build-capability':
+                return score.attractiveness >= attractQualCutoff && score.abilityToWin < abilityQualCutoff;
+            case 'faster-closure':
                 return score.attractiveness < attractQualCutoff && score.abilityToWin >= abilityQualCutoff;
             case 'no-bid':
                 return score.attractiveness < attractQualCutoff && score.abilityToWin < abilityQualCutoff;
@@ -245,8 +245,8 @@ export default function AdminScoresGraph({ reviews, isOpen, onClose }: AdminScor
 
     const quadrantCounts = {
         'bid-to-win': scoreData.filter(s => s.attractiveness >= attractQualCutoff && s.abilityToWin >= abilityQualCutoff).length,
-        'faster-closure': scoreData.filter(s => s.attractiveness >= attractQualCutoff && s.abilityToWin < abilityQualCutoff).length,
-        'build-capability': scoreData.filter(s => s.attractiveness < attractQualCutoff && s.abilityToWin >= abilityQualCutoff).length,
+        'build-capability': scoreData.filter(s => s.attractiveness >= attractQualCutoff && s.abilityToWin < abilityQualCutoff).length,
+        'faster-closure': scoreData.filter(s => s.attractiveness < attractQualCutoff && s.abilityToWin >= abilityQualCutoff).length,
         'no-bid': scoreData.filter(s => s.attractiveness < attractQualCutoff && s.abilityToWin < abilityQualCutoff).length,
     };
 
