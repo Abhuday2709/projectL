@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
             ExpressionAttributeValues: { ':uid': userId },
             ScanIndexForward: false, // Get newest chats first
         });
-
+ 
         const result = await docClient.send(command);
         return NextResponse.json(result.Items as Chat[]);
     } catch (error) {
