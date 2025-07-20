@@ -10,7 +10,7 @@ export const MessageSchema = z.object({
 }); 
 export type Message = z.infer<typeof MessageSchema>;
 export const MessageConfig = {
-    tableName: 'messages',
+    tableName: 'projectL-messages',
     keys: {
         partition: 'chatId', 
         sort: 'createdAt'

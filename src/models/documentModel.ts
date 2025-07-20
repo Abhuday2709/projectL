@@ -13,7 +13,7 @@ export const DocumentSchema = z.object({
 }); 
 export type Document = z.infer<typeof DocumentSchema>;
 export const DocumentConfig = {
-    tableName: 'documents',
+    tableName: 'projectL-documents',
     keys: {
         partition: 'chatId', 
         sort: 'uploadedAt'

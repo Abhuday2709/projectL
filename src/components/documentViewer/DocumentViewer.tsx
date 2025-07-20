@@ -3,11 +3,9 @@ import { FileText, AlertCircle, Loader2 } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import PdfViewer from './PdfViewer';
 import DocxViewer from './DocxViewer';
-import { useResizeDetector } from 'react-resize-detector';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useToast } from '@/hooks/use-toast';
 
 interface DocumentViewerProps {
     url: string;
@@ -26,12 +24,10 @@ type DocumentType = 'pdf' | 'docx' | 'unsupported';
  * @example <DocumentViewer url="docUrl" fileName="doc.pdf" />
  */
 const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn }) => {
-    const { toast } = useToast();
     const [documentType, setDocumentType] = useState<DocumentType>('unsupported');
     const [content, setContent] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string>('');
-    const { width, ref } = useResizeDetector();
     const processedUrlRef = useRef<string>('');
     const isMountedRef = useRef(true);
 
@@ -223,7 +219,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
     };
 
     return (
-        <div className="h-[71.5vh] flex flex-col bg-white rounded-lg shadow-lg">
+        <div className="h-[30vh] flex flex-col bg-white rounded-lg shadow-lg">
             <div className={documentType === 'pdf' ? '' : 'overflow-auto flex-1'}>
                 {renderContent()}
             </div>

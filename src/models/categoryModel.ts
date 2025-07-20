@@ -8,12 +8,9 @@ export const CategorySchema = z.object({
 }); 
 export type Category = z.infer<typeof CategorySchema>;
 export const CategoryConfig = {
-    tableName: 'categories',
+    tableName: 'projectL-categories',
     keys: {
         partition: 'categoryId', 
         sort: 'createdAt'
-    },
-    indexes: {
-        categoryId: 'categoryId-index'
     }
 } as const;

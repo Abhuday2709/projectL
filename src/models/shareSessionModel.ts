@@ -16,7 +16,7 @@ export type ShareSession = z.infer<typeof ShareSessionSchema>;
 
 // Table Configuration
 export const shareSessionConfig = {
-    tableName: 'shareSession',
+    tableName: 'projectL-shareSession',
     keys: {
         partition: 'chatId',
     },

@@ -29,7 +29,7 @@ export type ScoringSession = z.infer<typeof ScoringSessionSchema>;
 
 // Table Configuration
 export const scoringSessionConfig = {
-    tableName: 'scoringSession',
+    tableName: 'projectL-scoringSession',
     keys: {
         partition: 'user_id', 
         sort: 'createdAt'

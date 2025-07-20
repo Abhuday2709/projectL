@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { QdrantClient } from '@qdrant/js-client-rest';
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { dynamoClient } from '@/lib/AWS/AWS_CLIENT';
 import { generateEmbeddings, generateResponse } from '@/lib/gemini';
 import { MessageConfig, type Message } from '@/models/messageModel';
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
 
         if (documents.length === 0) {
             console.warn(`No documents found for chatId: ${chatId}`);
-            // Fallback or error response if no documents are linked to the chat
         }
 
         // Fetch last 8 recent messages for this chat
@@ -40,20 +39,16 @@ export async function POST(request: NextRequest) {
             TableName: MessageConfig.tableName,
             KeyConditionExpression: 'chatId = :cid',
             ExpressionAttributeValues: { ':cid': shareId || chatId },
-            ScanIndexForward: false, // Descending order (newest first)
+            ScanIndexForward: false,
             Limit: 8,
         });
         const messagesResult = await docClient.send(messagesQuery);
         const recentMessages = (messagesResult.Items || []) as Message[];
-
-        // Reverse the messages to get chronological order (oldest first)
         const chronologicalMessages = recentMessages.reverse();
-
-        // console.log(`Found ${chronologicalMessages.length} recent messages for chatId ${chatId}`);
 
         const embedding = await generateEmbeddings(userMessage);
         
-        // Step 2: Search Qdrant for each document and collect contexts
+        // Step 2: Search Qdrant for document contexts
         const contextPromises = documents.map(async (doc) => {
             const searchResult = await qdrant.search(process.env.QDRANT_COLLECTION_NAME!, {
                 vector: embedding,
@@ -65,16 +60,50 @@ export async function POST(request: NextRequest) {
                 .map(r => (r.payload?.text as string) || '')
                 .filter(Boolean);
             if (docContexts.length > 0) {
-                // Step 3: Format the context with the document name
                 return `Source Document: ${doc.fileName}\n---\n${docContexts.join('\n\n')}`;
             }
             return null;
         });
 
-        const contexts = (await Promise.all(contextPromises)).filter(Boolean) as string[];
-
-        // Pass the chronological messages and formatted contexts to generateResponse
-        const aiText = await generateResponse(userMessage, contexts, chronologicalMessages);
+        const documentContexts = (await Promise.all(contextPromises)).filter(Boolean) as string[];
+        
+        // Step 3: Search for Network Science questions and fetch corresponding answers
+        const aboutQuestions = await qdrant.search(process.env.QDRANT_COLLECTION_NAME_2!, {
+            vector: embedding,
+            limit: 3,
+            with_payload: true,
+        });
+        // console.log(`Found ${aboutQuestions.length} relevant Network Science questions for the query.`);
+        
+        // Fetch answers from DynamoDB for the matched questions
+        const networkScienceQA: string[] = [];
+        
+        for (const questionResult of aboutQuestions) {
+            if (questionResult.payload?.id) {
+                try {
+                    const getAnswerCommand = new GetCommand({
+                        TableName: 'projectL-NetworkScienceQuestion', // Replace with your actual table name
+                        Key: {
+                            QuestionID: questionResult.payload.id // Assuming 'id' corresponds to the partition key
+                        }
+                    });
+                    
+                    const answerResult = await docClient.send(getAnswerCommand);
+                    
+                    if (answerResult.Item) {
+                        const question = questionResult.payload?.question || 'Unknown question';
+                        const answer = answerResult.Item.Answer || 'No answer found';
+                        networkScienceQA.push(`Q: ${question}\nA: ${answer}`);
+                    }
+                } catch (error) {
+                    console.error(`Error fetching answer for question ID ${questionResult.payload.id}:`, error);
+                }
+            }
+        }
+        // console.log(networkScienceQA);
+        
+        // Pass all contexts to generateResponse
+        const aiText = await generateResponse(userMessage, documentContexts, chronologicalMessages, networkScienceQA);
 
         const aiMsg: Message = {
             messageId: uuidv4(),

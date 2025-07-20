@@ -8,7 +8,7 @@ export const QuestionSchema = z.object({
 }); 
 export type Question = z.infer<typeof QuestionSchema>;
 export const QuestionConfig = {
-    tableName: 'questions',
+    tableName: 'projectL-evaluatingQuestions',
     keys: {
         partition: 'questionId', 
         sort: 'uploadedAt'

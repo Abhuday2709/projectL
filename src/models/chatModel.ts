@@ -23,7 +23,7 @@ export type Chat = z.infer<typeof ChatSchema>;
 
 // Table Configuration
 export const ChatConfig = {
-    tableName: 'chat',
+    tableName: 'projectL-chat',
     keys: {
         partition: 'user_id', 
         sort: 'createdAt'

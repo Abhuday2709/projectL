@@ -59,11 +59,8 @@ const PdfControls: React.FC<PdfControlsProps> = ({
     <div className="h-14 w-full border-b border-zinc-200 flex items-center justify-between px-2">
         <div className="flex gap-0.5">
             <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700 truncate w-32 overflow-hidden">
+                <span className="text-sm font-medium text-gray-700 truncate w-28 overflow-hidden">
                     {fileName}
-                </span>
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                    {documentType.toUpperCase()}
                 </span>
             </div>
 
@@ -82,7 +79,7 @@ const PdfControls: React.FC<PdfControlsProps> = ({
                     <Input
                         value={pageValue}
                         onChange={e => setPageValue(e.target.value)}
-                        className={`w-12 h-8 ${errors?.page ? 'focus-visible:ring-red-500' : ''}`}
+                        className={`w-10 h-8 ${errors?.page ? 'focus-visible:ring-red-500' : ''}`}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 const num = Number(pageValue);
@@ -90,7 +87,7 @@ const PdfControls: React.FC<PdfControlsProps> = ({
                             }
                         }}
                     />
-                    <p className="text-zinc-700 text-sm space-x-1">
+                    <p className="text-zinc-700 text-sm">
                         <span>/</span>
                         <span>{numPages ?? 'x'}</span>
                     </p>
@@ -106,7 +103,7 @@ const PdfControls: React.FC<PdfControlsProps> = ({
                 </Button>
             </div>)}
         </div>
-        <div className='space-x-1'>
+        <div className='space-x-1 flex'>
             <FullscreenPdf fileUrl={fileUrl} fileName={fileName} documentType={documentType} isDocx={isDocx} content={content} />
             {onReturn && (
                 <Button

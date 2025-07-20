@@ -32,6 +32,7 @@ export default function ChatPage() {
             const res = await fetch(`/api/chat/${chatIdStr}`);
             if (!res.ok) throw new Error("Chat not found");
             const data = await res.json();
+            setChatName(`Proposal ${data?.name }`);
             setChatDetails(data);
         } catch (err) {
             console.error(err);
@@ -171,7 +172,7 @@ export default function ChatPage() {
         <Sidebar />
         <div className="flex flex-col flex-1 lg:ml-64 w-full">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 sm:py-4 px-3 sm:px-4 flex-shrink-0 bg-white border-b border-gray-200 gap-3 sm:gap-2">
+            <div className="flex sm:flex items-start sm:items-center justify-between py-3 sm:py-4 px-3 sm:px-4 flex-shrink-0 bg-white border-b border-gray-200 gap-3 sm:gap-2">
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                     {isChatLoading ? (
                         <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-blue-600" />
@@ -181,7 +182,7 @@ export default function ChatPage() {
                         </h1>
                     )}
                 </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-2">
                     <ShareChatDialog chatId={chatIdStr} />
                     <Button
                         variant="outline"
@@ -197,11 +198,11 @@ export default function ChatPage() {
             <div className="flex-1 overflow-hidden">
                 {/* Desktop Layout - Horizontal Panels */}
                 <div className="hidden lg:block h-[calc(100vh-9.5rem)]">
-                    <PanelGroup direction="horizontal" className="flex-1 overflow-scroll h-full">
-                        <Panel defaultSize={55} minSize={42}>
-                            <div className="h-full flex flex-col gap-4 p-4">
-                                <div className={`flex flex-col overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-sm p-4 ${isViewingDocument ? "h-[90%]" : "min-h-[75%]"}`}>
-                                    <div className="flex-1 h-full">
+                    <PanelGroup direction="horizontal" className="flex-1 h-full">
+                        <Panel defaultSize={55} minSize={48}>
+                            <div className=" flex flex-col gap-4 p-2 h-full overflow-y-auto">
+                                <div className={`flex flex-col overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-sm p-4 $`}>
+                                    <div className="flex-1">
                                         <PdfRenderer chatId={chatIdStr} setIsViewingDocument={setIsViewingDocument} />
                                     </div>
                                 </div>

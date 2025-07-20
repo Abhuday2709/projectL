@@ -240,15 +240,9 @@ export default function PdfRenderer({
     };
 
     return (
-        <div className="flex-1 max-h-[71.5vh] overflow-y-auto rounded-lg h-full">
+        <div className="flex-1 max-h-[85.5vh] overflow-y-auto rounded-lg h-full">
             {!selectedDoc ? (
-                <div className="w-full overflow-y-auto p-6">
-                    <div className="mb-6">
-                        <UploadButton
-                            chatId={chatId}
-                            onUploadSuccess={handleUploadSuccess}
-                        />
-                    </div>
+                <div className="h-full w-full overflow-y-auto p-6">
                     {isAnyDocumentProcessing && (
                         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-center">
@@ -290,16 +284,12 @@ export default function PdfRenderer({
                                     </p>
                                 </div>
                             </div>
-                            {documentsWithStatus.length > 0 && (
-                                <div className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                                    {
-                                        documentsWithStatus.filter(
-                                            (doc) => doc.processingStatus === "COMPLETED"
-                                        ).length
-                                    }{" "}
-                                    ready
-                                </div>
-                            )}
+                            <div className="">
+                                <UploadButton
+                                    chatId={chatId}
+                                    onUploadSuccess={handleUploadSuccess}
+                                />
+                            </div>
                         </div>
 
                         {loading && (

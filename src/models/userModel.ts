@@ -16,7 +16,7 @@ export type User = z.infer<typeof UserSchema>;
 
 // Table Configuration
 export const UserConfig = {
-    tableName: 'users',
+    tableName: 'projectL-users',
     keys: {
         partition: 'user_id',
     }
