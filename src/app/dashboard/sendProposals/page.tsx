@@ -40,7 +40,7 @@ export default function DashboardChatPage() {
     const [isPageLoading, setIsPageLoading] = useState(false);
     const [chats, setChats] = useState<Chat[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    
+
     // Q&A Dialog states
     const [qaDialogOpen, setQaDialogOpen] = useState(false);
     const [qaMessages, setQaMessages] = useState<Message[]>([]);
@@ -71,8 +71,15 @@ export default function DashboardChatPage() {
         setIsLoadingQA(true);
         try {
             const res = await fetch(`/api/message/getQAMessages?chatId=${chatId}`);
-            if (!res.ok) throw new Error('Failed to fetch Q&A messages');
             const data = await res.json();
+            if (!res.ok && data.error) {
+                setQaMessages([]);
+                toast({
+                    title: 'Q&A not available', description: "First create a share link."
+                    , variant: 'destructive'
+                });
+                return;
+            }
             setQaMessages(data.messages || []);
         } catch (error) {
             console.error(error);
@@ -150,9 +157,9 @@ export default function DashboardChatPage() {
     };
 
     const formatTime = (dateString: string) => {
-        return new Date(dateString).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        return new Date(dateString).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
         });
     };
 
@@ -170,7 +177,7 @@ export default function DashboardChatPage() {
             {/* Message Content */}
             <div className="flex flex-col max-w-[85%] sm:max-w-[70%] md:max-w-[60%] order-1 items-end">
                 {/* Message Bubble */}
-                <div 
+                <div
                     className={cn(
                         'px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm transition-all duration-300 relative overflow-hidden',
                         'bg-gradient-to-r from-[#3F72AF] to-[#112D4E] text-white',
@@ -179,7 +186,7 @@ export default function DashboardChatPage() {
                 >
                     {/* Background Pattern */}
                     <div className='absolute inset-0 bg-white/5 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-[length:20px_20px] opacity-30'></div>
-                    
+
                     {/* Message Text */}
                     <div className='relative z-10'>
                         <p className='text-sm leading-relaxed break-words whitespace-pre-wrap'>
@@ -223,10 +230,10 @@ export default function DashboardChatPage() {
             )}>
                 <Bot className='w-4 h-4 sm:w-5 sm:h-5 text-[#3F72AF]' />
             </div>
-        
+
             {/* Message Bubble */}
             <div className="flex flex-col space-y-2 max-w-[85%] sm:max-w-[75%] md:max-w-[70%] order-2 items-start">
-                <div 
+                <div
                     className={cn(
                         'px-4 py-3 rounded-2xl rounded-tl-sm shadow-sm transition-all duration-300 relative overflow-hidden',
                         'bg-white/80 backdrop-blur-sm border border-[#DBE2EF]/50 text-[#112D4E]',
@@ -235,12 +242,12 @@ export default function DashboardChatPage() {
                 >
                     {/* Background Pattern */}
                     <div className='absolute inset-0 bg-gradient-to-br from-[#F9F7F7]/50 to-transparent opacity-50'></div>
-                    
+
                     {/* Content */}
                     <div className='relative z-10'>
-                        {typeof(message.text) === 'string' ? (
+                        {typeof (message.text) === 'string' ? (
                             <div className="prose prose-sm max-w-none">
-                                <ReactMarkdown 
+                                <ReactMarkdown
                                     components={{
                                         p: ({ children }) => <p className="text-[#112D4E] leading-relaxed mb-2 last:mb-0">{children}</p>,
                                         strong: ({ children }) => <strong className="text-[#112D4E] font-semibold">{children}</strong>,
@@ -452,7 +459,7 @@ export default function DashboardChatPage() {
                                             <span className="text-[#112D4E]">Q&A for "{selectedChatForQA?.name}"</span>
                                         </DialogTitle>
                                     </DialogHeader>
-                                    
+
                                     <div className="flex-1 overflow-y-auto max-h-[60vh] p-4 bg-gradient-to-br from-[#F9F7F7] to-[#DBE2EF] rounded-lg">
                                         {isLoadingQA ? (
                                             <div className="flex items-center justify-center py-12">

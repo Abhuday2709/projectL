@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Clock } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import Sidebar from "@/components/Sidebar";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Chat } from "@/models/chatModel";
 import { Document } from "@/models/documentModel";
 import { deleteFromS3 } from "@/lib/utils";
 import ShareChatDialog from "@/components/ShareChatDialog";
+import { DocumentWithStatus } from "@/lib/utils";
 
 export default function ChatPage() {
     const { chatId } = useParams();
@@ -21,8 +22,6 @@ export default function ChatPage() {
     const [chatDetails, setChatDetails] = useState<Chat | null>(null);
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [chatName, setChatName] = useState("Proposal");
-    const [podcastDuration, setPodcastDuration] = useState<number>(5); // Default 5 minutes
-    const [durationError, setDurationError] = useState<string>("");
     const chatIdStr = typeof chatId === "string" ? chatId : Array.isArray(chatId) ? chatId[0] ?? "" : "";
     
     const fetchChatDetails = async () => {
@@ -41,9 +40,7 @@ export default function ChatPage() {
         }
     };
     const [documents, setDocuments] = useState<Document[]>([])
-    const [loading, setLoading] = useState<boolean>(false)
     const fetchDocuments = async (): Promise<Document[]> => {
-        setLoading(true)
         try {
             const res = await fetch(`/api/documents/getDocuments?chatId=${encodeURIComponent(chatIdStr)}`);
             if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -51,21 +48,46 @@ export default function ChatPage() {
             setDocuments(data);
             return data;
         } catch (err: any) {
-            setError(err.message);
             return []; // Return empty on error
-        } finally {
-            setLoading(false);
         }
     }
-    const [error, setError] = useState<string | null>(null);
     const [isViewingDocument, setIsViewingDocument] = useState(false);
     const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
+    const [documentsWithStatus, setDocumentsWithStatus] = useState<DocumentWithStatus[]>([]);
+    const [isAnyDocumentProcessing, setIsAnyDocumentProcessing] = useState(false);
+    const pollingRef = useRef<NodeJS.Timeout | null>(null);
     
     useEffect(() => {
         if (chatIdStr) {
             fetchChatDetails();
             fetchDocuments();
         }
+    }, [chatIdStr]);
+
+    // Poll document status every 5s
+    const fetchDocumentStatuses = async () => {
+        try {
+            const res = await fetch(`/api/documents/status?chatId=${encodeURIComponent(chatIdStr)}`);
+            if (!res.ok) throw new Error(`Error ${res.status}`);
+            const data = await res.json();
+            setDocumentsWithStatus(data);
+            setIsAnyDocumentProcessing(
+                data.some((doc: DocumentWithStatus) =>
+                    ["QUEUED", "PROCESSING"].includes(doc.processingStatus|| "")
+                )
+            );
+        } catch {
+            setDocumentsWithStatus([]);
+            setIsAnyDocumentProcessing(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDocumentStatuses();
+        pollingRef.current = setInterval(fetchDocumentStatuses, 5000);
+        return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+        };
     }, [chatIdStr]);
 
     // Derived state for podcast generation
@@ -96,7 +118,6 @@ export default function ChatPage() {
     }, [chatDetails?.podcastFinal, chatDetails?.podcastProcessingStatus]);
 
     const handleGeneratePodcast = async () => {
-        setError(null);
 
         // Optimistically update the UI to show the loading state immediately
         setChatDetails(prev => prev ? { ...prev, podcastProcessingStatus: 'QUEUED' } : null);
@@ -128,7 +149,7 @@ export default function ChatPage() {
                     chatId: chatIdStr, 
                     user_id: chatDetails?.user_id, 
                     createdAt: chatDetails?.createdAt,
-                    duration: podcastDuration 
+                    duration: 5 
                 }),
             });
             if (!result.ok) {
@@ -140,7 +161,7 @@ export default function ChatPage() {
             } else {
                 toast({
                     title: "Podcast generation started",
-                    description: `Your ${podcastDuration}-minute podcast is being generated. You will be notified when it's ready.`,
+                    description: `Your podcast is being generated. Till then chat with the documents`,
                     variant: "default",
                 });
                 // The optimistic update is now confirmed by the backend.
@@ -166,6 +187,12 @@ export default function ChatPage() {
                 return 'Generate Podcast';
         }
     };
+
+    // Update podcast button logic to use documentsWithStatus and isAnyDocumentProcessing
+    const canGeneratePodcast =
+        !isGenerating &&
+        documentsWithStatus.some(doc => doc.processingStatus === "COMPLETED") &&
+        !isAnyDocumentProcessing;
 
     return (
     <div className="flex bg-gray-50 min-h-[170vh] lg:min-h-0">
@@ -219,15 +246,10 @@ export default function ChatPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        {durationError && (
-                                            <p className="text-sm text-red-600 bg-red-50 p-2 rounded-md border border-red-200">
-                                                {durationError}
-                                            </p>
-                                        )}
                                         <div className="flex items-center space-x-3">
                                             <Button
                                                 onClick={handleGeneratePodcast}
-                                                disabled={isGenerating || documents.length === 0 || !!durationError || !podcastDuration}
+                                                disabled={!canGeneratePodcast}
                                                 className="flex-1 h-10 text-sm px-4 py-2 bg-[#3F72AF] hover:bg-[#112D4E] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                                             >
                                                 {isGenerating ? (
@@ -293,15 +315,10 @@ export default function ChatPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        {durationError && (
-                                            <p className="text-xs text-red-600 bg-red-50 p-2 rounded-md border border-red-200">
-                                                {durationError}
-                                            </p>
-                                        )}
                                         <div className="flex flex-col space-y-2">
                                             <Button
                                                 onClick={handleGeneratePodcast}
-                                                disabled={isGenerating || documents.length === 0 || !!durationError || !podcastDuration}
+                                                disabled={isGenerating || documents.length === 0 }
                                                 className="w-full h-8 text-xs px-3 py-1 bg-[#3F72AF] hover:bg-[#112D4E] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                                             >
                                                 {isGenerating ? (

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const shareSessionResult = await docClient.send(shareSessionCommand);
     
     if (!shareSessionResult.Items || shareSessionResult.Items.length === 0) {
-      return NextResponse.json({ messages: [] }); // No shared session found
+      return NextResponse.json({ error: "No share session found. Please create a share link first." }, { status: 404 });
     }
 
     const shareId = shareSessionResult.Items[0].shareId;
