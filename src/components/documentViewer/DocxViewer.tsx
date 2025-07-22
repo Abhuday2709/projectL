@@ -60,7 +60,7 @@ const DocxViewer: React.FC<DocxViewerProps> = ({ content, fileName, onReturn, do
     };
     return (
         <div
-            className="max-h-[70vh] rounded p-4 max-w-2xl shadow-sm border overflow-auto border-zinc-200"
+            className="max-h-[60vh] rounded p-4 max-w-2xl shadow-sm border overflow-auto border-zinc-200"
             style={{ scrollbarWidth: 'thin', scrollbarColor: '#CBD5E0 #F7FAFC' }}
         >
             <div className="w-full bg-white rounded-md shadow flex flex-col items-center h-full">

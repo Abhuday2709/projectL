@@ -49,6 +49,8 @@ export default function PdfRenderer({
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+    const [urlLoading, setUrlLoading] = useState<boolean>(false);
     /**
      * Asynchronously fetches document statuses from the API.
      *
@@ -71,7 +73,23 @@ export default function PdfRenderer({
             return [];
         }
     };
-
+    const handleDocumentSelect = async (doc: { fileName: string; s3Key: string }) => {
+        try {
+            setUrlLoading(true);
+            const url = await getDocUri(doc.s3Key);
+            setSelectedDoc(doc);
+            setDocumentUrl(url);
+            setIsViewingDocument(true);
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to load document",
+                variant: "destructive",
+            });
+        } finally {
+            setUrlLoading(false);
+        }
+    };
     /**
      * Manages the polling logic by starting or stopping the interval timer based on document processing status.
      *
@@ -152,14 +170,26 @@ export default function PdfRenderer({
      * @example
      * const uri = getDocUri("file-key-123");
      */
-    const getDocUri = (s3Key: string) => {
-        const base = process.env.NEXT_PUBLIC_AWS_S3_BUCKET_URL;
-        if (!base) {
-            throw new Error(
-                "Missing NEXT_PUBLIC_AWS_S3_BUCKET_URL in your environment variables."
-            );
+    const getDocUri = async (s3Key: string): Promise<string> => {
+        try {
+            const response = await fetch('/api/documents/presigned-url', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ s3Key,isAudio:false }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to get presigned URL: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.presignedUrl;
+        } catch (error) {
+            console.error('Error getting presigned URL:', error);
+            throw new Error('Failed to generate document access URL');
         }
-        return `${base}/${s3Key}`;
     };
     /**
      * Deletes the provided document by making an API DELETE request.
@@ -240,8 +270,8 @@ export default function PdfRenderer({
     };
 
     return (
-        <div className="flex-1 max-h-[85.5vh] overflow-y-auto rounded-lg h-full">
-            {!selectedDoc ? (
+        <div className="flex-1 h-full overflow-y-auto rounded-lg scrollbar-hide overflow-hidden">
+            {!selectedDoc || !documentUrl ? (
                 <div className="h-full w-full overflow-y-auto p-6">
                     {isAnyDocumentProcessing && (
                         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -357,11 +387,10 @@ export default function PdfRenderer({
         `}
                                                         onClick={() => {
                                                             if (isCompleted) {
-                                                                setSelectedDoc({
+                                                                handleDocumentSelect({
                                                                     fileName: doc.fileName,
                                                                     s3Key: doc.s3Key,
                                                                 });
-                                                                setIsViewingDocument(true);
                                                             }
                                                         }}
                                                         disabled={!isCompleted}
@@ -423,10 +452,11 @@ export default function PdfRenderer({
                 </div>
             ) : (
                 <DocumentViewer
-                    url={getDocUri(selectedDoc.s3Key)}
+                    url={documentUrl}
                     fileName={selectedDoc.fileName}
                     onReturn={() => {
                         setSelectedDoc(null);
+                        setDocumentUrl(null);
                         setIsViewingDocument(false);
                     }}
                 />

@@ -219,7 +219,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ url, fileName, onReturn
     };
 
     return (
-        <div className="h-[30vh] flex flex-col bg-white rounded-lg shadow-lg">
+        <div className="h-[70.5vh] flex flex-col bg-white rounded-lg shadow-lg ">
             <div className={documentType === 'pdf' ? '' : 'overflow-auto flex-1'}>
                 {renderContent()}
             </div>

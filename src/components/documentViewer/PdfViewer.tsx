@@ -142,7 +142,7 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ content, fileName, onReturn, docu
     };
 
     return (
-        <div className="w-full bg-white rounded-md shadow flex flex-col items-center h-full">
+        <div className="w-full bg-white rounded-md shadow flex flex-col items-center h-[62.5vh]">
             <PdfControls
                 currPage={currPage}
                 numPages={numPages}
@@ -158,8 +158,8 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ content, fileName, onReturn, docu
                 onReturn={onReturn}
                 isDocx={false}
             />
-            <div className="flex-1 w-full max-h-[50vh]">
-                <div className="max-h-[50vh] overflow-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#CBD5E0 #F7FAFC' }}>
+            <div className="flex-1 w-full max-h-[60vh]">
+                <div className="max-h-[60vh] overflow-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#CBD5E0 #F7FAFC' }}>
                     <div ref={ref}>
                         <Document
                             ref={documentRef}
