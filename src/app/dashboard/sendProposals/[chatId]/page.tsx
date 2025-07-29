@@ -310,7 +310,11 @@ export default function ChatPage() {
                             </PanelResizeHandle>
                             <Panel defaultSize={45} minSize={45}>
                                 <div className="p-4 flex flex-col">
-                                    <ChatWrapper chatId={chatIdStr} />
+                                    <ChatWrapper
+                                        chatId={chatIdStr}
+                                        documentsWithStatus={documentsWithStatus}
+                                        isAnyDocumentProcessing={isAnyDocumentProcessing}
+                                    />
                                 </div>
                             </Panel>
                         </PanelGroup>
@@ -378,7 +382,11 @@ export default function ChatPage() {
                             <Panel defaultSize={50} minSize={50}>
                                 <div className="h-full p-3 sm:p-4 flex flex-col">
                                     <div className="flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                                        <ChatWrapper chatId={chatIdStr} />
+                                        <ChatWrapper
+                                            chatId={chatIdStr}
+                                            documentsWithStatus={documentsWithStatus}
+                                            isAnyDocumentProcessing={isAnyDocumentProcessing}
+                                        />
                                     </div>
                                 </div>
                             </Panel>
